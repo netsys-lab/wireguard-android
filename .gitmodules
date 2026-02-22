@@ -6,4 +6,4 @@
 	url = https://github.com/termux/termux-elf-cleaner
 [submodule "tunnel/tools/libwg-go/wireguard-go"]
 	path = tunnel/tools/libwg-go/wireguard-go
-	url = https://github.com/netsys-lab/wireguard-go.git
+	url = git@github.com:netsys-lab/wireguard-go.git
