@@ -132,15 +132,6 @@ class TunnelListFragment : BaseFragment() {
                 startActivity(Intent(requireActivity(), com.wireguard.android.activity.SettingsActivity::class.java))
             }
 
-            // SCION connect button click listener
-            scionConnectButton.setOnClickListener {
-                parentFragmentManager.commit {
-                    replace(R.id.list_detail_container, ScionNetworkListFragment())
-                    setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
-                    addToBackStack(null)
-                }
-            }
-
             executePendingBindings()
             snackbarUpdateShower.attach(mainContainer, null)
         }
