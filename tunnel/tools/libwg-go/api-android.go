@@ -19,6 +19,7 @@ import (
 	"runtime/debug"
 	"strings"
 	"unsafe"
+	"path/filepath"
 
 	"golang.org/x/sys/unix"
 	"golang.zx2c4.com/wireguard/conn"
@@ -222,6 +223,12 @@ func wgVersion() *C.char {
 		}
 	}
 	return C.CString("unknown")
+}
+
+//export wgScionTestBridge
+func wgScionTestBridge(inputPath string) *C.char {
+	outStr := filepath.Join(inputPath, "scion_configs", "certs")
+	return C.CString(fmt.Sprintf("Greetings from Go! Your SCION config path is: %s", outStr))
 }
 
 func main() {}

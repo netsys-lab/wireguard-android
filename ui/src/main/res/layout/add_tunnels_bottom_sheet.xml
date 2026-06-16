@@ -1,81 +1,205 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-  ~ Copyright © 2017-2025 WireGuard LLC. All Rights Reserved.
-  ~ SPDX-License-Identifier: Apache-2.0
-  -->
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingTop="@dimen/bottom_sheet_top_padding">
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@drawable/scitra_bottom_sheet_bg">
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/create_from_file"
-        style="@style/Widget.Material3.Button.TextButton.Icon"
+    <!-- Drag handle indicator -->
+    <View
+        android:layout_width="32dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:background="@color/scitra_outline"
+        android:layout_marginBottom="16dp"/>
+
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="@dimen/bottom_sheet_item_height"
-        android:layout_marginStart="@dimen/normal_margin"
-        android:layout_marginLeft="@dimen/normal_margin"
-        android:layout_marginEnd="@dimen/normal_margin"
-        android:layout_marginRight="@dimen/normal_margin"
-        android:nextFocusDown="@id/create_from_qrcode"
-        android:nextFocusForward="@id/create_from_qrcode"
-        android:text="@string/create_from_file"
-        android:textAlignment="viewStart"
-        android:textColor="?attr/colorOnSurface"
-        app:icon="@drawable/ic_action_open"
-        app:iconPadding="@dimen/bottom_sheet_icon_padding"
-        app:iconTint="?attr/colorSecondary"
-        app:layout_constraintBottom_toTopOf="@+id/create_from_qrcode"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="parent"
-        app:rippleColor="?attr/colorSecondary" />
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp">
 
-    <com.google.android.material.button.MaterialButton
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:text="Add New Tunnel"
+            android:textColor="@color/scitra_on_surface"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/close_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:text="✕"
+            android:textSize="20sp"
+            android:textColor="@color/scitra_on_surface_variant"
+            android:clickable="true"
+            android:focusable="true"/>
+    </RelativeLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Choose how you want to configure your secure connection."
+        android:textColor="@color/scitra_on_surface_variant"
+        android:textSize="14sp"
+        android:textAlignment="center"
+        android:gravity="center"
+        android:layout_marginBottom="24dp" />
+
+    <LinearLayout
         android:id="@+id/create_from_qrcode"
-        style="@style/Widget.Material3.Button.TextButton.Icon"
         android:layout_width="match_parent"
-        android:layout_height="@dimen/bottom_sheet_item_height"
-        android:layout_marginStart="@dimen/normal_margin"
-        android:layout_marginLeft="@dimen/normal_margin"
-        android:layout_marginEnd="@dimen/normal_margin"
-        android:layout_marginRight="@dimen/normal_margin"
-        android:nextFocusUp="@id/create_from_file"
-        android:nextFocusDown="@id/create_empty"
-        android:nextFocusForward="@id/create_empty"
-        android:text="@string/create_from_qr_code"
-        android:textAlignment="viewStart"
-        android:textColor="?attr/colorOnSurface"
-        app:icon="@drawable/ic_action_scan_qr_code"
-        app:iconPadding="@dimen/bottom_sheet_icon_padding"
-        app:iconTint="?attr/colorSecondary"
-        app:layout_constraintBottom_toBottomOf="@+id/create_empty"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/create_from_file"
-        app:rippleColor="?attr/colorSecondary" />
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@drawable/scitra_card_bg"
+        android:padding="20dp"
+        android:layout_marginBottom="16dp"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true">
 
-    <com.google.android.material.button.MaterialButton
+        <FrameLayout
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/scitra_icon_bg"
+            android:layout_marginEnd="16dp">
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_action_scan_qr_code"
+                app:tint="@color/scitra_primary" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Scan QR Code"
+                android:textColor="@color/scitra_on_surface"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Instantly import configuration from image"
+                android:textColor="@color/scitra_on_surface_variant"
+                android:textSize="12sp"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
         android:id="@+id/create_empty"
-        style="@style/Widget.Material3.Button.TextButton.Icon"
         android:layout_width="match_parent"
-        android:layout_height="@dimen/bottom_sheet_item_height"
-        android:layout_marginStart="@dimen/normal_margin"
-        android:layout_marginLeft="@dimen/normal_margin"
-        android:layout_marginEnd="@dimen/normal_margin"
-        android:layout_marginRight="@dimen/normal_margin"
-        android:nextFocusUp="@id/create_from_qrcode"
-        android:text="@string/create_empty"
-        android:textAlignment="viewStart"
-        android:textColor="?attr/colorOnSurface"
-        app:icon="@drawable/ic_action_edit"
-        app:iconPadding="@dimen/bottom_sheet_icon_padding"
-        app:iconTint="?attr/colorSecondary"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/create_from_qrcode"
-        app:rippleColor="?attr/colorSecondary" />
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@drawable/scitra_card_bg"
+        android:padding="20dp"
+        android:layout_marginBottom="16dp"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true">
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+        <FrameLayout
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/scitra_icon_bg"
+            android:layout_marginEnd="16dp">
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_action_edit"
+                app:tint="@color/scitra_primary" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Manual Configuration"
+                android:textColor="@color/scitra_on_surface"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Enter your keys and endpoint details manually"
+                android:textColor="@color/scitra_on_surface_variant"
+                android:textSize="12sp"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/create_from_file"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@drawable/scitra_card_bg"
+        android:padding="20dp"
+        android:layout_marginBottom="24dp"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true">
+
+        <FrameLayout
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/scitra_icon_bg"
+            android:layout_marginEnd="16dp">
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_action_open"
+                app:tint="@color/scitra_primary" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Import from file"
+                android:textColor="@color/scitra_on_surface"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Load configuration from an archive or file"
+                android:textColor="@color/scitra_on_surface_variant"
+                android:textSize="12sp"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/cancel_button"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="@drawable/scitra_btn_outline_bg"
+        android:text="Cancel"
+        android:textAllCaps="false"
+        android:textColor="@color/scitra_on_surface"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+</LinearLayout>

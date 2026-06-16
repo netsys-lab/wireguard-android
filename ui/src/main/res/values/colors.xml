@@ -64,4 +64,21 @@
     <color name="md_theme_dark_surfaceTint">#ADC7FF</color>
     <color name="md_theme_dark_outlineVariant">#44474F</color>
     <color name="md_theme_dark_scrim">#000000</color>
+
+    <!-- Scitra Colors -->
+    <color name="scitra_primary">#A78BFA</color>
+    <color name="scitra_primary_container">#7C3AED</color>
+    <color name="scitra_on_primary">#0A0012</color>
+    <color name="scitra_on_primary_container">#EDE9FE</color>
+    <color name="scitra_primary_fixed">#EDE9FE</color>
+    <color name="scitra_background">#09090B</color>
+    <color name="scitra_on_surface">#FAFAFA</color>
+    <color name="scitra_on_surface_variant">#A1A1AA</color>
+    <color name="scitra_surface_container_lowest">#09090B</color>
+    <color name="scitra_surface_container_low">#0F0F12</color>
+    <color name="scitra_surface_container">#121215</color>
+    <color name="scitra_surface_container_high">#18181B</color>
+    <color name="scitra_outline_variant">#27272A</color>
+    <color name="scitra_outline">#52525B</color>
+    <color name="scitra_secondary">#71717A</color>
 </resources>

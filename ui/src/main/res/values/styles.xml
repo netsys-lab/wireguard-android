@@ -5,23 +5,28 @@
 <resources xmlns:android="http://schemas.android.com/apk/res/android">
 
     <style name="WireGuardTheme.Toolbar" parent="Widget.Material3.Toolbar">
-        <item name="android:background">?attr/colorSurface</item>
+        <item name="android:background">@color/bg_dark</item>
     </style>
 
     <style name="AppThemeBase" parent="WireGuardTheme">
         <item name="materialCardViewStyle">@style/WireGuardTheme.MaterialCardView</item>
         <item name="toolbarStyle">@style/WireGuardTheme.Toolbar</item>
         <item name="bottomSheetDialogTheme">@style/WireGuardTheme.BottomSheetDialog</item>
-        <item name="android:statusBarColor">?android:colorBackground</item>
-        <item name="android:windowLightStatusBar">@bool/light_status_bar</item>
+        <item name="android:statusBarColor">@color/bg_dark</item>
+        <item name="android:navigationBarColor">@color/bg_dark</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 
     <!-- Various additional API-specific features in values-v*/styles.xml -->
     <style name="AppTheme" parent="AppThemeBase" />
 
     <style name="WireGuardTheme.MaterialCardView" parent="Widget.Material3.CardView.Elevated">
-        <item name="cornerRadius">4dp</item>
-        <item name="contentPadding">8dp</item>
+        <item name="cornerRadius">16dp</item>
+        <item name="contentPadding">16dp</item>
+        <item name="cardBackgroundColor">@color/bg_card</item>
+        <item name="strokeColor">@color/card_border</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="cardElevation">0dp</item>
     </style>
 
     <style name="WireGuardTheme.BottomSheetDialog" parent="ThemeOverlay.Material3.BottomSheetDialog">
@@ -45,5 +50,31 @@
     <style name="TvTheme" parent="AppTheme">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
+    </style>
+
+    <style name="PathPolicyDialogTheme" parent="ThemeOverlay.Material3.Dialog">
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowBackground">@color/scitra_background</item>
+    </style>
+
+    <!-- SCION-specific styles -->
+    <style name="ScionCard">
+        <item name="android:background">@drawable/bg_scion_card</item>
+        <item name="android:padding">20dp</item>
+    </style>
+
+    <style name="ScionButton.Primary" parent="Widget.Material3.Button">
+        <item name="backgroundTint">@color/accent_teal</item>
+        <item name="android:textColor">@color/bg_dark</item>
+        <item name="cornerRadius">12dp</item>
+    </style>
+
+    <style name="ScionButton.Outlined" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="strokeColor">@color/card_border_light</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="cornerRadius">12dp</item>
     </style>
 </resources>

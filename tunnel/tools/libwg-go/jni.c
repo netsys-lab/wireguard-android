@@ -69,3 +69,22 @@ JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgVersion
 	free(version);
 	return ret;
 }
+
+extern char *wgScionTestBridge(struct go_string inputPath);
+
+JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgScionTestBridge(JNIEnv *env, jclass c, jstring inputPath)
+{
+	const char *inputPath_str = (*env)->GetStringUTFChars(env, inputPath, 0);
+	size_t inputPath_len = (*env)->GetStringUTFLength(env, inputPath);
+	char *out_str = wgScionTestBridge((struct go_string){
+		.str = inputPath_str,
+		.n = inputPath_len
+	});
+	(*env)->ReleaseStringUTFChars(env, inputPath, inputPath_str);
+	
+	if (!out_str)
+		return NULL;
+	jstring ret = (*env)->NewStringUTF(env, out_str);
+	free(out_str);
+	return ret;
+}

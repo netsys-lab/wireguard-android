@@ -197,6 +197,21 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
         }
     }
 
+    private var pathPolicyJson: String = ""
+
+    @Suppress("UNUSED_PARAMETER")
+    fun onRequestConfigurePathPolicy(view: View?) {
+        val dialog = PathPolicyDialogFragment.newInstance(pathPolicyJson)
+        childFragmentManager.setFragmentResultListener(PathPolicyDialogFragment.REQUEST_KEY_POLICY, viewLifecycleOwner) { _, bundle ->
+            val resultJson = bundle.getString(PathPolicyDialogFragment.KEY_RESULT_JSON)
+            if (resultJson != null) {
+                pathPolicyJson = resultJson
+                Toast.makeText(context, "Path Policy configured successfully!", Toast.LENGTH_SHORT).show()
+            }
+        }
+        dialog.show(childFragmentManager, null)
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
         if (binding != null) outState.putParcelable(KEY_LOCAL_CONFIG, binding!!.config)
         outState.putString(KEY_ORIGINAL_NAME, if (tunnel == null) null else tunnel!!.name)

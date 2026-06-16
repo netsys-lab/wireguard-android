@@ -81,6 +81,8 @@ public final class GoBackend implements Backend {
 
     private static native String wgVersion();
 
+    @Nullable private static native String wgScionTestBridge(String inputPath);
+
     /**
      * Method to get the names of running tunnels.
      *
@@ -365,6 +367,17 @@ public final class GoBackend implements Backend {
         }
 
         tunnel.onStateChange(state);
+    }
+
+    /**
+     * Test the JNI Bridge for SCION by sending a path down and expecting a mutated path back
+     *
+     * @param inputPath A seed path to send to Go safely over JNI
+     * @return {@link String} mutated path returned by go, showcasing bridge integrity.
+     */
+    @Nullable
+    public String scionTestBridge(final String inputPath) {
+        return wgScionTestBridge(inputPath);
     }
 
     /**

@@ -21,6 +21,8 @@ import androidx.activity.addCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ActionMode
+import androidx.fragment.app.FragmentTransaction
+import androidx.fragment.app.commit
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
 import com.google.zxing.qrcode.QRCodeReader
@@ -101,7 +103,7 @@ class TunnelListFragment : BaseFragment() {
         binding = TunnelListFragmentBinding.inflate(inflater, container, false)
         val bottomSheet = AddTunnelsSheet()
         binding?.apply {
-            createFab.setOnClickListener {
+            btnAddTunnel.setOnClickListener {
                 if (childFragmentManager.findFragmentByTag("BOTTOM_SHEET") != null)
                     return@setOnClickListener
                 childFragmentManager.setFragmentResultListener(AddTunnelsSheet.REQUEST_KEY_NEW_TUNNEL, viewLifecycleOwner) { _, bundle ->
@@ -126,8 +128,21 @@ class TunnelListFragment : BaseFragment() {
                 }
                 bottomSheet.showNow(childFragmentManager, "BOTTOM_SHEET")
             }
+            btnSettings.setOnClickListener {
+                startActivity(Intent(requireActivity(), com.wireguard.android.activity.SettingsActivity::class.java))
+            }
+
+            // SCION connect button click listener
+            scionConnectButton.setOnClickListener {
+                parentFragmentManager.commit {
+                    replace(R.id.list_detail_container, ScionNetworkListFragment())
+                    setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
+                    addToBackStack(null)
+                }
+            }
+
             executePendingBindings()
-            snackbarUpdateShower.attach(mainContainer, createFab)
+            snackbarUpdateShower.attach(mainContainer, null)
         }
         backPressedCallback = requireActivity().onBackPressedDispatcher.addCallback(this) { actionMode?.finish() }
         backPressedCallback?.isEnabled = false
@@ -198,7 +213,6 @@ class TunnelListFragment : BaseFragment() {
         val binding = binding
         if (binding != null)
             Snackbar.make(binding.mainContainer, message, Snackbar.LENGTH_LONG)
-                .setAnchorView(binding.createFab)
                 .show()
         else
             Toast.makeText(activity ?: Application.get(), message, Toast.LENGTH_SHORT).show()
@@ -221,11 +235,6 @@ class TunnelListFragment : BaseFragment() {
                 R.id.menu_action_delete -> {
                     val activity = activity ?: return true
                     val copyCheckedItems = HashSet(checkedItems)
-                    binding?.createFab?.apply {
-                        visibility = View.VISIBLE
-                        scaleX = 1f
-                        scaleY = 1f
-                    }
                     activity.lifecycleScope.launch {
                         try {
                             val tunnels = Application.getTunnelManager().getTunnels()
@@ -262,7 +271,6 @@ class TunnelListFragment : BaseFragment() {
             if (activity != null) {
                 resources = activity!!.resources
             }
-            animateFab(binding?.createFab, false)
             mode.menuInflater.inflate(R.menu.tunnel_list_action_mode, menu)
             binding?.tunnelList?.adapter?.notifyDataSetChanged()
             return true
@@ -272,7 +280,6 @@ class TunnelListFragment : BaseFragment() {
             actionMode = null
             backPressedCallback?.isEnabled = false
             resources = null
-            animateFab(binding?.createFab, true)
             checkedItems.clear()
             binding?.tunnelList?.adapter?.notifyDataSetChanged()
         }
@@ -314,25 +321,7 @@ class TunnelListFragment : BaseFragment() {
             }
         }
 
-        private fun animateFab(view: View?, show: Boolean) {
-            view ?: return
-            val animation = AnimationUtils.loadAnimation(
-                context, if (show) R.anim.scale_up else R.anim.scale_down
-            )
-            animation.setAnimationListener(object : Animation.AnimationListener {
-                override fun onAnimationRepeat(animation: Animation?) {
-                }
 
-                override fun onAnimationEnd(animation: Animation?) {
-                    if (!show) view.visibility = View.GONE
-                }
-
-                override fun onAnimationStart(animation: Animation?) {
-                    if (show) view.visibility = View.VISIBLE
-                }
-            })
-            view.startAnimation(animation)
-        }
     }
 
     companion object {

@@ -35,7 +35,9 @@
 
         <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_height="match_parent"
+            android:fitsSystemWindows="true"
+            android:clipToPadding="false">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -251,17 +253,31 @@
                             android:layout_height="wrap_content"
                             android:layout_margin="4dp"
                             android:nextFocusUp="@id/dns_servers_text"
-                            android:nextFocusDown="@id/peers_layout"
-                            android:nextFocusForward="@id/peers_layout"
+                            android:nextFocusDown="@+id/btn_configure_path_policy"
+                            android:nextFocusForward="@+id/btn_configure_path_policy"
                             android:onClick="@{fragment::onRequestSetExcludedIncludedApplications}"
                             android:text="@{config.interface.includedApplications.size > 0 ? @plurals/set_included_applications(config.interface.includedApplications.size, config.interface.includedApplications.size) : config.interface.excludedApplications.size > 0 ? @plurals/set_excluded_applications(config.interface.excludedApplications.size, config.interface.excludedApplications.size) : @string/all_applications}"
                             android:textColor="?attr/colorSecondary"
-                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintBottom_toTopOf="@+id/btn_configure_path_policy"
                             app:layout_constraintEnd_toEndOf="parent"
                             app:layout_constraintStart_toStartOf="parent"
                             app:layout_constraintTop_toBottomOf="@id/mtu_label_layout"
                             app:rippleColor="?attr/colorSecondary"
                             tools:text="4 excluded applications" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_configure_path_policy"
+                            style="@style/Widget.Material3.Button.TextButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_margin="4dp"
+                            android:text="Configure Path Policy"
+                            android:textColor="@color/scitra_primary"
+                            android:onClick="@{fragment::onRequestConfigurePathPolicy}"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toBottomOf="@id/set_excluded_applications" />
                     </androidx.constraintlayout.widget.ConstraintLayout>
                 </com.google.android.material.card.MaterialCardView>
 

@@ -1,85 +1,250 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-  ~ Copyright © 2017-2025 WireGuard LLC. All Rights Reserved.
-  ~ SPDX-License-Identifier: Apache-2.0
-  -->
+<?xml version="1.0" encoding="utf-8"?>
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
 
     <data>
-
         <import type="com.wireguard.android.model.ObservableTunnel" />
-
-        <variable
-            name="fragment"
-            type="com.wireguard.android.fragment.TunnelListFragment" />
-
-        <variable
-            name="rowConfigurationHandler"
-            type="com.wireguard.android.databinding.ObservableKeyedRecyclerViewAdapter.RowConfigurationHandler" />
-
-        <variable
-            name="tunnels"
-            type="com.wireguard.android.databinding.ObservableKeyedArrayList&lt;String, ObservableTunnel&gt;" />
+        <variable name="fragment" type="com.wireguard.android.fragment.TunnelListFragment" />
+        <variable name="rowConfigurationHandler" type="com.wireguard.android.databinding.ObservableKeyedRecyclerViewAdapter.RowConfigurationHandler" />
+        <variable name="tunnels" type="com.wireguard.android.databinding.ObservableKeyedArrayList&lt;String, ObservableTunnel&gt;" />
     </data>
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:id="@+id/main_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="?attr/colorSurface"
+        android:background="@color/scitra_background"
         android:clipChildren="false">
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/tunnel_list"
+        <androidx.core.widget.NestedScrollView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:clipToPadding="false"
-            android:nextFocusDown="@id/create_fab"
-            android:nextFocusForward="@id/create_fab"
-            android:paddingBottom="@{@dimen/design_fab_size_normal * 1.1f}"
-            android:visibility="@{tunnels.size() > 0 ? android.view.View.VISIBLE : android.view.View.GONE}"
-            app:configurationHandler="@{rowConfigurationHandler}"
-            app:items="@{tunnels}"
-            app:layout="@{@layout/tunnel_list_item}"
-            tools:itemCount="12"
-            tools:listitem="@layout/tunnel_list_item" />
+            android:fillViewport="true"
+            android:fitsSystemWindows="true"
+            android:clipToPadding="false">
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:orientation="vertical"
-            android:visibility="@{tunnels.size() == 0 ? android.view.View.VISIBLE : android.view.View.GONE}"
-            tools:visibility="gone">
-
-            <androidx.appcompat.widget.AppCompatImageView
-                android:id="@+id/logo_placeholder"
-                android:layout_width="140dp"
-                android:layout_height="140dp"
-                android:layout_gravity="center"
-                android:layout_marginBottom="20dp"
-                android:alpha="0.3333333"
-                android:src="@mipmap/ic_launcher" />
-
-            <TextView
-                android:layout_width="wrap_content"
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:layout_marginStart="@dimen/tunnel_list_placeholder_margin"
-                android:layout_marginEnd="@dimen/tunnel_list_placeholder_margin"
-                android:text="@string/tunnel_list_placeholder"
-                android:textSize="20sp" />
-        </LinearLayout>
+                android:padding="24dp">
 
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/create_fab"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom|end"
-            android:layout_margin="@dimen/fab_margin"
-            android:nextFocusUp="@id/tunnel_list"
-            app:srcCompat="@drawable/ic_action_add_white" />
+                <!-- Header Container -->
+                <LinearLayout
+                    android:id="@+id/header_container"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="8dp"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toStartOf="@id/btn_settings">
+
+                    <!-- Logo -->
+                    <FrameLayout
+                        android:id="@+id/logo_container"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginEnd="16dp">
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@drawable/scitra_glow_bg"
+                            android:layout_margin="-12dp" />
+
+                        <ImageView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:src="@drawable/logo_scitra"
+                            android:background="@drawable/scitra_logo_bg"
+                            android:scaleType="centerCrop"
+                            android:clipToOutline="true" />
+                    </FrameLayout>
+
+                    <!-- Title & Subtitle -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/title_text"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="WG SCITRA"
+                            android:textColor="@color/scitra_on_surface"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:letterSpacing="-0.02" />
+
+                        <TextView
+                            android:id="@+id/subtitle_text"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Secure Connection"
+                            android:textColor="@color/scitra_on_surface_variant"
+                            android:textSize="12sp"
+                            android:layout_marginTop="2dp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <ImageView
+                    android:id="@+id/btn_settings"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_settings"
+                    app:tint="@color/scitra_on_surface_variant"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    app:layout_constraintTop_toTopOf="@id/header_container"
+                    app:layout_constraintBottom_toBottomOf="@id/header_container"
+                    app:layout_constraintEnd_toEndOf="parent" />
+
+                <!-- Bento Card -->
+                <LinearLayout
+                    android:id="@+id/bento_card"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="@drawable/scitra_bento_bg"
+                    android:padding="24dp"
+                    android:layout_marginTop="24dp"
+                    app:layout_constraintTop_toBottomOf="@id/header_container"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintWidth_max="448dp">
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="2dp"
+                        android:background="#80A78BFA"
+                        android:layout_marginTop="-24dp"
+                        android:layout_marginBottom="22dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Interface Connections"
+                        android:textColor="@color/scitra_on_surface"
+                        android:textSize="20sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="-0.02"
+                        android:layout_marginBottom="16dp" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/scitra_outline_variant"
+                        android:layout_marginBottom="24dp" />
+
+                    <!-- SCION Networks -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="SCION Tunnels"
+                        android:textColor="@color/scitra_primary"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textAllCaps="true"
+                        android:letterSpacing="0.1"
+                        android:layout_marginBottom="12dp" />
+
+                    <LinearLayout
+                        android:id="@+id/scion_connect_button"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:background="@drawable/scitra_dashed_item_bg"
+                        android:padding="24dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:layout_marginBottom="24dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="No networks configured"
+                            android:textColor="@color/scitra_on_surface_variant"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Standard Tunnels -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Standard Tunnels"
+                        android:textColor="@color/scitra_secondary"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textAllCaps="true"
+                        android:letterSpacing="0.1"
+                        android:layout_marginBottom="12dp" />
+
+                    <!-- Empty State for Standard Tunnels -->
+                    <LinearLayout
+                        android:id="@+id/standard_tunnels_empty"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:background="@drawable/scitra_dashed_item_bg"
+                        android:padding="24dp"
+                        android:visibility="@{tunnels.size() == 0 ? android.view.View.VISIBLE : android.view.View.GONE}">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="No tunnels configured"
+                            android:textColor="@color/scitra_on_surface_variant"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/tunnel_list"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:clipToPadding="false"
+                        android:nestedScrollingEnabled="false"
+                        android:visibility="@{tunnels.size() > 0 ? android.view.View.VISIBLE : android.view.View.GONE}"
+                        app:configurationHandler="@{rowConfigurationHandler}"
+                        app:items="@{tunnels}"
+                        app:layout="@{@layout/tunnel_list_item}"
+                        tools:itemCount="2"
+                        tools:listitem="@layout/tunnel_list_item" />
+                </LinearLayout>
+
+                <!-- Tunnel Creation Options -->
+                <LinearLayout
+                    android:id="@+id/creation_options"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginTop="32dp"
+                    android:layout_marginBottom="32dp"
+                    app:layout_constraintTop_toBottomOf="@id/bento_card"
+                    app:layout_constraintStart_toStartOf="@id/bento_card"
+                    app:layout_constraintEnd_toEndOf="@id/bento_card">
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/btn_add_tunnel"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:background="@drawable/scitra_btn_primary"
+                        android:text="Add New Tunnel"
+                        android:textAllCaps="false"
+                        android:textColor="@color/scitra_on_primary"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </androidx.core.widget.NestedScrollView>
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 </layout>

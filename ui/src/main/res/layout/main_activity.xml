@@ -7,7 +7,7 @@
     android:id="@+id/main_activity_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true"
+    android:fitsSystemWindows="false"
     tools:context=".activity.MainActivity">
 
     <androidx.fragment.app.FragmentContainerView
@@ -16,4 +16,5 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:tag="LIST" />
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

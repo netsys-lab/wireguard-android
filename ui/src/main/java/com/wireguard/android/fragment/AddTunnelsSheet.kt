@@ -61,20 +61,23 @@ class AddTunnelsSheet : BottomSheetDialogFragment() {
                     dismiss()
                     onRequestCreateConfig()
                 }
-                dialog.findViewById<View>(R.id.create_from_file)?.setOnClickListener {
-                    dismiss()
-                    onRequestImportConfig()
-                }
+
                 dialog.findViewById<View>(R.id.create_from_qrcode)?.setOnClickListener {
                     dismiss()
                     onRequestScanQRCode()
                 }
+                dialog.findViewById<View>(R.id.create_from_file)?.setOnClickListener {
+                    dismiss()
+                    onRequestImportConfig()
+                }
+                dialog.findViewById<View>(R.id.cancel_button)?.setOnClickListener {
+                    dismiss()
+                }
+                dialog.findViewById<View>(R.id.close_button)?.setOnClickListener {
+                    dismiss()
+                }
             }
         })
-        val gradientDrawable = GradientDrawable().apply {
-            setColor(requireContext().resolveAttribute(com.google.android.material.R.attr.colorSurface))
-        }
-        view.background = gradientDrawable
     }
 
     override fun dismiss() {
