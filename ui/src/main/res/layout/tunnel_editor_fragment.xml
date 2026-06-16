@@ -257,12 +257,12 @@
                             android:nextFocusForward="@+id/btn_configure_path_policy"
                             android:onClick="@{fragment::onRequestSetExcludedIncludedApplications}"
                             android:text="@{config.interface.includedApplications.size > 0 ? @plurals/set_included_applications(config.interface.includedApplications.size, config.interface.includedApplications.size) : config.interface.excludedApplications.size > 0 ? @plurals/set_excluded_applications(config.interface.excludedApplications.size, config.interface.excludedApplications.size) : @string/all_applications}"
-                            android:textColor="?attr/colorSecondary"
+                            android:textColor="@color/scitra_primary"
                             app:layout_constraintBottom_toTopOf="@+id/btn_configure_path_policy"
                             app:layout_constraintEnd_toEndOf="parent"
                             app:layout_constraintStart_toStartOf="parent"
                             app:layout_constraintTop_toBottomOf="@id/mtu_label_layout"
-                            app:rippleColor="?attr/colorSecondary"
+                            app:rippleColor="@color/scitra_primary"
                             tools:text="4 excluded applications" />
 
                         <com.google.android.material.button.MaterialButton
@@ -302,9 +302,9 @@
                     android:gravity="center"
                     android:onClick="@{() -> config.addPeer()}"
                     android:text="@string/add_peer"
-                    android:textColor="?attr/colorSecondary"
+                    android:textColor="@color/scitra_primary"
                     app:layout_anchorGravity="bottom"
-                    app:rippleColor="?attr/colorSecondary" />
+                    app:rippleColor="@color/scitra_primary" />
             </LinearLayout>
         </ScrollView>
     </androidx.coordinatorlayout.widget.CoordinatorLayout>

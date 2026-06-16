@@ -4,31 +4,31 @@
   -->
 <resources>
     <style name="WireGuardTheme" parent="Theme.Material3.Dark">
-        <item name="colorPrimary">@color/accent_teal</item>
-        <item name="colorOnPrimary">@color/bg_dark</item>
-        <item name="colorPrimaryContainer">@color/accent_teal_dark</item>
-        <item name="colorOnPrimaryContainer">@color/text_primary</item>
-        <item name="colorSecondary">@color/accent_blue</item>
-        <item name="colorOnSecondary">@color/bg_dark</item>
-        <item name="colorSecondaryContainer">@color/bg_card</item>
-        <item name="colorOnSecondaryContainer">@color/text_primary</item>
-        <item name="colorTertiary">@color/accent_blue_light</item>
-        <item name="colorOnTertiary">@color/bg_dark</item>
-        <item name="colorTertiaryContainer">@color/bg_card</item>
-        <item name="colorOnTertiaryContainer">@color/text_primary</item>
+        <item name="colorPrimary">@color/scitra_primary</item>
+        <item name="colorOnPrimary">@color/scitra_on_primary</item>
+        <item name="colorPrimaryContainer">@color/scitra_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/scitra_on_primary_container</item>
+        <item name="colorSecondary">@color/scitra_primary</item>
+        <item name="colorOnSecondary">@color/scitra_on_primary</item>
+        <item name="colorSecondaryContainer">@color/scitra_surface_container_high</item>
+        <item name="colorOnSecondaryContainer">@color/scitra_on_surface</item>
+        <item name="colorTertiary">@color/scitra_primary</item>
+        <item name="colorOnTertiary">@color/scitra_on_primary</item>
+        <item name="colorTertiaryContainer">@color/scitra_surface_container_high</item>
+        <item name="colorOnTertiaryContainer">@color/scitra_on_surface</item>
         <item name="colorError">@color/md_theme_dark_error</item>
         <item name="colorErrorContainer">@color/md_theme_dark_errorContainer</item>
         <item name="colorOnError">@color/md_theme_dark_onError</item>
         <item name="colorOnErrorContainer">@color/md_theme_dark_onErrorContainer</item>
-        <item name="android:colorBackground">@color/bg_dark</item>
-        <item name="colorOnBackground">@color/text_primary</item>
-        <item name="colorSurface">@color/bg_dark</item>
-        <item name="colorOnSurface">@color/text_primary</item>
-        <item name="colorSurfaceVariant">@color/bg_surface</item>
-        <item name="colorOnSurfaceVariant">@color/text_secondary</item>
-        <item name="colorOutline">@color/card_border</item>
-        <item name="colorOnSurfaceInverse">@color/bg_dark</item>
-        <item name="colorSurfaceInverse">@color/text_primary</item>
-        <item name="colorPrimaryInverse">@color/accent_teal_dark</item>
+        <item name="android:colorBackground">@color/scitra_background</item>
+        <item name="colorOnBackground">@color/scitra_on_surface</item>
+        <item name="colorSurface">@color/scitra_background</item>
+        <item name="colorOnSurface">@color/scitra_on_surface</item>
+        <item name="colorSurfaceVariant">@color/scitra_surface_container</item>
+        <item name="colorOnSurfaceVariant">@color/scitra_on_surface_variant</item>
+        <item name="colorOutline">@color/scitra_outline_variant</item>
+        <item name="colorOnSurfaceInverse">@color/scitra_background</item>
+        <item name="colorSurfaceInverse">@color/scitra_on_surface</item>
+        <item name="colorPrimaryInverse">@color/scitra_primary_container</item>
     </style>
 </resources>
