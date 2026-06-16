@@ -59,22 +59,5 @@
         <item name="android:windowBackground">@color/scitra_background</item>
     </style>
 
-    <!-- SCION-specific styles -->
-    <style name="ScionCard">
-        <item name="android:background">@drawable/bg_scion_card</item>
-        <item name="android:padding">20dp</item>
-    </style>
 
-    <style name="ScionButton.Primary" parent="Widget.Material3.Button">
-        <item name="backgroundTint">@color/accent_teal</item>
-        <item name="android:textColor">@color/bg_dark</item>
-        <item name="cornerRadius">12dp</item>
-    </style>
-
-    <style name="ScionButton.Outlined" parent="Widget.Material3.Button.OutlinedButton">
-        <item name="strokeColor">@color/card_border_light</item>
-        <item name="strokeWidth">1dp</item>
-        <item name="android:textColor">@color/text_primary</item>
-        <item name="cornerRadius">12dp</item>
-    </style>
 </resources>
