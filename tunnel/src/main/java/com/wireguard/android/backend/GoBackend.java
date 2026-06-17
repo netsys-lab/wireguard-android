@@ -23,6 +23,7 @@ import com.wireguard.crypto.Key;
 import com.wireguard.crypto.KeyFormatException;
 import com.wireguard.util.NonNullForAll;
 
+import java.io.File;
 import java.net.InetAddress;
 import java.util.Collections;
 import java.util.Set;
@@ -82,6 +83,36 @@ public final class GoBackend implements Backend {
     private static native String wgVersion();
 
     @Nullable private static native String wgScionTestBridge(String inputPath);
+
+    private static native String wgScionBootstrap(String configDir, String bootstrapURL);
+    private static native String wgInitScion(int handle, String configDir, String interfaceName);
+    private static native String wgGetScionStatus(int handle);
+
+    /**
+     * This gives a path like /data/data/com.wireguard.android.debug/files/scion/
+     */
+    public String getScionConfigDir() {
+        File scionDir = new File(context.getFilesDir(), "scion");
+        scionDir.mkdirs();
+        return scionDir.getAbsolutePath();
+    }
+
+    /**
+     * public Java methods that use currentTunnelHandle
+     */
+    public String scionBootstrap(final String configDir, final String bootstrapURL) {
+        return wgScionBootstrap(configDir, bootstrapURL);
+    }
+    public String initScion(final String configDir) {
+        if (currentTunnelHandle == -1)
+            return "no tunnel running";
+        return wgInitScion(currentTunnelHandle, configDir, currentTunnel != null ? currentTunnel.getName() : "");
+    }
+    public String getScionStatus() {
+        if (currentTunnelHandle == -1)
+            return "{}";
+        return wgGetScionStatus(currentTunnelHandle);
+    }
 
     /**
      * Method to get the names of running tunnels.

@@ -10,6 +10,7 @@ package main
 import "C"
 
 import (
+    "context"
 	"fmt"
 	"math"
 	"net"
@@ -20,12 +21,14 @@ import (
 	"strings"
 	"unsafe"
 	"path/filepath"
+	"time"
 
 	"golang.org/x/sys/unix"
 	"golang.zx2c4.com/wireguard/conn"
 	"golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/ipc"
 	"golang.zx2c4.com/wireguard/tun"
+	bootstrap "golang.zx2c4.com/wireguard/translator/bootstrap"
 )
 
 type AndroidLogger struct {
@@ -89,7 +92,12 @@ func wgTurnOn(interfaceName string, tunFd int32, settings string) int32 {
 	}
 
 	logger.Verbosef("Attaching to interface %v", name)
-	device := device.NewDevice(tun, conn.NewStdNetBind(), logger)
+	scionConfig := device.ScionDeviceConfig{
+        Enabled:       false,
+        InterfaceName: name,
+    }
+    //SCION start disabled is enabled in app later.
+	device := device.NewDevice(tun, conn.NewStdNetBind(), logger, scionConfig)
 
 	err = device.IpcSet(settings)
 	if err != nil {
@@ -230,5 +238,66 @@ func wgScionTestBridge(inputPath string) *C.char {
 	outStr := filepath.Join(inputPath, "scion_configs", "certs")
 	return C.CString(fmt.Sprintf("Greetings from Go! Your SCION config path is: %s", outStr))
 }
+
+//export wgScionBootstrap
+/*
+Downloads SCION topology + certificates from a bootstrap server. It:
+1. Fetches topology.json from <bootstrapURL>/topology
+2. Fetches the TRC certificate list from <bootstrapURL>/trcs
+3. Downloads each TRC blob and saves to <configDir>/certs/ISD1-B1-S1.trc
+4. Returns "ok" on success, or an error string
+This gives the Go backend the SCION network topology it needs to know which paths exist.
+*/
+func wgScionBootstrap(configDir string, bootstrapURL string) *C.char {
+    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+    defer cancel()
+    if err := bootstrap.BootstrapFetch(ctx, bootstrapURL, configDir); err != nil {
+        return C.CString(err.Error())
+    }
+    return C.CString("ok")
+}
+//export wgInitScion
+/*
+Initializes the SCION translator on an already running WireGuard device. It:
+1. Reads topology.json from configDir to learn the local ISD-AS and border router address
+2. Creates a SCION daemon retriever (for looking up paths)
+3. Creates a path pool (caches SCION paths)
+4. Creates the translator (intercepts fc00::/8 packets → SCION packets)
+5. Wires everything into the running device
+This is the deferred init — the tunnel is already up, now SCION is enabled on it.
+*/
+func wgInitScion(tunnelHandle int32, configDir string, interfaceName string) *C.char {
+    handle, ok := tunnelHandles[tunnelHandle]
+    if !ok {
+        return C.CString("invalid handle")
+    }
+    scionConfig := device.ScionDeviceConfig{
+        Enabled:       true,
+        ConfigDir:     configDir,
+        InterfaceName: interfaceName,
+    }
+    if err := handle.device.InitSCION(scionConfig); err != nil {
+        return C.CString(err.Error())
+    }
+    return C.CString("ok")
+}
+//export wgGetScionStatus
+/*
+Returns a JSON snapshot of the SCION path pool:
+which ISD-AS pairs have cached paths, their latencies, expiry, etc.
+This is for the UI to display SCION status.
+*/
+func wgGetScionStatus(tunnelHandle int32) *C.char {
+    handle, ok := tunnelHandles[tunnelHandle]
+    if !ok {
+        return C.CString("{}")
+    }
+    json, err := handle.device.SCIONPathSnapshotJSON()
+    if err != nil {
+        return C.CString("{}")
+    }
+    return C.CString(json)
+}
+
 
 func main() {}

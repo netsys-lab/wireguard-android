@@ -14,6 +14,61 @@ extern int wgGetSocketV4(int handle);
 extern int wgGetSocketV6(int handle);
 extern char *wgGetConfig(int handle);
 extern char *wgVersion();
+extern char *wgScionBootstrap(struct go_string configDir, struct go_string bootstrapURL);
+extern char *wgInitScion(int handle, struct go_string configDir, struct go_string interfaceName);
+extern char *wgGetScionStatus(int handle);
+
+JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgScionBootstrap(JNIEnv *env, jclass c, jstring configDir, jstring bootstrapURL)
+{
+    const char *configDir_str = (*env)->GetStringUTFChars(env, configDir, 0);
+    size_t configDir_len = (*env)->GetStringUTFLength(env, configDir);
+    const char *bootstrapURL_str = (*env)->GetStringUTFChars(env, bootstrapURL, 0);
+    size_t bootstrapURL_len = (*env)->GetStringUTFLength(env, bootstrapURL);
+    char *result = wgScionBootstrap((struct go_string){
+            .str = configDir_str,
+            .n = configDir_len
+    }, (struct go_string){
+            .str = bootstrapURL_str,
+            .n = bootstrapURL_len
+    });
+    (*env)->ReleaseStringUTFChars(env, configDir, configDir_str);
+    (*env)->ReleaseStringUTFChars(env, bootstrapURL, bootstrapURL_str);
+    if (!result)
+        return NULL;
+    jstring ret = (*env)->NewStringUTF(env, result);
+    free(result);
+    return ret;
+}
+JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgInitScion(JNIEnv *env, jclass c, jint handle, jstring configDir, jstring interfaceName)
+{
+    const char *configDir_str = (*env)->GetStringUTFChars(env, configDir, 0);
+    size_t configDir_len = (*env)->GetStringUTFLength(env, configDir);
+    const char *interfaceName_str = (*env)->GetStringUTFChars(env, interfaceName, 0);
+    size_t interfaceName_len = (*env)->GetStringUTFLength(env, interfaceName);
+    char *result = wgInitScion(handle, (struct go_string){
+            .str = configDir_str,
+            .n = configDir_len
+    }, (struct go_string){
+            .str = interfaceName_str,
+            .n = interfaceName_len
+    });
+    (*env)->ReleaseStringUTFChars(env, configDir, configDir_str);
+    (*env)->ReleaseStringUTFChars(env, interfaceName, interfaceName_str);
+    if (!result)
+        return NULL;
+    jstring ret = (*env)->NewStringUTF(env, result);
+    free(result);
+    return ret;
+}
+JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgGetScionStatus(JNIEnv *env, jclass c, jint handle)
+{
+    char *result = wgGetScionStatus(handle);
+    if (!result)
+        return NULL;
+    jstring ret = (*env)->NewStringUTF(env, result);
+    free(result);
+    return ret;
+}
 
 JNIEXPORT jint JNICALL Java_com_wireguard_android_backend_GoBackend_wgTurnOn(JNIEnv *env, jclass c, jstring ifname, jint tun_fd, jstring settings)
 {
