@@ -45,6 +45,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 
+import com.wireguard.android.BR
+
 /**
  * Fragment containing a list of known WireGuard tunnels. It allows creating and deleting tunnels.
  */
@@ -53,6 +55,68 @@ class TunnelListFragment : BaseFragment() {
     private var actionMode: ActionMode? = null
     private var backPressedCallback: OnBackPressedCallback? = null
     private var binding: TunnelListFragmentBinding? = null
+
+    private val scionTunnels = com.wireguard.android.databinding.ObservableSortedKeyedArrayList<String, ObservableTunnel>(com.wireguard.android.model.TunnelComparator)
+    private val standardTunnels = com.wireguard.android.databinding.ObservableSortedKeyedArrayList<String, ObservableTunnel>(com.wireguard.android.model.TunnelComparator)
+
+    private val listChangedCallback = object : androidx.databinding.ObservableList.OnListChangedCallback<androidx.databinding.ObservableList<ObservableTunnel>>() {
+        override fun onChanged(sender: androidx.databinding.ObservableList<ObservableTunnel>?) {
+            syncTunnels()
+        }
+
+        override fun onItemRangeChanged(sender: androidx.databinding.ObservableList<ObservableTunnel>?, positionStart: Int, itemCount: Int) {
+            syncTunnels()
+        }
+
+        override fun onItemRangeInserted(sender: androidx.databinding.ObservableList<ObservableTunnel>?, positionStart: Int, itemCount: Int) {
+            sender?.subList(positionStart, positionStart + itemCount)?.forEach { tunnel ->
+                tunnel.addOnPropertyChangedCallback(tunnelPropertyChangedCallback)
+            }
+            syncTunnels()
+        }
+
+        override fun onItemRangeMoved(sender: androidx.databinding.ObservableList<ObservableTunnel>?, fromPosition: Int, toPosition: Int, itemCount: Int) {
+            syncTunnels()
+        }
+
+        override fun onItemRangeRemoved(sender: androidx.databinding.ObservableList<ObservableTunnel>?, positionStart: Int, itemCount: Int) {
+            syncTunnels()
+        }
+    }
+
+    private val tunnelPropertyChangedCallback = object : androidx.databinding.Observable.OnPropertyChangedCallback() {
+        override fun onPropertyChanged(sender: androidx.databinding.Observable?, propertyId: Int) {
+            if (propertyId == BR.scion || propertyId == BR.config) {
+                syncTunnels()
+            }
+        }
+    }
+
+    private fun syncTunnels() {
+        val allTunnels = binding?.tunnels ?: return
+
+        val scionList = allTunnels.filter { it.isScion }
+        val standardList = allTunnels.filter { !it.isScion }
+
+        // Update scionTunnels
+        val scionNames = scionList.map { it.name }.toSet()
+        scionTunnels.removeAll { it.name !in scionNames }
+        for (item in scionList) {
+            if (!scionTunnels.containsKey(item.name)) {
+                scionTunnels.add(item)
+            }
+        }
+
+        // Update standardTunnels
+        val standardNames = standardList.map { it.name }.toSet()
+        standardTunnels.removeAll { it.name !in standardNames }
+        for (item in standardList) {
+            if (!standardTunnels.containsKey(item.name)) {
+                standardTunnels.add(item)
+            }
+        }
+    }
+
     private val tunnelFileImportResultLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { data ->
         if (data == null) return@registerForActivityResult
         val activity = activity ?: return@registerForActivityResult
@@ -90,7 +154,14 @@ class TunnelListFragment : BaseFragment() {
         if (savedInstanceState != null) {
             val checkedItems = savedInstanceState.getIntegerArrayList(CHECKED_ITEMS)
             if (checkedItems != null) {
-                for (i in checkedItems) actionModeListener.setItemChecked(i, true)
+                lifecycleScope.launch {
+                    val tunnels = Application.getTunnelManager().getTunnels()
+                    for (i in checkedItems) {
+                        if (i >= 0 && i < tunnels.size) {
+                            actionModeListener.setTunnelChecked(tunnels[i], true)
+                        }
+                    }
+                }
             }
         }
     }
@@ -103,6 +174,8 @@ class TunnelListFragment : BaseFragment() {
         binding = TunnelListFragmentBinding.inflate(inflater, container, false)
         val bottomSheet = AddTunnelsSheet()
         binding?.apply {
+            binding!!.scionTunnels = scionTunnels
+            binding!!.standardTunnels = standardTunnels
             btnAddTunnel.setOnClickListener {
                 if (childFragmentManager.findFragmentByTag("BOTTOM_SHEET") != null)
                     return@setOnClickListener
@@ -142,6 +215,12 @@ class TunnelListFragment : BaseFragment() {
     }
 
     override fun onDestroyView() {
+        binding?.tunnels?.let { tunnels ->
+            tunnels.removeOnListChangedCallback(listChangedCallback)
+            tunnels.forEach { tunnel ->
+                tunnel.removeOnPropertyChangedCallback(tunnelPropertyChangedCallback)
+            }
+        }
         binding = null
         super.onDestroyView()
     }
@@ -154,9 +233,8 @@ class TunnelListFragment : BaseFragment() {
     override fun onSelectedTunnelChanged(oldTunnel: ObservableTunnel?, newTunnel: ObservableTunnel?) {
         binding ?: return
         lifecycleScope.launch {
-            val tunnels = Application.getTunnelManager().getTunnels()
-            if (newTunnel != null) viewForTunnel(newTunnel, tunnels)?.setSingleSelected(true)
-            if (oldTunnel != null) viewForTunnel(oldTunnel, tunnels)?.setSingleSelected(false)
+            if (newTunnel != null) viewForTunnel(newTunnel)?.setSingleSelected(true)
+            if (oldTunnel != null) viewForTunnel(oldTunnel)?.setSingleSelected(false)
         }
     }
 
@@ -177,7 +255,17 @@ class TunnelListFragment : BaseFragment() {
         super.onViewStateRestored(savedInstanceState)
         binding ?: return
         binding!!.fragment = this
-        lifecycleScope.launch { binding!!.tunnels = Application.getTunnelManager().getTunnels() }
+        binding!!.scionTunnels = scionTunnels
+        binding!!.standardTunnels = standardTunnels
+        lifecycleScope.launch {
+            val tunnels = Application.getTunnelManager().getTunnels()
+            binding!!.tunnels = tunnels
+            tunnels.addOnListChangedCallback(listChangedCallback)
+            tunnels.forEach { tunnel ->
+                tunnel.addOnPropertyChangedCallback(tunnelPropertyChangedCallback)
+            }
+            syncTunnels()
+        }
         binding!!.rowConfigurationHandler = object : RowConfigurationHandler<TunnelListItemBinding, ObservableTunnel> {
             override fun onConfigureRow(binding: TunnelListItemBinding, item: ObservableTunnel, position: Int) {
                 binding.fragment = this@TunnelListFragment
@@ -185,15 +273,15 @@ class TunnelListFragment : BaseFragment() {
                     if (actionMode == null) {
                         selectedTunnel = item
                     } else {
-                        actionModeListener.toggleItemChecked(position)
+                        actionModeListener.toggleTunnelChecked(item)
                     }
                 }
                 binding.root.setOnLongClickListener {
-                    actionModeListener.toggleItemChecked(position)
+                    actionModeListener.toggleTunnelChecked(item)
                     true
                 }
                 if (actionMode != null)
-                    (binding.root as MultiselectableRelativeLayout).setMultiSelected(actionModeListener.checkedItems.contains(position))
+                    (binding.root as MultiselectableRelativeLayout).setMultiSelected(actionModeListener.checkedTunnels.contains(item))
                 else
                     (binding.root as MultiselectableRelativeLayout).setSingleSelected(selectedTunnel == item)
             }
@@ -209,35 +297,53 @@ class TunnelListFragment : BaseFragment() {
             Toast.makeText(activity ?: Application.get(), message, Toast.LENGTH_SHORT).show()
     }
 
-    private fun viewForTunnel(tunnel: ObservableTunnel, tunnels: List<*>): MultiselectableRelativeLayout? {
-        return binding?.tunnelList?.findViewHolderForAdapterPosition(tunnels.indexOf(tunnel))?.itemView as? MultiselectableRelativeLayout
+    private fun viewForTunnel(tunnel: ObservableTunnel): MultiselectableRelativeLayout? {
+        val binding = binding ?: return null
+        return if (tunnel.isScion) {
+            val index = scionTunnels.indexOf(tunnel)
+            if (index >= 0) {
+                binding.scionTunnelList.findViewHolderForAdapterPosition(index)?.itemView as? MultiselectableRelativeLayout
+            } else {
+                null
+            }
+        } else {
+            val index = standardTunnels.indexOf(tunnel)
+            if (index >= 0) {
+                binding.tunnelList.findViewHolderForAdapterPosition(index)?.itemView as? MultiselectableRelativeLayout
+            } else {
+                null
+            }
+        }
     }
 
     private inner class ActionModeListener : ActionMode.Callback {
-        val checkedItems: MutableCollection<Int> = HashSet()
+        val checkedTunnels: MutableCollection<ObservableTunnel> = HashSet()
         private var resources: Resources? = null
 
         fun getCheckedItems(): ArrayList<Int> {
-            return ArrayList(checkedItems)
+            val list = ArrayList<Int>()
+            val mainTunnels = binding?.tunnels ?: return list
+            checkedTunnels.forEach { tunnel ->
+                val index = mainTunnels.indexOf(tunnel)
+                if (index >= 0) list.add(index)
+            }
+            return list
         }
 
         override fun onActionItemClicked(mode: ActionMode, item: MenuItem): Boolean {
             return when (item.itemId) {
                 R.id.menu_action_delete -> {
                     val activity = activity ?: return true
-                    val copyCheckedItems = HashSet(checkedItems)
+                    val copyCheckedTunnels = HashSet(checkedTunnels)
                     activity.lifecycleScope.launch {
                         try {
-                            val tunnels = Application.getTunnelManager().getTunnels()
-                            val tunnelsToDelete = ArrayList<ObservableTunnel>()
-                            for (position in copyCheckedItems) tunnelsToDelete.add(tunnels[position])
-                            val futures = tunnelsToDelete.map { async(SupervisorJob()) { it.deleteAsync() } }
+                            val futures = copyCheckedTunnels.map { async(SupervisorJob()) { it.deleteAsync() } }
                             onTunnelDeletionFinished(futures.awaitAll().size, null)
                         } catch (e: Throwable) {
                             onTunnelDeletionFinished(0, e)
                         }
                     }
-                    checkedItems.clear()
+                    checkedTunnels.clear()
                     mode.finish()
                     true
                 }
@@ -245,8 +351,8 @@ class TunnelListFragment : BaseFragment() {
                 R.id.menu_action_select_all -> {
                     lifecycleScope.launch {
                         val tunnels = Application.getTunnelManager().getTunnels()
-                        for (i in 0 until tunnels.size) {
-                            setItemChecked(i, true)
+                        for (tunnel in tunnels) {
+                            setTunnelChecked(tunnel, true)
                         }
                     }
                     true
@@ -263,6 +369,7 @@ class TunnelListFragment : BaseFragment() {
                 resources = activity!!.resources
             }
             mode.menuInflater.inflate(R.menu.tunnel_list_action_mode, menu)
+            binding?.scionTunnelList?.adapter?.notifyDataSetChanged()
             binding?.tunnelList?.adapter?.notifyDataSetChanged()
             return true
         }
@@ -271,7 +378,8 @@ class TunnelListFragment : BaseFragment() {
             actionMode = null
             backPressedCallback?.isEnabled = false
             resources = null
-            checkedItems.clear()
+            checkedTunnels.clear()
+            binding?.scionTunnelList?.adapter?.notifyDataSetChanged()
             binding?.tunnelList?.adapter?.notifyDataSetChanged()
         }
 
@@ -280,39 +388,37 @@ class TunnelListFragment : BaseFragment() {
             return false
         }
 
-        fun setItemChecked(position: Int, checked: Boolean) {
+        fun setTunnelChecked(tunnel: ObservableTunnel, checked: Boolean) {
             if (checked) {
-                checkedItems.add(position)
+                checkedTunnels.add(tunnel)
             } else {
-                checkedItems.remove(position)
+                checkedTunnels.remove(tunnel)
             }
-            val adapter = if (binding == null) null else binding!!.tunnelList.adapter
-            if (actionMode == null && !checkedItems.isEmpty() && activity != null) {
+            if (actionMode == null && !checkedTunnels.isEmpty() && activity != null) {
                 (activity as AppCompatActivity).startSupportActionMode(this)
-            } else if (actionMode != null && checkedItems.isEmpty()) {
+            } else if (actionMode != null && checkedTunnels.isEmpty()) {
                 actionMode!!.finish()
             }
-            adapter?.notifyItemChanged(position)
+            binding?.scionTunnelList?.adapter?.notifyDataSetChanged()
+            binding?.tunnelList?.adapter?.notifyDataSetChanged()
             updateTitle(actionMode)
         }
 
-        fun toggleItemChecked(position: Int) {
-            setItemChecked(position, !checkedItems.contains(position))
+        fun toggleTunnelChecked(tunnel: ObservableTunnel) {
+            setTunnelChecked(tunnel, !checkedTunnels.contains(tunnel))
         }
 
         private fun updateTitle(mode: ActionMode?) {
             if (mode == null) {
                 return
             }
-            val count = checkedItems.size
+            val count = checkedTunnels.size
             if (count == 0) {
                 mode.title = ""
             } else {
                 mode.title = resources!!.getQuantityString(R.plurals.delete_title, count, count)
             }
         }
-
-
     }
 
     companion object {

@@ -46,6 +46,8 @@ public final class Interface {
     private final KeyPair keyPair;
     private final Optional<Integer> listenPort;
     private final Optional<Integer> mtu;
+    private final String bootstrapUrl;
+    private final String pathPolicy;
 
     private Interface(final Builder builder) {
         // Defensively copy to ensure immutability even if the Builder is reused.
@@ -57,6 +59,8 @@ public final class Interface {
         keyPair = Objects.requireNonNull(builder.keyPair, "Interfaces must have a private key");
         listenPort = builder.listenPort;
         mtu = builder.mtu;
+        bootstrapUrl = Objects.requireNonNull(builder.bootstrapUrl, "bootstrapUrl cannot be null");
+        pathPolicy = Objects.requireNonNull(builder.pathPolicy, "pathPolicy cannot be null");
     }
 
     /**
@@ -68,7 +72,21 @@ public final class Interface {
      */
     public static Interface parse(final Iterable<? extends CharSequence> lines)
             throws BadConfigException {
+        return parse(lines, null, null);
+    }
+
+    public static Interface parse(final Iterable<? extends CharSequence> lines, @Nullable final String bootstrapUrl)
+            throws BadConfigException {
+        return parse(lines, bootstrapUrl, null);
+    }
+
+    public static Interface parse(final Iterable<? extends CharSequence> lines, @Nullable final String bootstrapUrl, @Nullable final String pathPolicy)
+            throws BadConfigException {
         final Builder builder = new Builder();
+        if (bootstrapUrl != null)
+            builder.setBootstrapUrl(bootstrapUrl);
+        if (pathPolicy != null)
+            builder.setPathPolicy(pathPolicy);
         for (final CharSequence line : lines) {
             final Attribute attribute = Attribute.parse(line).orElseThrow(() ->
                     new BadConfigException(Section.INTERFACE, Location.TOP_LEVEL,
@@ -115,7 +133,17 @@ public final class Interface {
                 && includedApplications.equals(other.includedApplications)
                 && keyPair.equals(other.keyPair)
                 && listenPort.equals(other.listenPort)
-                && mtu.equals(other.mtu);
+                && mtu.equals(other.mtu)
+                && bootstrapUrl.equals(other.bootstrapUrl)
+                && pathPolicy.equals(other.pathPolicy);
+    }
+
+    public String getBootstrapUrl() {
+        return bootstrapUrl;
+    }
+
+    public String getPathPolicy() {
+        return pathPolicy;
     }
 
     /**
@@ -205,6 +233,8 @@ public final class Interface {
         hash = 31 * hash + keyPair.hashCode();
         hash = 31 * hash + listenPort.hashCode();
         hash = 31 * hash + mtu.hashCode();
+        hash = 31 * hash + bootstrapUrl.hashCode();
+        hash = 31 * hash + pathPolicy.hashCode();
         return hash;
     }
 
@@ -231,6 +261,10 @@ public final class Interface {
      */
     public String toWgQuickString() {
         final StringBuilder sb = new StringBuilder();
+        if (bootstrapUrl != null && !bootstrapUrl.isEmpty())
+            sb.append("# BootstrapURL = ").append(bootstrapUrl).append('\n');
+        if (pathPolicy != null && !pathPolicy.isEmpty())
+            sb.append("# PathPolicy = ").append(pathPolicy).append('\n');
         if (!addresses.isEmpty())
             sb.append("Address = ").append(Attribute.join(addresses)).append('\n');
         if (!dnsServers.isEmpty()) {
@@ -417,6 +451,19 @@ public final class Interface {
                 throw new BadConfigException(Section.INTERFACE, Location.LISTEN_PORT,
                         Reason.INVALID_VALUE, String.valueOf(mtu));
             this.mtu = mtu == 0 ? Optional.empty() : Optional.of(mtu);
+            return this;
+        }
+
+        private String bootstrapUrl = "";
+        private String pathPolicy = "";
+
+        public Builder setBootstrapUrl(final String bootstrapUrl) {
+            this.bootstrapUrl = bootstrapUrl == null ? "" : bootstrapUrl;
+            return this;
+        }
+
+        public Builder setPathPolicy(final String pathPolicy) {
+            this.pathPolicy = pathPolicy == null ? "" : pathPolicy;
             return this;
         }
     }

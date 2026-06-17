@@ -43,8 +43,59 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
     private var binding: TunnelEditorFragmentBinding? = null
     private var tunnel: ObservableTunnel? = null
 
+    var advancedMode: Boolean = false
+        private set
+    private var isScionMode = true
+
+    fun toggleAdvancedMode() {
+        advancedMode = !advancedMode
+        updateEyeIcon()
+        binding?.peersLayout?.let { peersLayout ->
+            for (i in 0 until peersLayout.childCount) {
+                val child = peersLayout.getChildAt(i)
+                val peerBinding = androidx.databinding.DataBindingUtil.getBinding<androidx.databinding.ViewDataBinding>(child)
+                peerBinding?.invalidateAll()
+            }
+        }
+    }
+
+    private fun updateEyeIcon() {
+        val binding = binding ?: return
+        if (advancedMode) {
+            binding.btnToggleAdvanced.setImageResource(R.drawable.ic_visibility_off)
+        } else {
+            binding.btnToggleAdvanced.setImageResource(R.drawable.ic_visibility)
+        }
+    }
+
+    fun setScionMode(scion: Boolean) {
+        isScionMode = scion
+        val binding = binding ?: return
+        val context = context ?: return
+        if (scion) {
+            binding.tabScion.setBackgroundResource(R.drawable.scitra_tab_selected_bg)
+            binding.tabScion.setTextColor(context.getColor(R.color.scitra_on_primary))
+            binding.tabIp.setBackgroundResource(android.R.color.transparent)
+            binding.tabIp.setTextColor(context.getColor(R.color.scitra_on_surface_variant))
+            binding.bootstrapUrlLayout.visibility = View.VISIBLE
+            binding.btnConfigurePathPolicy.visibility = View.VISIBLE
+        } else {
+            binding.tabScion.setBackgroundResource(android.R.color.transparent)
+            binding.tabScion.setTextColor(context.getColor(R.color.scitra_on_surface_variant))
+            binding.tabIp.setBackgroundResource(R.drawable.scitra_tab_selected_bg)
+            binding.tabIp.setTextColor(context.getColor(R.color.scitra_on_primary))
+            binding.bootstrapUrlLayout.visibility = View.GONE
+            binding.btnConfigurePathPolicy.visibility = View.GONE
+            binding.config?.`interface`?.bootstrapUrl = ""
+            binding.config?.`interface`?.pathPolicy = ""
+        }
+    }
+
     private fun onConfigLoaded(config: Config) {
-        binding?.config = ConfigProxy(config)
+        val proxy = ConfigProxy(config)
+        binding?.config = proxy
+        pathPolicyJson = proxy.`interface`.pathPolicy
+        setScionMode(proxy.`interface`.bootstrapUrl.isNotEmpty())
     }
 
     private fun onConfigSaved(savedTunnel: Tunnel, throwable: Throwable?) {
@@ -112,53 +163,64 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
             selectedTunnel = tunnel
     }
 
-    override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-        if (menuItem.itemId == R.id.menu_action_save) {
-            binding ?: return false
-            val newConfig = try {
-                binding!!.config!!.resolve()
-            } catch (e: Throwable) {
-                val error = ErrorMessages[e]
-                val tunnelName = if (tunnel == null) binding!!.name else tunnel!!.name
-                val message = getString(R.string.config_save_error, tunnelName, error)
-                Log.e(TAG, message, e)
-                Snackbar.make(binding!!.mainContainer, error, Snackbar.LENGTH_LONG).show()
-                return false
-            }
-            val activity = requireActivity()
-            activity.lifecycleScope.launch {
-                when {
-                    tunnel == null -> {
-                        Log.d(TAG, "Attempting to create new tunnel " + binding!!.name)
-                        val manager = Application.getTunnelManager()
-                        try {
-                            onTunnelCreated(manager.create(binding!!.name!!, newConfig), null)
-                        } catch (e: Throwable) {
-                            onTunnelCreated(null, e)
-                        }
+    fun onSaveClick() {
+        binding ?: return
+        // In IP mode, clear bootstrap URL config
+        if (!isScionMode) {
+            binding!!.config?.`interface`?.bootstrapUrl = ""
+            binding!!.config?.`interface`?.pathPolicy = ""
+        } else {
+            binding!!.config?.`interface`?.pathPolicy = pathPolicyJson
+        }
+        val newConfig = try {
+            binding!!.config!!.resolve()
+        } catch (e: Throwable) {
+            val error = ErrorMessages[e]
+            val tunnelName = if (tunnel == null) binding!!.name else tunnel!!.name
+            val message = getString(R.string.config_save_error, tunnelName, error)
+            Log.e(TAG, message, e)
+            Snackbar.make(binding!!.mainContainer, error, Snackbar.LENGTH_LONG).show()
+            return
+        }
+        val activity = requireActivity()
+        activity.lifecycleScope.launch {
+            when {
+                tunnel == null -> {
+                    Log.d(TAG, "Attempting to create new tunnel " + binding!!.name)
+                    val manager = Application.getTunnelManager()
+                    try {
+                        onTunnelCreated(manager.create(binding!!.name!!, newConfig), null)
+                    } catch (e: Throwable) {
+                        onTunnelCreated(null, e)
                     }
+                }
 
-                    tunnel!!.name != binding!!.name -> {
-                        Log.d(TAG, "Attempting to rename tunnel to " + binding!!.name)
-                        try {
-                            tunnel!!.setNameAsync(binding!!.name!!)
-                            onTunnelRenamed(tunnel!!, newConfig, null)
-                        } catch (e: Throwable) {
-                            onTunnelRenamed(tunnel!!, newConfig, e)
-                        }
+                tunnel!!.name != binding!!.name -> {
+                    Log.d(TAG, "Attempting to rename tunnel to " + binding!!.name)
+                    try {
+                        tunnel!!.setNameAsync(binding!!.name!!)
+                        onTunnelRenamed(tunnel!!, newConfig, null)
+                    } catch (e: Throwable) {
+                        onTunnelRenamed(tunnel!!, newConfig, e)
                     }
+                }
 
-                    else -> {
-                        Log.d(TAG, "Attempting to save config of " + tunnel!!.name)
-                        try {
-                            tunnel!!.setConfigAsync(newConfig)
-                            onConfigSaved(tunnel!!, null)
-                        } catch (e: Throwable) {
-                            onConfigSaved(tunnel!!, e)
-                        }
+                else -> {
+                    Log.d(TAG, "Attempting to save config of " + tunnel!!.name)
+                    try {
+                        tunnel!!.setConfigAsync(newConfig)
+                        onConfigSaved(tunnel!!, null)
+                    } catch (e: Throwable) {
+                        onConfigSaved(tunnel!!, e)
                     }
                 }
             }
+        }
+    }
+
+    override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+        if (menuItem.itemId == R.id.menu_action_save) {
+            onSaveClick()
             return true
         }
         return false
@@ -206,6 +268,7 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
             val resultJson = bundle.getString(PathPolicyDialogFragment.KEY_RESULT_JSON)
             if (resultJson != null) {
                 pathPolicyJson = resultJson
+                binding?.config?.`interface`?.pathPolicy = resultJson
                 Toast.makeText(context, "Path Policy configured successfully!", Toast.LENGTH_SHORT).show()
             }
         }
@@ -235,6 +298,7 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
             }
         } else {
             binding!!.name = ""
+            setScionMode(true)
         }
     }
 
@@ -295,7 +359,12 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
             tunnel = selectedTunnel
             val config = BundleCompat.getParcelable(savedInstanceState, KEY_LOCAL_CONFIG, ConfigProxy::class.java)!!
             val originalName = savedInstanceState.getString(KEY_ORIGINAL_NAME)
-            if (tunnel != null && tunnel!!.name != originalName) onSelectedTunnelChanged(null, tunnel) else binding!!.config = config
+            if (tunnel != null && tunnel!!.name != originalName) {
+                onSelectedTunnelChanged(null, tunnel)
+            } else {
+                binding!!.config = config
+                setScionMode(config.`interface`.bootstrapUrl.isNotEmpty())
+            }
         }
         super.onViewStateRestored(savedInstanceState)
     }

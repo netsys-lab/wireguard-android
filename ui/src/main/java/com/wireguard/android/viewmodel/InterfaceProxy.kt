@@ -62,6 +62,20 @@ class InterfaceProxy : BaseObservable, Parcelable {
         }
 
     @get:Bindable
+    var bootstrapUrl: String = ""
+        set(value) {
+            field = value
+            notifyPropertyChanged(BR.bootstrapUrl)
+        }
+
+    @get:Bindable
+    var pathPolicy: String = ""
+        set(value) {
+            field = value
+            notifyPropertyChanged(BR.pathPolicy)
+        }
+
+    @get:Bindable
     val publicKey: String
         get() = try {
             KeyPair(Key.fromBase64(privateKey)).publicKey.toBase64()
@@ -77,6 +91,8 @@ class InterfaceProxy : BaseObservable, Parcelable {
         listenPort = parcel.readString() ?: ""
         mtu = parcel.readString() ?: ""
         privateKey = parcel.readString() ?: ""
+        bootstrapUrl = parcel.readString() ?: ""
+        pathPolicy = parcel.readString() ?: ""
     }
 
     constructor(other: Interface) {
@@ -89,6 +105,8 @@ class InterfaceProxy : BaseObservable, Parcelable {
         mtu = other.mtu.map { it.toString() }.orElse("")
         val keyPair = other.keyPair
         privateKey = keyPair.privateKey.toBase64()
+        bootstrapUrl = other.bootstrapUrl
+        pathPolicy = other.pathPolicy
     }
 
     constructor()
@@ -112,6 +130,8 @@ class InterfaceProxy : BaseObservable, Parcelable {
         if (listenPort.isNotEmpty()) builder.parseListenPort(listenPort)
         if (mtu.isNotEmpty()) builder.parseMtu(mtu)
         if (privateKey.isNotEmpty()) builder.parsePrivateKey(privateKey)
+        builder.setBootstrapUrl(bootstrapUrl)
+        builder.setPathPolicy(pathPolicy)
         return builder.build()
     }
 
@@ -123,6 +143,8 @@ class InterfaceProxy : BaseObservable, Parcelable {
         dest.writeString(listenPort)
         dest.writeString(mtu)
         dest.writeString(privateKey)
+        dest.writeString(bootstrapUrl)
+        dest.writeString(pathPolicy)
     }
 
     private class InterfaceProxyCreator : Parcelable.Creator<InterfaceProxy> {

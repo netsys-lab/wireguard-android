@@ -30,8 +30,8 @@
     <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:id="@+id/main_container"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="?attr/colorSurface">
+        android:layout_height="match_parent"
+        android:background="@color/scitra_background">
 
         <ScrollView
             android:layout_width="match_parent"
@@ -42,13 +42,69 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/editor_header_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginBottom="8dp"
+                    android:text="Manual Configuration"
+                    android:textColor="@color/scitra_on_surface"
+                    android:textSize="28sp"
+                    android:textStyle="bold" />
+
+                <!-- SCION vs IP Toggle -->
+                <LinearLayout
+                    android:id="@+id/toggle_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:orientation="horizontal"
+                    android:background="@drawable/scitra_toggle_bg"
+                    android:padding="4dp"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="16dp">
+
+                    <TextView
+                        android:id="@+id/tab_scion"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="SCION"
+                        android:textColor="@color/scitra_on_primary"
+                        android:textStyle="bold"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="@drawable/scitra_tab_selected_bg"
+                        android:onClick="@{() -> fragment.setScionMode(true)}" />
+
+                    <TextView
+                        android:id="@+id/tab_ip"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="IP"
+                        android:textColor="@color/scitra_on_surface_variant"
+                        android:textStyle="bold"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="@android:color/transparent"
+                        android:onClick="@{() -> fragment.setScionMode(false)}" />
+                </LinearLayout>
 
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
-                    android:layout_marginTop="16dp"
+                    android:layout_marginTop="8dp"
                     android:layout_marginEnd="8dp"
                     android:layout_marginBottom="16dp">
 
@@ -61,9 +117,16 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_margin="8dp"
-                            android:layout_marginTop="32dp"
-                            android:text="@string/interface_title"
+                            android:layout_marginTop="16dp"
+                            android:text="INTERFACE"
+                            android:textAllCaps="true"
+                            android:letterSpacing="0.1"
+                            android:textColor="@color/scitra_primary"
+                            android:drawableStart="@drawable/ic_interface"
+                            android:drawablePadding="8dp"
+                            app:drawableTint="@color/scitra_primary"
                             android:textAppearance="?attr/textAppearanceTitleMedium"
+                            android:textStyle="bold"
                             app:layout_constraintStart_toStartOf="parent"
                             app:layout_constraintTop_toTopOf="parent" />
 
@@ -90,6 +153,29 @@
                         </com.google.android.material.textfield.TextInputLayout>
 
                         <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/bootstrap_url_layout"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_margin="4dp"
+                            android:hint="Bootstrap URL"
+                            app:helperText="The secure endpoint for fetching initial topology maps."
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toBottomOf="@+id/interface_name_layout">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/bootstrap_url_text"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:imeOptions="actionNext"
+                                android:inputType="textUri"
+                                android:nextFocusUp="@id/interface_name_text"
+                                android:nextFocusDown="@id/private_key_text"
+                                android:nextFocusForward="@id/private_key_text"
+                                android:text="@={config.interface.bootstrapUrl}" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
                             android:id="@+id/private_key_text_layout"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
@@ -100,7 +186,7 @@
                             app:endIconMode="custom"
                             app:layout_constraintEnd_toEndOf="parent"
                             app:layout_constraintStart_toStartOf="parent"
-                            app:layout_constraintTop_toBottomOf="@+id/interface_name_layout">
+                            app:layout_constraintTop_toBottomOf="@+id/bootstrap_url_layout">
 
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/private_key_text"
@@ -281,6 +367,80 @@
                     </androidx.constraintlayout.widget.ConstraintLayout>
                 </com.google.android.material.card.MaterialCardView>
 
+                <!-- Divider -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/scitra_outline_variant"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="16dp" />
+
+                <!-- PEERS Section Header -->
+                <RelativeLayout
+                    android:id="@+id/peers_header"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/peers_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="PEERS"
+                        android:textColor="@color/scitra_on_surface"
+                        android:textStyle="bold"
+                        android:textSize="14sp"
+                        android:letterSpacing="0.1"
+                        android:drawableStart="@drawable/ic_peers"
+                        android:drawablePadding="8dp"
+                        app:drawableTint="@color/scitra_on_surface"
+                        android:layout_alignParentStart="true"
+                        android:layout_centerVertical="true" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true">
+
+                        <!-- Eye Toggle Icon -->
+                        <ImageView
+                            android:id="@+id/btn_toggle_advanced"
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:padding="4dp"
+                            android:src="@drawable/ic_visibility"
+                            android:background="?android:attr/selectableItemBackgroundBorderless"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:onClick="@{() -> fragment.toggleAdvancedMode()}"
+                            app:tint="@color/scitra_on_surface_variant"
+                            android:layout_marginEnd="16dp" />
+
+                        <!-- Add Peer Button -->
+                        <TextView
+                            android:id="@+id/btn_add_peer"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="+ ADD PEER"
+                            android:textColor="@color/scitra_primary"
+                            android:textStyle="bold"
+                            android:textSize="14sp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:background="?android:attr/selectableItemBackgroundBorderless"
+                            android:onClick="@{() -> config.addPeer()}" />
+                    </LinearLayout>
+                </RelativeLayout>
+
                 <LinearLayout
                     android:id="@+id/peers_layout"
                     android:layout_width="match_parent"
@@ -292,19 +452,27 @@
                     app:layout="@{@layout/tunnel_editor_peer}"
                     tools:ignore="UselessLeaf" />
 
+                <!-- Save Button -->
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/add_peer_button"
-                    style="@style/Widget.Material3.Button.TextButton"
+                    android:id="@+id/btn_save"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="bottom"
-                    android:background="?attr/colorPrimaryDark"
-                    android:gravity="center"
-                    android:onClick="@{() -> config.addPeer()}"
-                    android:text="@string/add_peer"
-                    android:textColor="@color/scitra_primary"
-                    app:layout_anchorGravity="bottom"
-                    app:rippleColor="@color/scitra_primary" />
+                    android:layout_height="56dp"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginTop="24dp"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginBottom="24dp"
+                    android:backgroundTint="@color/scitra_primary"
+                    android:text="Save"
+                    android:textAllCaps="false"
+                    android:textColor="@color/scitra_on_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    app:icon="@drawable/ic_action_save"
+                    app:iconGravity="textStart"
+                    app:iconPadding="8dp"
+                    app:iconTint="@color/scitra_on_primary"
+                    app:cornerRadius="28dp"
+                    android:onClick="@{() -> fragment.onSaveClick()}" />
             </LinearLayout>
         </ScrollView>
     </androidx.coordinatorlayout.widget.CoordinatorLayout>

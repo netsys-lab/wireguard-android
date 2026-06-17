@@ -17,10 +17,13 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import com.wireguard.android.R
 import com.wireguard.android.backend.Tunnel
+import android.widget.Toast
 import com.wireguard.android.databinding.TunnelDetailFragmentBinding
 import com.wireguard.android.databinding.TunnelDetailPeerBinding
 import com.wireguard.android.model.ObservableTunnel
 import com.wireguard.android.util.QuantityFormatter
+import com.wireguard.config.Config
+import com.wireguard.config.Interface
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -144,6 +147,50 @@ class TunnelDetailFragment : BaseFragment(), MenuProvider {
                 peer.transferText.visibility = View.GONE
                 peer.latestHandshakeLabel.visibility = View.GONE
                 peer.latestHandshakeText.visibility = View.GONE
+            }
+        }
+    }
+
+    fun onRequestConfigurePathPolicy(view: View?) {
+        val pathPolicyJson = binding?.config?.`interface`?.pathPolicy ?: ""
+        val dialog = PathPolicyDialogFragment.newInstance(pathPolicyJson)
+        childFragmentManager.setFragmentResultListener(PathPolicyDialogFragment.REQUEST_KEY_POLICY, viewLifecycleOwner) { _, bundle ->
+            val resultJson = bundle.getString(PathPolicyDialogFragment.KEY_RESULT_JSON)
+            if (resultJson != null) {
+                savePathPolicy(resultJson)
+            }
+        }
+        dialog.show(childFragmentManager, null)
+    }
+
+    private fun savePathPolicy(newJson: String) {
+        val tunnel = binding?.tunnel ?: return
+        lifecycleScope.launch {
+            try {
+                val currentConfig = tunnel.getConfigAsync()
+                val newInterfaceBuilder = Interface.Builder()
+                    .addAddresses(currentConfig.`interface`.addresses)
+                    .addDnsServers(currentConfig.`interface`.dnsServers)
+                    .addDnsSearchDomains(currentConfig.`interface`.dnsSearchDomains)
+                    .excludeApplications(currentConfig.`interface`.excludedApplications)
+                    .includeApplications(currentConfig.`interface`.includedApplications)
+                    .setKeyPair(currentConfig.`interface`.keyPair)
+                    .setBootstrapUrl(currentConfig.`interface`.bootstrapUrl)
+                    .setPathPolicy(newJson)
+                
+                currentConfig.`interface`.listenPort.ifPresent { newInterfaceBuilder.setListenPort(it) }
+                currentConfig.`interface`.mtu.ifPresent { newInterfaceBuilder.setMtu(it) }
+
+                val newConfig = Config.Builder()
+                    .setInterface(newInterfaceBuilder.build())
+                    .addPeers(currentConfig.peers)
+                    .build()
+
+                tunnel.setConfigAsync(newConfig)
+                binding?.config = newConfig
+                Toast.makeText(context, "Path Policy updated successfully!", Toast.LENGTH_SHORT).show()
+            } catch (e: Throwable) {
+                Toast.makeText(context, "Error saving Path Policy: " + e.message, Toast.LENGTH_LONG).show()
             }
         }
     }

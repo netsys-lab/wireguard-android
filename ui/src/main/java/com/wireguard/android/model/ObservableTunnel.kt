@@ -98,9 +98,14 @@ class ObservableTunnel internal constructor(
         }
     }
 
+    @get:Bindable
+    val isScion: Boolean
+        get() = config?.getInterface()?.getBootstrapUrl()?.isNotEmpty() == true
+
     fun onConfigChanged(config: Config?): Config? {
         this.config = config
         notifyPropertyChanged(BR.config)
+        notifyPropertyChanged(BR.scion)
         return config
     }
 

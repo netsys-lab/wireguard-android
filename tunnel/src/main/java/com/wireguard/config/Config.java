@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 import androidx.annotation.Nullable;
@@ -68,8 +69,24 @@ public final class Config {
         boolean inInterfaceSection = false;
         boolean inPeerSection = false;
         boolean seenInterfaceSection = false;
+        @Nullable String bootstrapUrl = null;
+        @Nullable String pathPolicy = null;
         @Nullable String line;
         while ((line = reader.readLine()) != null) {
+            final String trimmedLine = line.trim();
+            if (trimmedLine.startsWith("#")) {
+                if (trimmedLine.toUpperCase(Locale.ENGLISH).contains("BOOTSTRAPURL")) {
+                    final int equalsIndex = trimmedLine.indexOf('=');
+                    if (equalsIndex != -1) {
+                        bootstrapUrl = trimmedLine.substring(equalsIndex + 1).trim();
+                    }
+                } else if (trimmedLine.toUpperCase(Locale.ENGLISH).contains("PATHPOLICY")) {
+                    final int equalsIndex = trimmedLine.indexOf('=');
+                    if (equalsIndex != -1) {
+                        pathPolicy = trimmedLine.substring(equalsIndex + 1).trim();
+                    }
+                }
+            }
             final int commentIndex = line.indexOf('#');
             if (commentIndex != -1)
                 line = line.substring(0, commentIndex);
@@ -108,7 +125,7 @@ public final class Config {
             throw new BadConfigException(Section.CONFIG, Location.TOP_LEVEL,
                     Reason.MISSING_SECTION, null);
         // Combine all [Interface] sections in the file.
-        builder.parseInterface(interfaceLines);
+        builder.parseInterface(interfaceLines, bootstrapUrl, pathPolicy);
         return builder.build();
     }
 
@@ -207,7 +224,17 @@ public final class Config {
 
         public Builder parseInterface(final Iterable<? extends CharSequence> lines)
                 throws BadConfigException {
-            return setInterface(Interface.parse(lines));
+            return parseInterface(lines, null);
+        }
+
+        public Builder parseInterface(final Iterable<? extends CharSequence> lines, @Nullable final String bootstrapUrl)
+                throws BadConfigException {
+            return parseInterface(lines, bootstrapUrl, null);
+        }
+
+        public Builder parseInterface(final Iterable<? extends CharSequence> lines, @Nullable final String bootstrapUrl, @Nullable final String pathPolicy)
+                throws BadConfigException {
+            return setInterface(Interface.parse(lines, bootstrapUrl, pathPolicy));
         }
 
         public Builder parsePeer(final Iterable<? extends CharSequence> lines)

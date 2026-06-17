@@ -306,6 +306,69 @@
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toBottomOf="@+id/applications_label"
                         tools:text="8 excluded" />
+
+                    <androidx.constraintlayout.widget.Barrier
+                        android:id="@+id/applications_barrier"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:barrierDirection="bottom"
+                        app:constraint_referenced_ids="applications_text,listen_port_mtu_barrier" />
+
+                    <TextView
+                        android:id="@+id/bootstrap_url_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/bootstrap_url_text"
+                        android:text="Bootstrap URL"
+                        android:visibility="@{config.interface.bootstrapUrl.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/applications_barrier" />
+
+                    <TextView
+                        android:id="@+id/bootstrap_url_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="Bootstrap URL"
+                        android:onClick="@{ClipboardUtils::copyTextView}"
+                        android:text="@{config.interface.bootstrapUrl}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{config.interface.bootstrapUrl.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/bootstrap_url_label"
+                        tools:text="https://scion.bootstrap.org" />
+
+                    <androidx.constraintlayout.widget.Barrier
+                        android:id="@+id/bootstrap_url_barrier"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:barrierDirection="bottom"
+                        app:constraint_referenced_ids="bootstrap_url_text,applications_barrier" />
+
+                    <TextView
+                        android:id="@+id/path_policy_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="SCION Path Policy"
+                        android:visibility="@{config.interface.bootstrapUrl.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/bootstrap_url_barrier" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_edit_path_policy"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Configure Path Policy"
+                        android:textColor="@color/scitra_primary"
+                        android:onClick="@{fragment::onRequestConfigurePathPolicy}"
+                        android:visibility="@{config.interface.bootstrapUrl.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/path_policy_label"
+                        app:icon="@drawable/ic_action_edit"
+                        app:iconTint="@color/scitra_primary" />
                 </androidx.constraintlayout.widget.ConstraintLayout>
             </com.google.android.material.card.MaterialCardView>
 
