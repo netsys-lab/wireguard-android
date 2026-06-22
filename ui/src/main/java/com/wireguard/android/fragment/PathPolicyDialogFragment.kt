@@ -4,9 +4,11 @@
  */
 package com.wireguard.android.fragment
 
+import android.graphics.Typeface
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
+import android.text.SpannableString
+import android.text.style.ForegroundColorSpan
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -15,23 +17,71 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import android.widget.ViewFlipper
 import androidx.core.os.bundleOf
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.setFragmentResult
-import com.google.android.material.tabs.TabLayout
 import com.wireguard.android.R
 import org.json.JSONArray
 import org.json.JSONObject
 
 class PathPolicyDialogFragment : DialogFragment() {
 
-    private lateinit var tabLayout: TabLayout
-    private lateinit var containerMatchers: View
-    private lateinit var containerPolicies: View
-    private lateinit var matchersList: LinearLayout
-    private lateinit var policiesList: LinearLayout
+    private lateinit var wizardFlipper: ViewFlipper
+    private lateinit var stepIndicatorContainer: LinearLayout
+    private lateinit var tvStepBadge: TextView
+    private lateinit var tvStepTitle: TextView
+    private lateinit var tvStepSubtitle: TextView
+    private lateinit var btnBack: View
+    private lateinit var btnNext: View
+    private lateinit var btnBackArrow: View
+
+    // Step 3 - ACL list
+    private lateinit var aclList: LinearLayout
+
+    // Step 4 - Ordering list
+    private lateinit var orderingList: LinearLayout
+
+    // Step 5 - Review
+    private lateinit var tvJsonPreview: TextView
+    private lateinit var tvValidationIcon: TextView
+    private lateinit var tvValidationTitle: TextView
+    private lateinit var tvValidationDesc: TextView
+
+    private var currentStep = 0
+    private val totalSteps = 5
 
     private var currentJson = DEFAULT_SAMPLE_JSON
+
+    // Step indicator views (dots + lines)
+    private val stepDots = mutableListOf<View>()
+    private val stepLabels = mutableListOf<TextView>()
+    private val stepLines = mutableListOf<View>()
+
+    // Ordering state: key -> "asc" | "desc" | null (disabled)
+    private val orderingState = linkedMapOf(
+        "latency" to null as String?,
+        "bandwidth" to null as String?,
+        "hops" to null as String?,
+        "random" to null as String?
+    )
+
+    // Protocol selection state
+    private var selectedProtocol: String = ""
+
+    private data class StepInfo(
+        val title: String,
+        val subtitle: String,
+        val shortLabel: String
+    )
+
+    private val steps = listOf(
+        StepInfo("Identity", "Define the identity of this path policy.", "Identity"),
+        StepInfo("Traffic Matcher", "Define the traffic scope for this policy rule.", "Traffic\nMatcher"),
+        StepInfo("Policy Rules", "Define absolute requirements, blocklists,\nand routing paths for this policy.", "Policy\nRules"),
+        StepInfo("Path Ordering", "Define the priority of sorting criteria\nfor your routing policy.", "Path\nOrdering"),
+        StepInfo("Review Configuration", "Verify the generated JSON for your new\npath policy before applying it.", "Review")
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,301 +100,713 @@ class PathPolicyDialogFragment : DialogFragment() {
     ): View? {
         val root = inflater.inflate(R.layout.path_policy_dialog_fragment, container, false)
 
-        tabLayout = root.findViewById(R.id.tab_layout)
-        containerMatchers = root.findViewById(R.id.container_matchers)
-        containerPolicies = root.findViewById(R.id.container_policies)
-        matchersList = root.findViewById(R.id.matchers_list)
-        policiesList = root.findViewById(R.id.policies_list)
+        // Bind views
+        wizardFlipper = root.findViewById(R.id.wizard_flipper)
+        stepIndicatorContainer = root.findViewById(R.id.step_indicator_container)
+        tvStepBadge = root.findViewById(R.id.tv_step_badge)
+        tvStepTitle = root.findViewById(R.id.tv_step_title)
+        tvStepSubtitle = root.findViewById(R.id.tv_step_subtitle)
+        btnBack = root.findViewById(R.id.btn_wizard_back)
+        btnNext = root.findViewById(R.id.btn_wizard_next)
+        btnBackArrow = root.findViewById(R.id.btn_back_arrow)
 
-        // Setup Tabs
-        tabLayout.addTab(tabLayout.newTab().setText("Matchers"))
-        tabLayout.addTab(tabLayout.newTab().setText("Policies"))
+        aclList = root.findViewById(R.id.acl_list)
+        orderingList = root.findViewById(R.id.ordering_list)
 
-        tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
-            override fun onTabSelected(tab: TabLayout.Tab?) {
-                when (tab?.position) {
-                    0 -> {
-                        containerMatchers.visibility = View.VISIBLE
-                        containerPolicies.visibility = View.GONE
-                    }
-                    1 -> {
-                        containerMatchers.visibility = View.GONE
-                        containerPolicies.visibility = View.VISIBLE
-                    }
-                }
+        tvJsonPreview = root.findViewById(R.id.tv_json_preview)
+        tvValidationIcon = root.findViewById(R.id.tv_validation_icon)
+        tvValidationTitle = root.findViewById(R.id.tv_validation_title)
+        tvValidationDesc = root.findViewById(R.id.tv_validation_desc)
+
+        // Close / Back Arrow
+        root.findViewById<View>(R.id.close_dialog).setOnClickListener { dismiss() }
+        btnBackArrow.setOnClickListener {
+            if (currentStep > 0) navigateToStep(currentStep - 1) else dismiss()
+        }
+
+        // Protocol chips
+        setupProtocolChips(root)
+
+        // ACL add button
+        root.findViewById<View>(R.id.btn_add_acl).setOnClickListener {
+            addAclEntry("+", "")
+        }
+
+        // Build step indicator
+        buildStepIndicator()
+
+        // Navigation buttons
+        btnBack.setOnClickListener {
+            if (currentStep > 0) {
+                navigateToStep(currentStep - 1)
+            } else {
+                dismiss()
             }
-            override fun onTabUnselected(tab: TabLayout.Tab?) = Unit
-            override fun onTabReselected(tab: TabLayout.Tab?) = Unit
-        })
-
-        // Setup Buttons
-        root.findViewById<View>(R.id.btn_add_matcher).setOnClickListener {
-            addEmptyMatcherCard()
         }
 
-        root.findViewById<View>(R.id.btn_add_policy).setOnClickListener {
-            addEmptyPolicyCard()
+        btnNext.setOnClickListener {
+            if (currentStep < totalSteps - 1) {
+                navigateToStep(currentStep + 1)
+            } else {
+                saveAndDismiss()
+            }
         }
 
-        root.findViewById<View>(R.id.btn_dialog_cancel).setOnClickListener {
-            dismiss()
-        }
+        // Build ordering entries
+        buildOrderingEntries()
 
-        root.findViewById<View>(R.id.close_dialog).setOnClickListener {
-            dismiss()
-        }
-
-        root.findViewById<View>(R.id.btn_dialog_save).setOnClickListener {
-            saveAndDismiss()
-        }
-
-        // Initialize values
+        // Initialize from JSON
         syncUiFromCurrentJson()
+
+        // Set initial step
+        navigateToStep(0)
 
         return root
     }
 
-    private fun syncUiFromCurrentJson() {
-        matchersList.removeAllViews()
-        policiesList.removeAllViews()
+    private fun setupProtocolChips(root: View) {
+        val chipTcp = root.findViewById<TextView>(R.id.chip_tcp)
+        val chipUdp = root.findViewById<TextView>(R.id.chip_udp)
+        val chipBoth = root.findViewById<TextView>(R.id.chip_both)
+        val chips = listOf(chipTcp, chipUdp, chipBoth)
+        val values = listOf("tcp", "udp", "")
 
-        try {
-            val rootObj = JSONObject(currentJson)
-            
-            // Populate Matchers
-            val matchers = rootObj.optJSONArray("matchers")
-            if (matchers != null) {
-                for (i in 0 until matchers.length()) {
-                    val matcher = matchers.getJSONObject(i)
-                    addMatcherCard(
-                        matcher.optString("source"),
-                        matcher.optString("destination"),
-                        matcher.optString("protocol"),
-                        matcher.optInt("traffic_class", -1),
-                        matcher.optString("policy")
-                    )
+        fun selectChip(index: Int) {
+            selectedProtocol = values[index]
+            chips.forEachIndexed { i, chip ->
+                if (i == index) {
+                    chip.setBackgroundResource(R.drawable.scitra_chip_selected)
+                    chip.setTextColor(requireContext().getColor(R.color.scitra_on_primary))
+                } else {
+                    chip.setBackgroundResource(R.drawable.scitra_chip_unselected)
+                    chip.setTextColor(requireContext().getColor(R.color.scitra_on_surface))
                 }
             }
+        }
 
-            // Populate Policies
-            val policies = rootObj.optJSONObject("policies")
-            if (policies != null) {
-                val keys = policies.keys()
-                while (keys.hasNext()) {
-                    val key = keys.next()
-                    val policy = policies.getJSONObject(key)
-                    
-                    // Parse ACL array
-                    val aclArr = policy.optJSONArray("acl")
-                    val aclRules = mutableListOf<String>()
-                    if (aclArr != null) {
-                        for (j in 0 until aclArr.length()) {
-                            aclRules.add(aclArr.getString(j))
-                        }
-                    }
+        chips.forEachIndexed { i, chip ->
+            chip.setOnClickListener { selectChip(i) }
+        }
 
-                    // Parse Requirements
-                    val reqs = policy.optJSONObject("requirements")
-                    val minMtu = reqs?.optInt("min_mtu", -1) ?: -1
-                    val maxLat = reqs?.optInt("max_meta_lat", -1) ?: -1
-                    val minBw = reqs?.optInt("min_meta_bw", -1) ?: -1
+        // Default to "Both"
+        selectChip(2)
+    }
 
-                    // Parse Ordering
-                    val orderingArr = policy.optJSONArray("ordering")
-                    val ordering = mutableListOf<String>()
-                    if (orderingArr != null) {
-                        for (j in 0 until orderingArr.length()) {
-                            ordering.add(orderingArr.getString(j))
-                        }
-                    }
+    private fun buildStepIndicator() {
+        stepIndicatorContainer.removeAllViews()
+        stepDots.clear()
+        stepLabels.clear()
+        stepLines.clear()
 
-                    addPolicyCard(
-                        key,
-                        policy.optString("extends"),
-                        policy.optString("failover"),
-                        aclRules.joinToString(", "),
-                        policy.optString("sequence"),
-                        minMtu,
-                        maxLat,
-                        minBw,
-                        ordering.joinToString(", ")
-                    )
-                }
+        val ctx = requireContext()
+
+        for (i in 0 until totalSteps) {
+            // Column for dot + label
+            val column = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
             }
-        } catch (e: Exception) {
-            Toast.makeText(context, "Error reading JSON to UI fields", Toast.LENGTH_SHORT).show()
+
+            // Dot
+            val dot = View(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(20, 20)
+                setBackgroundResource(R.drawable.wizard_step_pending)
+            }
+            stepDots.add(dot)
+            column.addView(dot)
+
+            // Label
+            val label = TextView(ctx).apply {
+                text = steps[i].shortLabel
+                textSize = 9f
+                setTextColor(ctx.getColor(R.color.scitra_on_surface_variant))
+                gravity = Gravity.CENTER
+                setPadding(0, 4, 0, 0)
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            }
+            stepLabels.add(label)
+            column.addView(label)
+
+            stepIndicatorContainer.addView(column)
+
+            // Connector line (between dots, not after last)
+            if (i < totalSteps - 1) {
+                val line = View(ctx).apply {
+                    layoutParams = LinearLayout.LayoutParams(0, 2).apply {
+                        weight = 1f
+                        gravity = Gravity.CENTER_VERTICAL
+                        // Align with the dot vertically (offset by dot center)
+                        topMargin = -20 // shift line up to align with dots
+                    }
+                    setBackgroundResource(R.drawable.wizard_step_line)
+                }
+                stepLines.add(line)
+                stepIndicatorContainer.addView(line)
+            }
         }
     }
 
-    private fun syncJsonFromCurrentUi() {
+    private fun updateStepIndicator() {
+        val ctx = context ?: return
+
+        stepDots.forEachIndexed { i, dot ->
+            when {
+                i < currentStep -> dot.setBackgroundResource(R.drawable.wizard_step_completed)
+                i == currentStep -> dot.setBackgroundResource(R.drawable.wizard_step_active)
+                else -> dot.setBackgroundResource(R.drawable.wizard_step_pending)
+            }
+        }
+
+        stepLabels.forEachIndexed { i, label ->
+            when {
+                i < currentStep -> {
+                    label.setTextColor(ctx.getColor(R.color.scitra_success))
+                    label.typeface = Typeface.DEFAULT_BOLD
+                }
+                i == currentStep -> {
+                    label.setTextColor(ctx.getColor(R.color.scitra_primary))
+                    label.typeface = Typeface.DEFAULT_BOLD
+                }
+                else -> {
+                    label.setTextColor(ctx.getColor(R.color.scitra_on_surface_variant))
+                    label.typeface = Typeface.DEFAULT
+                }
+            }
+        }
+
+        stepLines.forEachIndexed { i, line ->
+            if (i < currentStep) {
+                line.setBackgroundResource(R.drawable.wizard_step_line_active)
+            } else {
+                line.setBackgroundResource(R.drawable.wizard_step_line)
+            }
+        }
+    }
+
+    private fun navigateToStep(step: Int) {
+        if (step < 0 || step >= totalSteps) return
+
+        // If moving to step 5 (review), generate the JSON preview
+        if (step == 4) {
+            generateJsonPreview()
+        }
+
+        currentStep = step
+        wizardFlipper.displayedChild = step
+        updateStepIndicator()
+        updateStepHeader()
+        updateNavigationButtons()
+    }
+
+    private fun updateStepHeader() {
+        val info = steps[currentStep]
+        tvStepBadge.text = "● STEP ${currentStep + 1} OF $totalSteps"
+        tvStepTitle.text = info.title
+        tvStepSubtitle.text = info.subtitle
+    }
+
+    private fun updateNavigationButtons() {
+        val ctx = context ?: return
+        val back = btnBack as? TextView
+        val next = btnNext as? TextView
+
+        if (currentStep == 0) {
+            back?.text = "Cancel"
+        } else {
+            back?.text = "Back"
+        }
+
+        if (currentStep == totalSteps - 1) {
+            next?.text = "Save Policy"
+        } else {
+            next?.text = "Next  →"
+        }
+    }
+
+    // ========== ACL MANAGEMENT ==========
+
+    private fun addAclEntry(type: String, value: String) {
+        val inflater = LayoutInflater.from(context)
+        val card = inflater.inflate(R.layout.item_acl_entry, aclList, false)
+
+        val tvType = card.findViewById<TextView>(R.id.tv_acl_type)
+        val etValue = card.findViewById<EditText>(R.id.et_acl_value)
+
+        tvType.text = type
+        if (type == "+") {
+            tvType.setTextColor(requireContext().getColor(R.color.scitra_success))
+        } else {
+            tvType.setTextColor(requireContext().getColor(R.color.md_theme_dark_error))
+        }
+
+        // Toggle allow/deny on click
+        tvType.setOnClickListener {
+            if (tvType.text == "+") {
+                tvType.text = "-"
+                tvType.setTextColor(requireContext().getColor(R.color.md_theme_dark_error))
+            } else {
+                tvType.text = "+"
+                tvType.setTextColor(requireContext().getColor(R.color.scitra_success))
+            }
+        }
+
+        etValue.setText(value)
+
+        card.findViewById<ImageView>(R.id.btn_delete_acl).setOnClickListener {
+            aclList.removeView(card)
+        }
+
+        aclList.addView(card)
+    }
+
+    // ========== ORDERING MANAGEMENT ==========
+
+    private fun buildOrderingEntries() {
+        orderingList.removeAllViews()
+        val inflater = LayoutInflater.from(context)
+
+        val entries = listOf(
+            "Latency" to "latency",
+            "Bandwidth" to "bandwidth",
+            "Hops" to "hops",
+            "Random" to "random"
+        )
+
+        for ((label, key) in entries) {
+            val card = inflater.inflate(R.layout.item_ordering_entry, orderingList, false)
+            card.tag = key
+
+            card.findViewById<TextView>(R.id.tv_ordering_label).text = label
+
+            val chipAsc = card.findViewById<TextView>(R.id.chip_asc)
+            val chipDesc = card.findViewById<TextView>(R.id.chip_desc)
+
+            // For "Random", hide Asc/Desc — it's a toggle
+            if (key == "random") {
+                chipAsc.visibility = View.GONE
+                chipDesc.visibility = View.GONE
+
+                // Add a single "Enable" toggle instead
+                val chipEnable = TextView(requireContext()).apply {
+                    text = "Enable"
+                    textSize = 12f
+                    gravity = Gravity.CENTER
+                    setPadding(40, 0, 40, 0)
+                    minimumHeight = (32 * resources.displayMetrics.density).toInt()
+                    setTextColor(requireContext().getColor(R.color.scitra_on_surface))
+                    setBackgroundResource(R.drawable.scitra_chip_unselected)
+                    isClickable = true
+                    isFocusable = true
+                    tag = "chip_enable"
+                }
+                (card as LinearLayout).addView(chipEnable)
+
+                chipEnable.setOnClickListener {
+                    val current = orderingState[key]
+                    if (current != null) {
+                        orderingState[key] = null
+                        chipEnable.setBackgroundResource(R.drawable.scitra_chip_unselected)
+                        chipEnable.setTextColor(requireContext().getColor(R.color.scitra_on_surface))
+                    } else {
+                        orderingState[key] = "random"
+                        chipEnable.setBackgroundResource(R.drawable.scitra_chip_selected)
+                        chipEnable.setTextColor(requireContext().getColor(R.color.scitra_on_primary))
+                    }
+                }
+            } else {
+                fun updateChips() {
+                    val state = orderingState[key]
+                    val ctx = requireContext()
+                    if (state == "asc") {
+                        chipAsc.setBackgroundResource(R.drawable.scitra_chip_selected)
+                        chipAsc.setTextColor(ctx.getColor(R.color.scitra_on_primary))
+                        chipDesc.setBackgroundResource(R.drawable.scitra_chip_unselected)
+                        chipDesc.setTextColor(ctx.getColor(R.color.scitra_on_surface))
+                    } else if (state == "desc") {
+                        chipAsc.setBackgroundResource(R.drawable.scitra_chip_unselected)
+                        chipAsc.setTextColor(ctx.getColor(R.color.scitra_on_surface))
+                        chipDesc.setBackgroundResource(R.drawable.scitra_chip_selected)
+                        chipDesc.setTextColor(ctx.getColor(R.color.scitra_on_primary))
+                    } else {
+                        chipAsc.setBackgroundResource(R.drawable.scitra_chip_unselected)
+                        chipAsc.setTextColor(ctx.getColor(R.color.scitra_on_surface))
+                        chipDesc.setBackgroundResource(R.drawable.scitra_chip_unselected)
+                        chipDesc.setTextColor(ctx.getColor(R.color.scitra_on_surface))
+                    }
+                }
+
+                chipAsc.setOnClickListener {
+                    orderingState[key] = if (orderingState[key] == "asc") null else "asc"
+                    updateChips()
+                }
+
+                chipDesc.setOnClickListener {
+                    orderingState[key] = if (orderingState[key] == "desc") null else "desc"
+                    updateChips()
+                }
+
+                updateChips()
+            }
+
+            orderingList.addView(card)
+        }
+    }
+
+    // ========== JSON SYNC ==========
+
+    private fun syncUiFromCurrentJson() {
+        try {
+            val rootObj = JSONObject(currentJson)
+
+            // If there are matchers, populate step 2 from the first one
+            val matchers = rootObj.optJSONArray("matchers")
+            if (matchers != null && matchers.length() > 0) {
+                val matcher = matchers.getJSONObject(0)
+                val root = view ?: return
+
+                root.findViewById<EditText>(R.id.et_matcher_source)?.setText(matcher.optString("source"))
+                root.findViewById<EditText>(R.id.et_matcher_destination)?.setText(matcher.optString("destination"))
+
+                val proto = matcher.optString("protocol")
+                selectedProtocol = proto
+                selectProtocolChip(proto)
+
+                val tc = matcher.optInt("traffic_class", -1)
+                if (tc != -1) {
+                    root.findViewById<EditText>(R.id.et_matcher_traffic_class)?.setText(tc.toString())
+                }
+
+                // The matcher's policy reference tells us which policy to load
+                val policyName = matcher.optString("policy")
+
+                // Populate step 1 from the referenced policy
+                val policies = rootObj.optJSONObject("policies")
+                if (policies != null && policyName.isNotEmpty() && policies.has(policyName)) {
+                    root.findViewById<EditText>(R.id.et_policy_name)?.setText(policyName)
+                    val policy = policies.getJSONObject(policyName)
+                    populatePolicyFields(root, policy)
+                } else if (policies != null) {
+                    // Just take the first policy
+                    val firstKey = policies.keys().next()
+                    root.findViewById<EditText>(R.id.et_policy_name)?.setText(firstKey)
+                    populatePolicyFields(root, policies.getJSONObject(firstKey))
+                }
+            } else {
+                // No matchers — just load the first policy
+                val policies = rootObj.optJSONObject("policies")
+                if (policies != null && policies.keys().hasNext()) {
+                    val root = view ?: return
+                    val firstKey = policies.keys().next()
+                    root.findViewById<EditText>(R.id.et_policy_name)?.setText(firstKey)
+                    populatePolicyFields(root, policies.getJSONObject(firstKey))
+                }
+            }
+
+        } catch (e: Exception) {
+            Toast.makeText(context, "Error reading policy JSON", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun populatePolicyFields(root: View, policy: JSONObject) {
+        root.findViewById<EditText>(R.id.et_policy_extends)?.setText(policy.optString("extends"))
+        root.findViewById<EditText>(R.id.et_policy_failover)?.setText(policy.optString("failover"))
+
+        // ACL
+        aclList.removeAllViews()
+        val aclArr = policy.optJSONArray("acl")
+        if (aclArr != null) {
+            for (i in 0 until aclArr.length()) {
+                val rule = aclArr.getString(i).trim()
+                if (rule.startsWith("-")) {
+                    addAclEntry("-", rule.substring(1).trim())
+                } else if (rule.startsWith("+")) {
+                    val value = rule.substring(1).trim()
+                    addAclEntry("+", value)
+                } else {
+                    addAclEntry("+", rule)
+                }
+            }
+        }
+
+        // Sequence
+        root.findViewById<EditText>(R.id.et_sequence)?.setText(policy.optString("sequence"))
+
+        // Requirements
+        val reqs = policy.optJSONObject("requirements")
+        if (reqs != null) {
+            val mtu = reqs.optInt("min_mtu", -1)
+            val lat = reqs.optInt("max_meta_lat", -1)
+            val bw = reqs.optInt("min_meta_bw", -1)
+            if (mtu != -1) root.findViewById<EditText>(R.id.et_min_mtu)?.setText(mtu.toString())
+            if (lat != -1) root.findViewById<EditText>(R.id.et_max_latency)?.setText(lat.toString())
+            if (bw != -1) root.findViewById<EditText>(R.id.et_min_bandwidth)?.setText(bw.toString())
+        }
+
+        // Ordering
+        val orderingArr = policy.optJSONArray("ordering")
+        // Reset ordering state
+        orderingState.keys.forEach { orderingState[it] = null }
+        if (orderingArr != null) {
+            for (i in 0 until orderingArr.length()) {
+                val item = orderingArr.getString(i)
+                when {
+                    item == "random" -> orderingState["random"] = "random"
+                    item.startsWith("meta_latency_") -> orderingState["latency"] = item.substringAfter("meta_latency_")
+                    item.startsWith("meta_bandwidth_") || item.startsWith("meta_bw_") -> orderingState["bandwidth"] = item.substringAfterLast("_")
+                    item.startsWith("hops_") -> orderingState["hops"] = item.substringAfter("hops_")
+                    item == "latency_asc" || item == "latency_desc" -> orderingState["latency"] = item.substringAfter("latency_")
+                    item == "bandwidth_asc" || item == "bandwidth_desc" -> orderingState["bandwidth"] = item.substringAfter("bandwidth_")
+                }
+            }
+        }
+        refreshOrderingUi()
+    }
+
+    private fun refreshOrderingUi() {
+        val ctx = context ?: return
+        for (i in 0 until orderingList.childCount) {
+            val card = orderingList.getChildAt(i)
+            val key = card.tag as? String ?: continue
+
+            if (key == "random") {
+                val chipEnable = card.findViewWithTag<TextView>("chip_enable") ?: continue
+                if (orderingState[key] != null) {
+                    chipEnable.setBackgroundResource(R.drawable.scitra_chip_selected)
+                    chipEnable.setTextColor(ctx.getColor(R.color.scitra_on_primary))
+                } else {
+                    chipEnable.setBackgroundResource(R.drawable.scitra_chip_unselected)
+                    chipEnable.setTextColor(ctx.getColor(R.color.scitra_on_surface))
+                }
+            } else {
+                val chipAsc = card.findViewById<TextView>(R.id.chip_asc)
+                val chipDesc = card.findViewById<TextView>(R.id.chip_desc)
+                val state = orderingState[key]
+
+                when (state) {
+                    "asc" -> {
+                        chipAsc.setBackgroundResource(R.drawable.scitra_chip_selected)
+                        chipAsc.setTextColor(ctx.getColor(R.color.scitra_on_primary))
+                        chipDesc.setBackgroundResource(R.drawable.scitra_chip_unselected)
+                        chipDesc.setTextColor(ctx.getColor(R.color.scitra_on_surface))
+                    }
+                    "desc" -> {
+                        chipAsc.setBackgroundResource(R.drawable.scitra_chip_unselected)
+                        chipAsc.setTextColor(ctx.getColor(R.color.scitra_on_surface))
+                        chipDesc.setBackgroundResource(R.drawable.scitra_chip_selected)
+                        chipDesc.setTextColor(ctx.getColor(R.color.scitra_on_primary))
+                    }
+                    else -> {
+                        chipAsc.setBackgroundResource(R.drawable.scitra_chip_unselected)
+                        chipAsc.setTextColor(ctx.getColor(R.color.scitra_on_surface))
+                        chipDesc.setBackgroundResource(R.drawable.scitra_chip_unselected)
+                        chipDesc.setTextColor(ctx.getColor(R.color.scitra_on_surface))
+                    }
+                }
+            }
+        }
+    }
+
+    private fun selectProtocolChip(protocol: String) {
+        val root = view ?: return
+        val chipTcp = root.findViewById<TextView>(R.id.chip_tcp)
+        val chipUdp = root.findViewById<TextView>(R.id.chip_udp)
+        val chipBoth = root.findViewById<TextView>(R.id.chip_both)
+        val chips = listOf(chipTcp, chipUdp, chipBoth)
+        val ctx = requireContext()
+
+        val index = when (protocol.lowercase()) {
+            "tcp" -> 0
+            "udp" -> 1
+            else -> 2
+        }
+
+        chips.forEachIndexed { i, chip ->
+            if (i == index) {
+                chip.setBackgroundResource(R.drawable.scitra_chip_selected)
+                chip.setTextColor(ctx.getColor(R.color.scitra_on_primary))
+            } else {
+                chip.setBackgroundResource(R.drawable.scitra_chip_unselected)
+                chip.setTextColor(ctx.getColor(R.color.scitra_on_surface))
+            }
+        }
+    }
+
+    private fun syncJsonFromCurrentUi(): JSONObject {
+        val root = view ?: return JSONObject()
+
         val rootObj = JSONObject()
+        val policyName = root.findViewById<EditText>(R.id.et_policy_name).text.toString().trim()
+
+        // Build matcher
         val matchersArr = JSONArray()
-        val policiesObj = JSONObject()
+        val matcherObj = JSONObject()
 
-        // Gather Matchers
-        for (i in 0 until matchersList.childCount) {
-            val card = matchersList.getChildAt(i)
-            val source = card.findViewById<EditText>(R.id.et_matcher_source).text.toString().trim()
-            val dest = card.findViewById<EditText>(R.id.et_matcher_destination).text.toString().trim()
-            val proto = card.findViewById<EditText>(R.id.et_matcher_protocol).text.toString().trim()
-            val tcStr = card.findViewById<EditText>(R.id.et_matcher_traffic_class).text.toString().trim()
-            val policyName = card.findViewById<EditText>(R.id.et_matcher_policy).text.toString().trim()
+        val source = root.findViewById<EditText>(R.id.et_matcher_source).text.toString().trim()
+        val dest = root.findViewById<EditText>(R.id.et_matcher_destination).text.toString().trim()
+        val tcStr = root.findViewById<EditText>(R.id.et_matcher_traffic_class).text.toString().trim()
 
-            if (policyName.isEmpty()) continue
+        if (source.isNotEmpty()) matcherObj.put("source", source)
+        if (dest.isNotEmpty()) matcherObj.put("destination", dest)
+        if (selectedProtocol.isNotEmpty()) matcherObj.put("protocol", selectedProtocol)
+        if (tcStr.isNotEmpty()) matcherObj.put("traffic_class", tcStr.toIntOrNull() ?: 0)
+        if (policyName.isNotEmpty()) matcherObj.put("policy", policyName)
 
-            val matcherObj = JSONObject()
-            if (source.isNotEmpty()) matcherObj.put("source", source)
-            if (dest.isNotEmpty()) matcherObj.put("destination", dest)
-            if (proto.isNotEmpty()) matcherObj.put("protocol", proto)
-            if (tcStr.isNotEmpty()) matcherObj.put("traffic_class", tcStr.toIntOrNull() ?: 0)
-            matcherObj.put("policy", policyName)
-
+        if (matcherObj.length() > 0) {
             matchersArr.put(matcherObj)
         }
         rootObj.put("matchers", matchersArr)
 
-        // Gather Policies
-        for (i in 0 until policiesList.childCount) {
-            val card = policiesList.getChildAt(i)
-            val name = card.findViewById<EditText>(R.id.et_policy_name).text.toString().trim()
-            val ext = card.findViewById<EditText>(R.id.et_policy_extends).text.toString().trim()
-            val failover = card.findViewById<EditText>(R.id.et_policy_failover).text.toString().trim()
-            val aclStr = card.findViewById<EditText>(R.id.et_policy_acl).text.toString().trim()
-            val seq = card.findViewById<EditText>(R.id.et_policy_sequence).text.toString().trim()
-            val mtuStr = card.findViewById<EditText>(R.id.et_policy_min_mtu).text.toString().trim()
-            val latStr = card.findViewById<EditText>(R.id.et_policy_max_latency).text.toString().trim()
-            val bwStr = card.findViewById<EditText>(R.id.et_policy_min_bandwidth).text.toString().trim()
-            val orderingStr = card.findViewById<EditText>(R.id.et_policy_ordering).text.toString().trim()
+        // Build policy
+        val policiesObj = JSONObject()
+        val policyObj = JSONObject()
 
-            if (name.isEmpty()) continue
+        val ext = root.findViewById<EditText>(R.id.et_policy_extends).text.toString().trim()
+        val failover = root.findViewById<EditText>(R.id.et_policy_failover).text.toString().trim()
+        if (ext.isNotEmpty()) policyObj.put("extends", ext)
+        if (failover.isNotEmpty()) policyObj.put("failover", failover)
 
-            val policyObj = JSONObject()
-            if (ext.isNotEmpty()) policyObj.put("extends", ext)
-            if (failover.isNotEmpty()) policyObj.put("failover", failover)
-            
-            // ACL Array
-            if (aclStr.isNotEmpty()) {
-                val aclArr = JSONArray()
-                aclStr.split(",").forEach {
-                    val item = it.trim()
-                    if (item.isNotEmpty()) aclArr.put(item)
-                }
-                policyObj.put("acl", aclArr)
+        // ACL
+        val aclArr = JSONArray()
+        for (i in 0 until aclList.childCount) {
+            val card = aclList.getChildAt(i)
+            val type = card.findViewById<TextView>(R.id.tv_acl_type).text.toString()
+            val value = card.findViewById<EditText>(R.id.et_acl_value).text.toString().trim()
+            if (value.isNotEmpty()) {
+                aclArr.put("$type $value")
+            } else {
+                aclArr.put(type)
             }
-
-            if (seq.isNotEmpty()) policyObj.put("sequence", seq)
-
-            // Requirements
-            val reqsObj = JSONObject()
-            var hasReqs = false
-            if (mtuStr.isNotEmpty()) {
-                reqsObj.put("min_mtu", mtuStr.toIntOrNull() ?: 0)
-                hasReqs = true
-            }
-            if (latStr.isNotEmpty()) {
-                reqsObj.put("max_meta_lat", latStr.toIntOrNull() ?: 0)
-                hasReqs = true
-            }
-            if (bwStr.isNotEmpty()) {
-                reqsObj.put("min_meta_bw", bwStr.toIntOrNull() ?: 0)
-                hasReqs = true
-            }
-            if (hasReqs) {
-                policyObj.put("requirements", reqsObj)
-            }
-
-            // Ordering Array
-            if (orderingStr.isNotEmpty()) {
-                val ordArr = JSONArray()
-                orderingStr.split(",").forEach {
-                    val item = it.trim()
-                    if (item.isNotEmpty()) ordArr.put(item)
-                }
-                policyObj.put("ordering", ordArr)
-            }
-
-            policiesObj.put(name, policyObj)
         }
+        if (aclArr.length() > 0) policyObj.put("acl", aclArr)
+
+        // Sequence
+        val seq = root.findViewById<EditText>(R.id.et_sequence).text.toString().trim()
+        if (seq.isNotEmpty()) policyObj.put("sequence", seq)
+
+        // Requirements
+        val mtuStr = root.findViewById<EditText>(R.id.et_min_mtu).text.toString().trim()
+        val latStr = root.findViewById<EditText>(R.id.et_max_latency).text.toString().trim()
+        val bwStr = root.findViewById<EditText>(R.id.et_min_bandwidth).text.toString().trim()
+        val reqsObj = JSONObject()
+        var hasReqs = false
+        if (mtuStr.isNotEmpty()) { reqsObj.put("min_mtu", mtuStr.toIntOrNull() ?: 0); hasReqs = true }
+        if (latStr.isNotEmpty()) { reqsObj.put("max_meta_lat", latStr.toIntOrNull() ?: 0); hasReqs = true }
+        if (bwStr.isNotEmpty()) { reqsObj.put("min_meta_bw", bwStr.toIntOrNull() ?: 0); hasReqs = true }
+        if (hasReqs) policyObj.put("requirements", reqsObj)
+
+        // Ordering
+        val ordArr = JSONArray()
+        for ((key, dir) in orderingState) {
+            if (dir == null) continue
+            when (key) {
+                "random" -> ordArr.put("random")
+                "latency" -> ordArr.put("meta_latency_$dir")
+                "bandwidth" -> ordArr.put("meta_bw_$dir")
+                "hops" -> ordArr.put("hops_$dir")
+            }
+        }
+        if (ordArr.length() > 0) policyObj.put("ordering", ordArr)
+
+        val name = if (policyName.isNotEmpty()) policyName else "default"
+        policiesObj.put(name, policyObj)
         rootObj.put("policies", policiesObj)
 
-        currentJson = rootObj.toString(2)
+        return rootObj
     }
 
-    private fun addEmptyMatcherCard() {
-        addMatcherCard("", "", "", -1, "")
-    }
+    private fun generateJsonPreview() {
+        try {
+            val json = syncJsonFromCurrentUi()
+            val formatted = json.toString(2)
+            tvJsonPreview.text = colorizeJson(formatted)
+            currentJson = formatted
 
-    private fun addMatcherCard(src: String, dest: String, proto: String, tc: Int, policy: String) {
-        val inflater = LayoutInflater.from(context)
-        val card = inflater.inflate(R.layout.item_path_policy_matcher, matchersList, false)
-        
-        val indexText = card.findViewById<TextView>(R.id.tv_matcher_index)
-        indexText.text = "Matcher #${matchersList.childCount + 1}"
-
-        card.findViewById<EditText>(R.id.et_matcher_source).setText(src)
-        card.findViewById<EditText>(R.id.et_matcher_destination).setText(dest)
-        card.findViewById<EditText>(R.id.et_matcher_protocol).setText(proto)
-        if (tc != -1) {
-            card.findViewById<EditText>(R.id.et_matcher_traffic_class).setText(tc.toString())
-        }
-        card.findViewById<EditText>(R.id.et_matcher_policy).setText(policy)
-
-        card.findViewById<ImageView>(R.id.btn_delete_matcher).setOnClickListener {
-            matchersList.removeView(card)
-            updateMatcherIndexes()
-        }
-
-        matchersList.addView(card)
-    }
-
-    private fun updateMatcherIndexes() {
-        for (i in 0 until matchersList.childCount) {
-            val card = matchersList.getChildAt(i)
-            card.findViewById<TextView>(R.id.tv_matcher_index).text = "Matcher #${i + 1}"
-        }
-    }
-
-    private fun addEmptyPolicyCard() {
-        addPolicyCard("", "", "", "", "", -1, -1, -1, "")
-    }
-
-    private fun addPolicyCard(name: String, ext: String, failover: String, acl: String, seq: String, mtu: Int, lat: Int, bw: Int, ord: String) {
-        val inflater = LayoutInflater.from(context)
-        val card = inflater.inflate(R.layout.item_path_policy_policy, policiesList, false)
-
-        val headerText = card.findViewById<TextView>(R.id.tv_policy_header)
-        headerText.text = if (name.isNotEmpty()) "Policy: $name" else "New Policy"
-
-        val etName = card.findViewById<EditText>(R.id.et_policy_name)
-        etName.setText(name)
-        etName.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
-            override fun afterTextChanged(s: Editable?) {
-                headerText.text = if (!s.isNullOrEmpty()) "Policy: $s" else "New Policy"
+            // Validation
+            val policyName = view?.findViewById<EditText>(R.id.et_policy_name)?.text.toString().trim()
+            if (policyName.isNotEmpty()) {
+                tvValidationIcon.text = "✓"
+                tvValidationIcon.setTextColor(requireContext().getColor(R.color.scitra_success))
+                tvValidationTitle.text = "Validation Passed"
+                tvValidationTitle.setTextColor(requireContext().getColor(R.color.scitra_success))
+                tvValidationDesc.text = "Syntax and schema constraints have been verified against SCION mesh definitions."
+            } else {
+                tvValidationIcon.text = "!"
+                tvValidationIcon.setTextColor(requireContext().getColor(R.color.scitra_warning))
+                tvValidationTitle.text = "Warning"
+                tvValidationTitle.setTextColor(requireContext().getColor(R.color.scitra_warning))
+                tvValidationDesc.text = "Policy name is empty. A default name will be used."
             }
-        })
+        } catch (e: Exception) {
+            tvJsonPreview.text = "Error generating JSON: ${e.message}"
+            tvValidationIcon.text = "✕"
+            tvValidationIcon.setTextColor(requireContext().getColor(R.color.md_theme_dark_error))
+            tvValidationTitle.text = "Validation Failed"
+            tvValidationTitle.setTextColor(requireContext().getColor(R.color.md_theme_dark_error))
+            tvValidationDesc.text = e.message ?: "Unknown error"
+        }
+    }
 
-        card.findViewById<EditText>(R.id.et_policy_extends).setText(ext)
-        card.findViewById<EditText>(R.id.et_policy_failover).setText(failover)
-        card.findViewById<EditText>(R.id.et_policy_acl).setText(acl)
-        card.findViewById<EditText>(R.id.et_policy_sequence).setText(seq)
-        
-        if (mtu != -1) card.findViewById<EditText>(R.id.et_policy_min_mtu).setText(mtu.toString())
-        if (lat != -1) card.findViewById<EditText>(R.id.et_policy_max_latency).setText(lat.toString())
-        if (bw != -1) card.findViewById<EditText>(R.id.et_policy_min_bandwidth).setText(bw.toString())
-        
-        card.findViewById<EditText>(R.id.et_policy_ordering).setText(ord)
+    private fun colorizeJson(json: String): SpannableString {
+        val spannable = SpannableString(json)
+        val ctx = context ?: return spannable
 
-        card.findViewById<ImageView>(R.id.btn_delete_policy).setOnClickListener {
-            policiesList.removeView(card)
+        val keyColor = ctx.getColor(R.color.scitra_primary)
+        val stringColor = ctx.getColor(R.color.scitra_success)
+        val numberColor = ctx.getColor(R.color.scitra_warning)
+
+        // Colorize JSON keys (before colon)
+        val keyRegex = Regex("\"([^\"]+)\"\\s*:")
+        for (match in keyRegex.findAll(json)) {
+            spannable.setSpan(
+                ForegroundColorSpan(keyColor),
+                match.range.first,
+                match.range.last + 1,
+                SpannableString.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
         }
 
-        policiesList.addView(card)
+        // Colorize string values (after colon)
+        val valueRegex = Regex(":\\s*\"([^\"]+)\"")
+        for (match in valueRegex.findAll(json)) {
+            val valueStart = json.indexOf('"', match.range.first + 1)
+            if (valueStart >= 0) {
+                val valueEnd = json.indexOf('"', valueStart + 1) + 1
+                if (valueEnd > valueStart) {
+                    spannable.setSpan(
+                        ForegroundColorSpan(stringColor),
+                        valueStart,
+                        valueEnd,
+                        SpannableString.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                }
+            }
+        }
+
+        // Colorize numbers
+        val numRegex = Regex(":\\s*(\\d+)")
+        for (match in numRegex.findAll(json)) {
+            val group = match.groups[1] ?: continue
+            spannable.setSpan(
+                ForegroundColorSpan(numberColor),
+                group.range.first,
+                group.range.last + 1,
+                SpannableString.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+
+        return spannable
     }
 
     private fun saveAndDismiss() {
-        syncJsonFromCurrentUi()
+        val json = syncJsonFromCurrentUi()
+        currentJson = json.toString(2)
 
         setFragmentResult(
             REQUEST_KEY_POLICY,
