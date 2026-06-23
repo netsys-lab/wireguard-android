@@ -379,7 +379,87 @@
             </LinearLayout>
         </ScrollView>
 
-        <!-- ========== STEP 3: POLICY RULES ========== -->
+        <!-- ========== STEP 3: APP FILTER ========== -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <!-- Include / Exclude toggle -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:id="@+id/chip_app_include"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="Include Only"
+                    android:textColor="@color/scitra_on_primary"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:background="@drawable/scitra_chip_selected"
+                    android:layout_marginEnd="6dp"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <TextView
+                    android:id="@+id/chip_app_exclude"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="Exclude"
+                    android:textColor="@color/scitra_on_surface"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:background="@drawable/scitra_chip_unselected"
+                    android:layout_marginStart="6dp"
+                    android:clickable="true"
+                    android:focusable="true" />
+            </LinearLayout>
+
+            <!-- Search bar -->
+            <EditText
+                android:id="@+id/et_app_search"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:hint="🔍  Search apps…"
+                android:background="@drawable/scitra_dashed_item_bg"
+                android:paddingHorizontal="14dp"
+                android:textColor="@color/scitra_on_surface"
+                android:textColorHint="@color/scitra_on_surface_variant"
+                android:textSize="13sp"
+                android:singleLine="true"
+                android:imeOptions="actionSearch"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Selected count -->
+            <TextView
+                android:id="@+id/tv_app_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0 apps selected"
+                android:textColor="@color/scitra_on_surface_variant"
+                android:textSize="12sp"
+                android:layout_marginBottom="10dp" />
+
+            <!-- App list -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_app_list"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipToPadding="false"
+                android:paddingBottom="8dp" />
+        </LinearLayout>
+
+        <!-- ========== STEP 4: POLICY RULES ========== -->
         <ScrollView
             android:layout_width="match_parent"
             android:layout_height="match_parent">
@@ -576,7 +656,7 @@
             </LinearLayout>
         </ScrollView>
 
-        <!-- ========== STEP 4: PATH ORDERING ========== -->
+        <!-- ========== STEP 5: PATH ORDERING ========== -->
         <ScrollView
             android:layout_width="match_parent"
             android:layout_height="match_parent">
@@ -603,7 +683,7 @@
             </LinearLayout>
         </ScrollView>
 
-        <!-- ========== STEP 5: REVIEW & SAVE ========== -->
+        <!-- ========== STEP 6: REVIEW & SAVE ========== -->
         <ScrollView
             android:layout_width="match_parent"
             android:layout_height="match_parent">

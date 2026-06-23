@@ -4,14 +4,21 @@
  */
 package com.wireguard.android.fragment
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.Typeface
+import android.graphics.drawable.Drawable
+import android.os.Build
 import android.os.Bundle
+import android.text.Editable
 import android.text.SpannableString
+import android.text.TextWatcher
 import android.text.style.ForegroundColorSpan
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -21,7 +28,13 @@ import android.widget.ViewFlipper
 import androidx.core.os.bundleOf
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.setFragmentResult
+import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.wireguard.android.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -36,20 +49,40 @@ class PathPolicyDialogFragment : DialogFragment() {
     private lateinit var btnNext: View
     private lateinit var btnBackArrow: View
 
-    // Step 3 - ACL list
+    // Step 3 - App Filter
+    private lateinit var rvAppList: RecyclerView
+    private lateinit var etAppSearch: EditText
+    private lateinit var tvAppCount: TextView
+    private lateinit var chipAppInclude: TextView
+    private lateinit var chipAppExclude: TextView
+
+    // Step 4 - ACL list
     private lateinit var aclList: LinearLayout
 
-    // Step 4 - Ordering list
+    // Step 5 - Ordering list
     private lateinit var orderingList: LinearLayout
 
-    // Step 5 - Review
+    // Step 6 - Review
     private lateinit var tvJsonPreview: TextView
     private lateinit var tvValidationIcon: TextView
     private lateinit var tvValidationTitle: TextView
     private lateinit var tvValidationDesc: TextView
 
     private var currentStep = 0
-    private val totalSteps = 5
+    private val totalSteps = 6
+
+    // App filter state
+    private var isAppExcludeMode = false
+    private val allApps = mutableListOf<AppEntry>()
+    private val filteredApps = mutableListOf<AppEntry>()
+    private val selectedPackages = mutableSetOf<String>()
+    private var appAdapter: AppPolicyAdapter? = null
+
+    data class AppEntry(
+        val icon: Drawable?,
+        val name: String,
+        val packageName: String
+    )
 
     private var currentJson = DEFAULT_SAMPLE_JSON
 
@@ -78,6 +111,7 @@ class PathPolicyDialogFragment : DialogFragment() {
     private val steps = listOf(
         StepInfo("Identity", "Define the identity of this path policy.", "Identity"),
         StepInfo("Traffic Matcher", "Define the traffic scope for this policy rule.", "Traffic\nMatcher"),
+        StepInfo("App Filter", "Select which apps this policy applies to.", "App\nFilter"),
         StepInfo("Policy Rules", "Define absolute requirements, blocklists,\nand routing paths for this policy.", "Policy\nRules"),
         StepInfo("Path Ordering", "Define the priority of sorting criteria\nfor your routing policy.", "Path\nOrdering"),
         StepInfo("Review Configuration", "Verify the generated JSON for your new\npath policy before applying it.", "Review")
@@ -113,6 +147,13 @@ class PathPolicyDialogFragment : DialogFragment() {
         aclList = root.findViewById(R.id.acl_list)
         orderingList = root.findViewById(R.id.ordering_list)
 
+        // Step 3 - App filter views
+        rvAppList = root.findViewById(R.id.rv_app_list)
+        etAppSearch = root.findViewById(R.id.et_app_search)
+        tvAppCount = root.findViewById(R.id.tv_app_count)
+        chipAppInclude = root.findViewById(R.id.chip_app_include)
+        chipAppExclude = root.findViewById(R.id.chip_app_exclude)
+
         tvJsonPreview = root.findViewById(R.id.tv_json_preview)
         tvValidationIcon = root.findViewById(R.id.tv_validation_icon)
         tvValidationTitle = root.findViewById(R.id.tv_validation_title)
@@ -126,6 +167,9 @@ class PathPolicyDialogFragment : DialogFragment() {
 
         // Protocol chips
         setupProtocolChips(root)
+
+        // App filter setup
+        setupAppFilter()
 
         // ACL add button
         root.findViewById<View>(R.id.btn_add_acl).setOnClickListener {
@@ -190,6 +234,159 @@ class PathPolicyDialogFragment : DialogFragment() {
 
         // Default to "Both"
         selectChip(2)
+    }
+
+    // ========== APP FILTER ==========
+
+    private fun setupAppFilter() {
+        // RecyclerView
+        appAdapter = AppPolicyAdapter()
+        rvAppList.layoutManager = LinearLayoutManager(requireContext())
+        rvAppList.adapter = appAdapter
+
+        // Include/Exclude chips
+        chipAppInclude.setOnClickListener { setAppMode(exclude = false) }
+        chipAppExclude.setOnClickListener { setAppMode(exclude = true) }
+
+        // Search
+        etAppSearch.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                filterApps(s?.toString() ?: "")
+            }
+        })
+
+        // Load apps
+        loadInstalledApps()
+    }
+
+    private fun loadInstalledApps() {
+        val activity = activity ?: return
+        val pm = activity.packageManager
+        lifecycleScope.launch(Dispatchers.Default) {
+            try {
+                val apps = mutableListOf<AppEntry>()
+                withContext(Dispatchers.IO) {
+                    val packages = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        pm.getPackagesHoldingPermissions(
+                            arrayOf(Manifest.permission.INTERNET),
+                            PackageManager.PackageInfoFlags.of(0L)
+                        )
+                    } else {
+                        @Suppress("DEPRECATION")
+                        pm.getPackagesHoldingPermissions(
+                            arrayOf(Manifest.permission.INTERNET), 0
+                        )
+                    }
+                    packages.forEach { pkgInfo ->
+                        val appInfo = pkgInfo.applicationInfo ?: return@forEach
+                        apps.add(
+                            AppEntry(
+                                icon = try { appInfo.loadIcon(pm) } catch (_: Exception) { null },
+                                name = appInfo.loadLabel(pm).toString(),
+                                packageName = pkgInfo.packageName
+                            )
+                        )
+                    }
+                }
+                apps.sortWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+                withContext(Dispatchers.Main.immediate) {
+                    allApps.clear()
+                    allApps.addAll(apps)
+                    filterApps(etAppSearch.text?.toString() ?: "")
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main.immediate) {
+                    Toast.makeText(context, "Error loading apps: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun filterApps(query: String) {
+        filteredApps.clear()
+        if (query.isBlank()) {
+            filteredApps.addAll(allApps)
+        } else {
+            val q = query.lowercase()
+            filteredApps.addAll(allApps.filter {
+                it.name.lowercase().contains(q) || it.packageName.lowercase().contains(q)
+            })
+        }
+        appAdapter?.notifyDataSetChanged()
+        updateAppCount()
+    }
+
+    private fun updateAppCount() {
+        val count = selectedPackages.size
+        val mode = if (isAppExcludeMode) "excluded" else "included"
+        tvAppCount.text = if (count == 0) "No apps selected — policy applies to all apps"
+        else "$count app${if (count != 1) "s" else ""} $mode"
+    }
+
+    private fun setAppMode(exclude: Boolean) {
+        isAppExcludeMode = exclude
+        val ctx = requireContext()
+        if (exclude) {
+            chipAppExclude.setBackgroundResource(R.drawable.scitra_chip_selected)
+            chipAppExclude.setTextColor(ctx.getColor(R.color.scitra_on_primary))
+            chipAppInclude.setBackgroundResource(R.drawable.scitra_chip_unselected)
+            chipAppInclude.setTextColor(ctx.getColor(R.color.scitra_on_surface))
+        } else {
+            chipAppInclude.setBackgroundResource(R.drawable.scitra_chip_selected)
+            chipAppInclude.setTextColor(ctx.getColor(R.color.scitra_on_primary))
+            chipAppExclude.setBackgroundResource(R.drawable.scitra_chip_unselected)
+            chipAppExclude.setTextColor(ctx.getColor(R.color.scitra_on_surface))
+        }
+        updateAppCount()
+    }
+
+    // RecyclerView adapter for app list
+    private inner class AppPolicyAdapter : RecyclerView.Adapter<AppPolicyAdapter.ViewHolder>() {
+
+        inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+            val ivIcon: ImageView = view.findViewById(R.id.iv_app_icon)
+            val tvName: TextView = view.findViewById(R.id.tv_app_name)
+            val tvPackage: TextView = view.findViewById(R.id.tv_app_package)
+            val cbSelected: CheckBox = view.findViewById(R.id.cb_app_selected)
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+            val view = LayoutInflater.from(parent.context)
+                .inflate(R.layout.item_app_policy_entry, parent, false)
+            return ViewHolder(view)
+        }
+
+        override fun getItemCount() = filteredApps.size
+
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            val app = filteredApps[position]
+            holder.tvName.text = app.name
+            holder.tvPackage.text = app.packageName
+            if (app.icon != null) {
+                holder.ivIcon.setImageDrawable(app.icon)
+            } else {
+                holder.ivIcon.setImageResource(android.R.drawable.sym_def_app_icon)
+            }
+
+            // Prevent listener from firing during bind
+            holder.cbSelected.setOnCheckedChangeListener(null)
+            holder.cbSelected.isChecked = selectedPackages.contains(app.packageName)
+            holder.cbSelected.setOnCheckedChangeListener { _, isChecked ->
+                if (isChecked) {
+                    selectedPackages.add(app.packageName)
+                } else {
+                    selectedPackages.remove(app.packageName)
+                }
+                updateAppCount()
+            }
+
+            // Clicking the row also toggles
+            holder.itemView.setOnClickListener {
+                holder.cbSelected.isChecked = !holder.cbSelected.isChecked
+            }
+        }
     }
 
     private fun buildStepIndicator() {
@@ -293,8 +490,8 @@ class PathPolicyDialogFragment : DialogFragment() {
     private fun navigateToStep(step: Int) {
         if (step < 0 || step >= totalSteps) return
 
-        // If moving to step 5 (review), generate the JSON preview
-        if (step == 4) {
+        // If moving to step 6 (review), generate the JSON preview
+        if (step == 5) {
             generateJsonPreview()
         }
 
@@ -509,6 +706,24 @@ class PathPolicyDialogFragment : DialogFragment() {
                 }
             }
 
+            // Restore app filter from JSON
+            val appsObj = rootObj.optJSONObject("apps")
+            if (appsObj != null) {
+                val mode = appsObj.optString("mode", "include")
+                isAppExcludeMode = mode == "exclude"
+                setAppMode(isAppExcludeMode)
+
+                selectedPackages.clear()
+                val pkgArr = appsObj.optJSONArray("packages")
+                if (pkgArr != null) {
+                    for (i in 0 until pkgArr.length()) {
+                        selectedPackages.add(pkgArr.getString(i))
+                    }
+                }
+                updateAppCount()
+                appAdapter?.notifyDataSetChanged()
+            }
+
         } catch (e: Exception) {
             Toast.makeText(context, "Error reading policy JSON", Toast.LENGTH_SHORT).show()
         }
@@ -717,6 +932,16 @@ class PathPolicyDialogFragment : DialogFragment() {
         val name = if (policyName.isNotEmpty()) policyName else "default"
         policiesObj.put(name, policyObj)
         rootObj.put("policies", policiesObj)
+
+        // Apps filter
+        if (selectedPackages.isNotEmpty()) {
+            val appsObj = JSONObject()
+            appsObj.put("mode", if (isAppExcludeMode) "exclude" else "include")
+            val pkgArr = JSONArray()
+            selectedPackages.sorted().forEach { pkgArr.put(it) }
+            appsObj.put("packages", pkgArr)
+            rootObj.put("apps", appsObj)
+        }
 
         return rootObj
     }
