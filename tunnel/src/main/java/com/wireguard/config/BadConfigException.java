@@ -78,7 +78,8 @@ public class BadConfigException extends Exception {
         PERSISTENT_KEEPALIVE("PersistentKeepalive"),
         PRE_SHARED_KEY("PresharedKey"),
         PRIVATE_KEY("PrivateKey"),
-        PUBLIC_KEY("PublicKey");
+        PUBLIC_KEY("PublicKey"),
+        TUNNEL_MODE("TunnelMode");
 
         private final String name;
 

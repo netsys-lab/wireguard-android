@@ -7,8 +7,6 @@ require (
 	golang.zx2c4.com/wireguard v0.0.0-20250521234502-f333402bd9cb
 )
 
-replace golang.zx2c4.com/wireguard => github.com/netsys-lab/wireguard-go v0.0.0-20260616170745-f78a2cf7499f
-
 require (
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -54,3 +52,5 @@ require (
 	modernc.org/sqlite v1.40.1 // indirect
 	zgo.at/zcache/v2 v2.1.0 // indirect
 )
+
+replace golang.zx2c4.com/wireguard => github.com/netsys-lab/wireguard-go v0.0.0-20260624143739-c8518921190d

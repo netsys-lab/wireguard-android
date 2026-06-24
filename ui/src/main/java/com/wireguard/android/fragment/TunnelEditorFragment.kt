@@ -72,6 +72,10 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
         isScionMode = scion
         val binding = binding ?: return
         val context = context ?: return
+
+        // TunnelMode auf dem Interface setzen
+        binding.config?.`interface`?.tunnelMode = if (scion) "SCION" else "IP"
+
         if (scion) {
             binding.tabScion.setBackgroundResource(R.drawable.scitra_tab_selected_bg)
             binding.tabScion.setTextColor(context.getColor(R.color.scitra_on_primary))
@@ -86,16 +90,16 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
             binding.tabIp.setTextColor(context.getColor(R.color.scitra_on_primary))
             binding.bootstrapUrlLayout.visibility = View.GONE
             binding.btnConfigurePathPolicy.visibility = View.GONE
-            binding.config?.`interface`?.bootstrapUrl = ""
-            binding.config?.`interface`?.pathPolicy = ""
         }
+        // Wichtig: bootstrapUrl und pathPolicy NICHT löschen!
     }
 
     private fun onConfigLoaded(config: Config) {
         val proxy = ConfigProxy(config)
         binding?.config = proxy
         pathPolicyJson = proxy.`interface`.pathPolicy
-        setScionMode(proxy.`interface`.bootstrapUrl.isNotEmpty())
+        // TunnelMode als Quelle der Wahrheit verwenden
+        setScionMode(proxy.`interface`.tunnelMode == "SCION")
     }
 
     private fun onConfigSaved(savedTunnel: Tunnel, throwable: Throwable?) {
@@ -165,13 +169,12 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
 
     fun onSaveClick() {
         binding ?: return
-        // In IP mode, clear bootstrap URL config
-        if (!isScionMode) {
-            binding!!.config?.`interface`?.bootstrapUrl = ""
-            binding!!.config?.`interface`?.pathPolicy = ""
-        } else {
+        // PathPolicy-JSON vom Dialog übernehmen (SCION-Modus)
+        if (isScionMode) {
             binding!!.config?.`interface`?.pathPolicy = pathPolicyJson
         }
+        // tunnelMode wurde bereits in setScionMode() gesetzt.
+        // bootstrapUrl und pathPolicy bleiben erhalten (auch bei IP-Modus).
         val newConfig = try {
             binding!!.config!!.resolve()
         } catch (e: Throwable) {
@@ -363,7 +366,7 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
                 onSelectedTunnelChanged(null, tunnel)
             } else {
                 binding!!.config = config
-                setScionMode(config.`interface`.bootstrapUrl.isNotEmpty())
+                setScionMode(config.`interface`.tunnelMode == "SCION")
             }
         }
         super.onViewStateRestored(savedInstanceState)

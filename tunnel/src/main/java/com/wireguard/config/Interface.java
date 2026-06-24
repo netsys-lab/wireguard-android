@@ -38,6 +38,37 @@ public final class Interface {
     private static final int MAX_UDP_PORT = 65535;
     private static final int MIN_UDP_PORT = 0;
 
+    public enum TunnelMode {
+        IP("IP"),
+        SCION("SCION");
+
+        private final String name;
+
+        TunnelMode(final String name) {
+            this.name = name;
+        }
+
+        public boolean isScion() {
+            return this == SCION;
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
+
+        public static TunnelMode parseTunnelMode(@Nullable final String raw,
+                                                  @Nullable final String bootstrapUrl) {
+            if (raw != null && !raw.isBlank()) {
+                return valueOf(raw.trim().toUpperCase(Locale.ENGLISH));
+            }
+            if (bootstrapUrl != null && !bootstrapUrl.isBlank()) {
+                return SCION;
+            }
+            return IP;
+        }
+    }
+
     private final Set<InetNetwork> addresses;
     private final Set<InetAddress> dnsServers;
     private final Set<String> dnsSearchDomains;
@@ -46,6 +77,7 @@ public final class Interface {
     private final KeyPair keyPair;
     private final Optional<Integer> listenPort;
     private final Optional<Integer> mtu;
+    private final TunnelMode tunnelMode;
     private final String bootstrapUrl;
     private final String pathPolicy;
 
@@ -59,6 +91,7 @@ public final class Interface {
         keyPair = Objects.requireNonNull(builder.keyPair, "Interfaces must have a private key");
         listenPort = builder.listenPort;
         mtu = builder.mtu;
+        tunnelMode = builder.tunnelMode;
         bootstrapUrl = Objects.requireNonNull(builder.bootstrapUrl, "bootstrapUrl cannot be null");
         pathPolicy = Objects.requireNonNull(builder.pathPolicy, "pathPolicy cannot be null");
     }
@@ -82,11 +115,18 @@ public final class Interface {
 
     public static Interface parse(final Iterable<? extends CharSequence> lines, @Nullable final String bootstrapUrl, @Nullable final String pathPolicy)
             throws BadConfigException {
+        return parse(lines, null, bootstrapUrl, pathPolicy);
+    }
+
+    public static Interface parse(final Iterable<? extends CharSequence> lines, @Nullable final String tunnelModeRaw, @Nullable final String bootstrapUrl, @Nullable final String pathPolicy)
+            throws BadConfigException {
         final Builder builder = new Builder();
         if (bootstrapUrl != null)
             builder.setBootstrapUrl(bootstrapUrl);
         if (pathPolicy != null)
             builder.setPathPolicy(pathPolicy);
+        TunnelMode mode = TunnelMode.parseTunnelMode(tunnelModeRaw, bootstrapUrl);
+        builder.setTunnelMode(mode);
         for (final CharSequence line : lines) {
             final Attribute attribute = Attribute.parse(line).orElseThrow(() ->
                     new BadConfigException(Section.INTERFACE, Location.TOP_LEVEL,
@@ -134,6 +174,7 @@ public final class Interface {
                 && keyPair.equals(other.keyPair)
                 && listenPort.equals(other.listenPort)
                 && mtu.equals(other.mtu)
+                && tunnelMode.equals(other.tunnelMode)
                 && bootstrapUrl.equals(other.bootstrapUrl)
                 && pathPolicy.equals(other.pathPolicy);
     }
@@ -144,6 +185,14 @@ public final class Interface {
 
     public String getPathPolicy() {
         return pathPolicy;
+    }
+
+    public TunnelMode getTunnelMode() {
+        return tunnelMode;
+    }
+
+    public boolean isScionEnabled() {
+        return tunnelMode.isScion();
     }
 
     /**
@@ -233,6 +282,7 @@ public final class Interface {
         hash = 31 * hash + keyPair.hashCode();
         hash = 31 * hash + listenPort.hashCode();
         hash = 31 * hash + mtu.hashCode();
+        hash = 31 * hash + tunnelMode.hashCode();
         hash = 31 * hash + bootstrapUrl.hashCode();
         hash = 31 * hash + pathPolicy.hashCode();
         return hash;
@@ -261,6 +311,7 @@ public final class Interface {
      */
     public String toWgQuickString() {
         final StringBuilder sb = new StringBuilder();
+        sb.append("# TunnelMode = ").append(tunnelMode.name()).append('\n');
         if (bootstrapUrl != null && !bootstrapUrl.isEmpty())
             sb.append("# BootstrapURL = ").append(bootstrapUrl).append('\n');
         if (pathPolicy != null && !pathPolicy.isEmpty())
@@ -456,6 +507,7 @@ public final class Interface {
 
         private String bootstrapUrl = "";
         private String pathPolicy = "";
+        private TunnelMode tunnelMode = TunnelMode.IP;
 
         public Builder setBootstrapUrl(final String bootstrapUrl) {
             this.bootstrapUrl = bootstrapUrl == null ? "" : bootstrapUrl;
@@ -464,6 +516,11 @@ public final class Interface {
 
         public Builder setPathPolicy(final String pathPolicy) {
             this.pathPolicy = pathPolicy == null ? "" : pathPolicy;
+            return this;
+        }
+
+        public Builder setTunnelMode(final TunnelMode tunnelMode) {
+            this.tunnelMode = tunnelMode == null ? TunnelMode.IP : tunnelMode;
             return this;
         }
     }
