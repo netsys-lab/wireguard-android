@@ -78,14 +78,14 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
             binding.tabIp.setBackgroundResource(android.R.color.transparent)
             binding.tabIp.setTextColor(context.getColor(R.color.scitra_on_surface_variant))
             binding.bootstrapUrlLayout.visibility = View.VISIBLE
-            binding.btnConfigurePathPolicy.visibility = View.VISIBLE
+            binding.pathPolicyCard.visibility = View.VISIBLE
         } else {
             binding.tabScion.setBackgroundResource(android.R.color.transparent)
             binding.tabScion.setTextColor(context.getColor(R.color.scitra_on_surface_variant))
             binding.tabIp.setBackgroundResource(R.drawable.scitra_tab_selected_bg)
             binding.tabIp.setTextColor(context.getColor(R.color.scitra_on_primary))
             binding.bootstrapUrlLayout.visibility = View.GONE
-            binding.btnConfigurePathPolicy.visibility = View.GONE
+            binding.pathPolicyCard.visibility = View.GONE
             binding.config?.`interface`?.bootstrapUrl = ""
             binding.config?.`interface`?.pathPolicy = ""
         }
@@ -96,6 +96,7 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
         binding?.config = proxy
         pathPolicyJson = proxy.`interface`.pathPolicy
         setScionMode(proxy.`interface`.bootstrapUrl.isNotEmpty())
+        updatePathPolicyStatus()
     }
 
     private fun onConfigSaved(savedTunnel: Tunnel, throwable: Throwable?) {
@@ -269,10 +270,67 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
             if (resultJson != null) {
                 pathPolicyJson = resultJson
                 binding?.config?.`interface`?.pathPolicy = resultJson
+                updatePathPolicyStatus()
                 Toast.makeText(context, "Path Policy configured successfully!", Toast.LENGTH_SHORT).show()
             }
         }
         dialog.show(childFragmentManager, null)
+    }
+
+    private fun updatePathPolicyStatus() {
+        val binding = binding ?: return
+        val context = context ?: return
+        if (pathPolicyJson.isNullOrBlank()) {
+            binding.pathPolicyStatusBadge.text = "Not Configured"
+            binding.pathPolicyStatusBadge.setTextColor(context.getColor(R.color.scitra_on_surface_variant))
+            binding.pathPolicyStatusBadge.setBackgroundResource(R.drawable.scitra_chip_unselected)
+            binding.pathPolicySummary.visibility = View.GONE
+        } else {
+            binding.pathPolicyStatusBadge.text = "Active Policy"
+            binding.pathPolicyStatusBadge.setTextColor(context.getColor(R.color.scitra_on_primary))
+            binding.pathPolicyStatusBadge.setBackgroundResource(R.drawable.scitra_chip_selected)
+            
+            try {
+                val json = org.json.JSONObject(pathPolicyJson)
+                val summaryLines = mutableListOf<String>()
+                
+                val policies = json.optJSONObject("policies")
+                if (policies != null && policies.length() > 0) {
+                    val keysList = mutableListOf<String>()
+                    val keys = policies.keys()
+                    while (keys.hasNext()) {
+                        keysList.add(keys.next())
+                    }
+                    val policyNames = keysList.joinToString(", ")
+                    summaryLines.add("Policies: $policyNames")
+                }
+                
+                val matchers = json.optJSONArray("matchers")
+                if (matchers != null && matchers.length() > 0) {
+                    val firstMatcher = matchers.optJSONObject(0)
+                    val protocol = firstMatcher?.optString("protocol", "") ?: ""
+                    summaryLines.add("Matchers: ${matchers.length()}" + (if (protocol.isNotEmpty()) " ($protocol)" else ""))
+                }
+                
+                val apps = json.optJSONObject("apps")
+                if (apps != null) {
+                    val mode = apps.optString("mode", "include")
+                    val packages = apps.optJSONArray("packages")
+                    val count = packages?.length() ?: 0
+                    summaryLines.add("Apps: $count $mode${if (count != 1) "d" else ""}")
+                }
+                
+                if (summaryLines.isNotEmpty()) {
+                    binding.pathPolicySummary.text = summaryLines.joinToString("\n")
+                    binding.pathPolicySummary.visibility = View.VISIBLE
+                } else {
+                    binding.pathPolicySummary.visibility = View.GONE
+                }
+            } catch (e: Exception) {
+                binding.pathPolicySummary.text = "Custom Policy JSON"
+                binding.pathPolicySummary.visibility = View.VISIBLE
+            }
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -298,7 +356,9 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
             }
         } else {
             binding!!.name = ""
+            pathPolicyJson = ""
             setScionMode(true)
+            updatePathPolicyStatus()
         }
     }
 
@@ -363,7 +423,9 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
                 onSelectedTunnelChanged(null, tunnel)
             } else {
                 binding!!.config = config
+                pathPolicyJson = config.`interface`.pathPolicy
                 setScionMode(config.`interface`.bootstrapUrl.isNotEmpty())
+                updatePathPolicyStatus()
             }
         }
         super.onViewStateRestored(savedInstanceState)

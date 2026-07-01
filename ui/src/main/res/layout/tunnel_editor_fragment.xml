@@ -339,31 +339,113 @@
                             android:layout_height="wrap_content"
                             android:layout_margin="4dp"
                             android:nextFocusUp="@id/dns_servers_text"
-                            android:nextFocusDown="@+id/btn_configure_path_policy"
-                            android:nextFocusForward="@+id/btn_configure_path_policy"
                             android:onClick="@{fragment::onRequestSetExcludedIncludedApplications}"
                             android:text="@{config.interface.includedApplications.size > 0 ? @plurals/set_included_applications(config.interface.includedApplications.size, config.interface.includedApplications.size) : config.interface.excludedApplications.size > 0 ? @plurals/set_excluded_applications(config.interface.excludedApplications.size, config.interface.excludedApplications.size) : @string/all_applications}"
                             android:textColor="@color/scitra_primary"
-                            app:layout_constraintBottom_toTopOf="@+id/btn_configure_path_policy"
+                            app:layout_constraintBottom_toBottomOf="parent"
                             app:layout_constraintEnd_toEndOf="parent"
                             app:layout_constraintStart_toStartOf="parent"
                             app:layout_constraintTop_toBottomOf="@id/mtu_label_layout"
                             app:rippleColor="@color/scitra_primary"
                             tools:text="4 excluded applications" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Path Policy Card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/path_policy_card"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginBottom="16dp">
+
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:padding="16dp">
+
+                        <com.google.android.material.textview.MaterialTextView
+                            android:id="@+id/path_policy_title"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="PATH POLICY"
+                            android:textAllCaps="true"
+                            android:letterSpacing="0.1"
+                            android:textColor="@color/scitra_primary"
+                            android:drawableStart="@drawable/ic_settings"
+                            android:drawablePadding="8dp"
+                            app:drawableTint="@color/scitra_primary"
+                            android:textAppearance="?attr/textAppearanceTitleMedium"
+                            android:textStyle="bold"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent" />
+
+                        <TextView
+                            android:id="@+id/path_policy_status_badge"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Not Configured"
+                            android:textSize="11sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/scitra_on_surface_variant"
+                            android:background="@drawable/scitra_chip_unselected"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="4dp"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintTop_toTopOf="parent" />
+
+                        <TextView
+                            android:id="@+id/path_policy_desc"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="Configure custom path routing rules, app-specific paths, failovers, and requirements for this SCION tunnel."
+                            android:textColor="@color/scitra_on_surface_variant"
+                            android:textSize="13sp"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintTop_toBottomOf="@id/path_policy_title" />
+
+                        <TextView
+                            android:id="@+id/path_policy_summary"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:visibility="gone"
+                            android:textColor="@color/scitra_success"
+                            android:textSize="12sp"
+                            android:fontFamily="monospace"
+                            android:background="@drawable/scitra_json_preview_bg"
+                            android:padding="10dp"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintTop_toBottomOf="@id/path_policy_desc"
+                            tools:text="Policies: default\nMatchers: 1 (udp)\nApps: 4 excluded" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btn_configure_path_policy"
-                            style="@style/Widget.Material3.Button.TextButton"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_margin="4dp"
+                            android:layout_width="match_parent"
+                            android:layout_height="52dp"
+                            android:layout_marginTop="16dp"
                             android:text="Configure Path Policy"
-                            android:textColor="@color/scitra_primary"
+                            android:textAllCaps="false"
+                            android:textColor="@color/scitra_on_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:backgroundTint="@color/scitra_primary"
+                            app:icon="@drawable/ic_action_edit"
+                            app:iconTint="@color/scitra_on_primary"
+                            app:iconGravity="textStart"
+                            app:iconPadding="8dp"
+                            app:cornerRadius="26dp"
                             android:onClick="@{fragment::onRequestConfigurePathPolicy}"
+                            app:layout_constraintTop_toBottomOf="@id/path_policy_summary"
                             app:layout_constraintBottom_toBottomOf="parent"
-                            app:layout_constraintEnd_toEndOf="parent"
                             app:layout_constraintStart_toStartOf="parent"
-                            app:layout_constraintTop_toBottomOf="@id/set_excluded_applications" />
+                            app:layout_constraintEnd_toEndOf="parent" />
+
                     </androidx.constraintlayout.widget.ConstraintLayout>
                 </com.google.android.material.card.MaterialCardView>
 
