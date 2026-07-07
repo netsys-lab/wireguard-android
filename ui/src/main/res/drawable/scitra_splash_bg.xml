@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  ~ Copyright © 2017-2025 WireGuard LLC. All Rights Reserved.
-  ~ SPDX-License-Identifier: Apache-2.0
-  -->
+<!-- Splash screen window background: dark bg with centered app logo -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Centered and padded Scitra logo to fit the adaptive icon 72dp safe zone -->
+    <!-- Background fill -->
+    <item>
+        <color android:color="@color/scitra_background" />
+    </item>
+    <!-- Centered logo -->
     <item
         android:gravity="center"
-        android:width="72dp"
-        android:height="72dp">
+        android:width="96dp"
+        android:height="96dp">
         <bitmap
             android:src="@drawable/logo_scitra"
             android:gravity="fill" />

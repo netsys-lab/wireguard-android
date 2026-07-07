@@ -6,14 +6,11 @@ package com.wireguard.android.fragment
 
 import android.os.Bundle
 import android.view.LayoutInflater
-import android.view.Menu
-import android.view.MenuInflater
-import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.view.MenuProvider
 import androidx.databinding.DataBindingUtil
-import androidx.lifecycle.Lifecycle
+import androidx.fragment.app.FragmentTransaction
+import androidx.fragment.app.commit
 import androidx.lifecycle.lifecycleScope
 import com.wireguard.android.R
 import com.wireguard.android.backend.Tunnel
@@ -30,18 +27,13 @@ import kotlinx.coroutines.launch
 /**
  * Fragment that shows details about a specific tunnel.
  */
-class TunnelDetailFragment : BaseFragment(), MenuProvider {
+class TunnelDetailFragment : BaseFragment() {
     private var binding: TunnelDetailFragmentBinding? = null
     private var lastState = Tunnel.State.TOGGLE
     private var timerActive = true
+    private var selectedPathChip = PathChip.SHORTEST
 
-    override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-        return false
-    }
-
-    override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-        menuInflater.inflate(R.menu.tunnel_detail, menu)
-    }
+    private enum class PathChip { SHORTEST, MOST_RELIABLE, LONGEST }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -55,7 +47,6 @@ class TunnelDetailFragment : BaseFragment(), MenuProvider {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        requireActivity().addMenuProvider(this, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
 
     override fun onDestroyView() {
@@ -82,7 +73,9 @@ class TunnelDetailFragment : BaseFragment(), MenuProvider {
         } else {
             lifecycleScope.launch {
                 try {
-                    binding.config = newTunnel.getConfigAsync()
+                    val config = newTunnel.getConfigAsync()
+                    binding.config = config
+                    updateNetworkInfo(config)
                 } catch (_: Throwable) {
                     binding.config = null
                 }
@@ -103,6 +96,91 @@ class TunnelDetailFragment : BaseFragment(), MenuProvider {
         onSelectedTunnelChanged(null, selectedTunnel)
         super.onViewStateRestored(savedInstanceState)
     }
+
+    // ─── Navigation ─────────────────────────────────────────
+
+    /**
+     * Back button pressed — navigate back to the tunnel list.
+     */
+    fun onBackPressed(@Suppress("UNUSED_PARAMETER") view: View) {
+        activity?.onBackPressedDispatcher?.onBackPressed()
+    }
+
+    /**
+     * Settings gear pressed — navigate to the tunnel editor.
+     */
+    fun onEditTunnel(@Suppress("UNUSED_PARAMETER") view: View) {
+        val activity = activity ?: return
+        val isTwoPaneLayout = activity.findViewById<View?>(R.id.master_detail_wrapper) != null
+        parentFragmentManager.commit {
+            replace(
+                if (isTwoPaneLayout) R.id.detail_container else R.id.list_detail_container,
+                TunnelEditorFragment()
+            )
+            setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
+            addToBackStack(null)
+        }
+    }
+
+    // ─── Path Selection Chips ───────────────────────────────
+
+    /**
+     * Path chip clicked — update selection visual state.
+     */
+    fun onPathChipClicked(view: View) {
+        val binding = binding ?: return
+        selectedPathChip = when (view.id) {
+            R.id.chip_shortest -> PathChip.SHORTEST
+            R.id.chip_most_reliable -> PathChip.MOST_RELIABLE
+            R.id.chip_longest -> PathChip.LONGEST
+            else -> return
+        }
+        updatePathChips()
+    }
+
+    private fun updatePathChips() {
+        val binding = binding ?: return
+        val chips = listOf(
+            binding.chipShortest to PathChip.SHORTEST,
+            binding.chipMostReliable to PathChip.MOST_RELIABLE,
+            binding.chipLongest to PathChip.LONGEST
+        )
+        for ((chip, type) in chips) {
+            if (type == selectedPathChip) {
+                chip.setBackgroundResource(R.drawable.scitra_chip_selected)
+                chip.setTextColor(resources.getColor(R.color.scitra_on_primary, null))
+                chip.paint.isFakeBoldText = true
+            } else {
+                chip.setBackgroundResource(R.drawable.scitra_chip_unselected)
+                chip.setTextColor(resources.getColor(R.color.scitra_on_surface_variant, null))
+                chip.paint.isFakeBoldText = false
+            }
+        }
+        // Update the "CURRENT PATH:" label
+        val pathName = when (selectedPathChip) {
+            PathChip.SHORTEST -> "SHORTEST"
+            PathChip.MOST_RELIABLE -> "MOST RELIABLE"
+            PathChip.LONGEST -> "LONGEST"
+        }
+        binding.currentPathText.text = getString(R.string.current_path_label) + "  " + pathName
+    }
+
+    // ─── Network Info ───────────────────────────────────────
+
+    private fun updateNetworkInfo(config: Config) {
+        val binding = binding ?: return
+        // Gateway: use the first peer's endpoint if available
+        val firstEndpoint = config.peers.firstOrNull()?.endpoint
+        if (firstEndpoint != null && firstEndpoint.isPresent) {
+            val ep = firstEndpoint.get()
+            binding.gatewayText.text = ep.host
+            binding.gatewayText.visibility = View.VISIBLE
+        } else {
+            binding.gatewayText.text = "—"
+        }
+    }
+
+    // ─── Stats Polling ──────────────────────────────────────
 
     private suspend fun updateStats() {
         val binding = binding ?: return
