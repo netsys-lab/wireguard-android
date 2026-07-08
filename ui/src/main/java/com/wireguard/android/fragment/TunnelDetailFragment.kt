@@ -22,8 +22,7 @@ import androidx.lifecycle.lifecycleScope
 import com.wireguard.android.R
 import com.wireguard.android.backend.Tunnel
 import android.widget.Toast
-import androidx.fragment.app.FragmentTransaction
-import com.google.android.material.button.MaterialButton
+import com.wireguard.android.widget.ToggleSwitch
 import com.wireguard.android.databinding.TunnelDetailFragmentBinding
 import com.wireguard.android.databinding.TunnelDetailPeerBinding
 import com.wireguard.android.model.ObservableTunnel
@@ -86,7 +85,6 @@ class TunnelDetailFragment : BaseFragment() {
                     binding.config = config
                     updateNetworkInfo(config)
                     binding.config = newTunnel.getConfigAsync()
-                    updateScionToggleButton(newTunnel.isScion)
                 } catch (_: Throwable) {
                     binding.config = null
                 }
@@ -105,7 +103,6 @@ class TunnelDetailFragment : BaseFragment() {
         binding ?: return
         binding!!.fragment = this
         onSelectedTunnelChanged(null, selectedTunnel)
-        selectedTunnel?.let { updateScionToggleButton(it.isScion) }
         super.onViewStateRestored(savedInstanceState)
     }
 
@@ -330,8 +327,10 @@ class TunnelDetailFragment : BaseFragment() {
             .commit()
     }
 
-    fun onToggleScionIp(view: View) {
+    fun toggleScionMode(view: View, checked: Boolean) {
+        val toggleSwitch = view as? ToggleSwitch ?: return
         val tunnel = binding?.tunnel ?: return
+        toggleSwitch.isEnabled = false
         lifecycleScope.launch {
             try {
                 val currentConfig = tunnel.getConfigAsync()
@@ -359,23 +358,13 @@ class TunnelDetailFragment : BaseFragment() {
 
                 tunnel.setConfigAsync(newConfig)
                 binding?.config = newConfig
-                updateScionToggleButton(newMode == "SCION")
+                toggleSwitch?.setCheckedInternal(checked)
                 val label = if (newMode == "SCION") "SCION" else "IP"
                 Toast.makeText(context, "Switched to $label mode", Toast.LENGTH_SHORT).show()
             } catch (e: Throwable) {
+                toggleSwitch?.setCheckedInternal(!checked)
                 Toast.makeText(context, "Error switching mode: ${e.message}", Toast.LENGTH_LONG).show()
             }
-        }
-    }
-
-    private fun updateScionToggleButton(isScion: Boolean) {
-        val btn = binding?.root?.findViewById<MaterialButton>(R.id.btn_scion_ip_toggle) ?: return
-        if (isScion) {
-            btn.text = "SCION"
-            btn.setTextColor(resources.getColor(R.color.scitra_primary, null))
-        } else {
-            btn.text = "IP"
-            btn.setTextColor(resources.getColor(R.color.scitra_on_surface_variant, null))
         }
     }
 }

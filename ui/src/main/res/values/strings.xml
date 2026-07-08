@@ -264,6 +264,7 @@
 
     <!-- Status Screen -->
     <string name="scion_connection">SCION CONNECTION</string>
+    <string name="normal_connection">NORMAL CONNECTION</string>
     <string name="tunnel_status_label">TUNNEL STATUS</string>
     <string name="interface_details">INTERFACE DETAILS</string>
     <string name="local_address">LOCAL ADDRESS</string>
