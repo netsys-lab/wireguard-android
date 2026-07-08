@@ -8,6 +8,13 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.app.AlertDialog
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.graphics.Typeface
+import android.widget.TextView
+import androidx.core.view.MenuProvider
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.FragmentTransaction
 import androidx.fragment.app.commit
@@ -15,6 +22,8 @@ import androidx.lifecycle.lifecycleScope
 import com.wireguard.android.R
 import com.wireguard.android.backend.Tunnel
 import android.widget.Toast
+import androidx.fragment.app.FragmentTransaction
+import com.google.android.material.button.MaterialButton
 import com.wireguard.android.databinding.TunnelDetailFragmentBinding
 import com.wireguard.android.databinding.TunnelDetailPeerBinding
 import com.wireguard.android.model.ObservableTunnel
@@ -76,6 +85,8 @@ class TunnelDetailFragment : BaseFragment() {
                     val config = newTunnel.getConfigAsync()
                     binding.config = config
                     updateNetworkInfo(config)
+                    binding.config = newTunnel.getConfigAsync()
+                    updateScionToggleButton(newTunnel.isScion)
                 } catch (_: Throwable) {
                     binding.config = null
                 }
@@ -94,6 +105,7 @@ class TunnelDetailFragment : BaseFragment() {
         binding ?: return
         binding!!.fragment = this
         onSelectedTunnelChanged(null, selectedTunnel)
+        selectedTunnel?.let { updateScionToggleButton(it.isScion) }
         super.onViewStateRestored(savedInstanceState)
     }
 
@@ -255,6 +267,7 @@ class TunnelDetailFragment : BaseFragment() {
                     .setKeyPair(currentConfig.`interface`.keyPair)
                     .setBootstrapUrl(currentConfig.`interface`.bootstrapUrl)
                     .setPathPolicy(newJson)
+                    .setTunnelMode(currentConfig.`interface`.tunnelMode)
                 
                 currentConfig.`interface`.listenPort.ifPresent { newInterfaceBuilder.setListenPort(it) }
                 currentConfig.`interface`.mtu.ifPresent { newInterfaceBuilder.setMtu(it) }
@@ -270,6 +283,99 @@ class TunnelDetailFragment : BaseFragment() {
             } catch (e: Throwable) {
                 Toast.makeText(context, "Error saving Path Policy: " + e.message, Toast.LENGTH_LONG).show()
             }
+        }
+    }
+
+    fun onViewConfigClick(view: View) {
+        val tunnel = binding?.tunnel ?: return
+        lifecycleScope.launch {
+            try {
+                val config = tunnel.getConfigAsync()
+                val configText = config.toWgQuickString()
+
+                val dialog = AlertDialog.Builder(requireContext())
+                    .setTitle("Configuration: ${tunnel.name}")
+                    .setMessage(configText)
+                    .setPositiveButton("OK", null)
+                    .setNeutralButton("Copy") { _, _ ->
+                        val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = ClipData.newPlainText("config", configText)
+                        clipboard.setPrimaryClip(clip)
+                        Toast.makeText(context, "Config copied to clipboard", Toast.LENGTH_SHORT).show()
+                    }
+                    .create()
+                dialog.show()
+
+                // Monospace Font für bessere Lesbarkeit
+                dialog.findViewById<TextView>(android.R.id.message)?.typeface = Typeface.MONOSPACE
+            } catch (e: Throwable) {
+                Toast.makeText(context, "Error loading config: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    fun onEditClick(view: View) {
+        val parentFm = parentFragmentManager
+        val containerId =
+            if (parentFm.findFragmentById(R.id.detail_container) != null) {
+                R.id.detail_container
+            } else {
+                R.id.list_detail_container
+            }
+
+        parentFm.beginTransaction()
+            .replace(containerId, TunnelEditorFragment())
+            .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
+            .addToBackStack(null)
+            .commit()
+    }
+
+    fun onToggleScionIp(view: View) {
+        val tunnel = binding?.tunnel ?: return
+        lifecycleScope.launch {
+            try {
+                val currentConfig = tunnel.getConfigAsync()
+                val currentMode = currentConfig.`interface`.tunnelMode
+                val newMode = if (currentMode.isScion) "IP" else "SCION"
+
+                val newInterfaceBuilder = Interface.Builder()
+                    .addAddresses(currentConfig.`interface`.addresses)
+                    .addDnsServers(currentConfig.`interface`.dnsServers)
+                    .addDnsSearchDomains(currentConfig.`interface`.dnsSearchDomains)
+                    .excludeApplications(currentConfig.`interface`.excludedApplications)
+                    .includeApplications(currentConfig.`interface`.includedApplications)
+                    .setKeyPair(currentConfig.`interface`.keyPair)
+                    .setBootstrapUrl(currentConfig.`interface`.bootstrapUrl)
+                    .setPathPolicy(currentConfig.`interface`.pathPolicy)
+                    .setTunnelMode(Interface.TunnelMode.valueOf(newMode))
+
+                currentConfig.`interface`.listenPort.ifPresent { newInterfaceBuilder.setListenPort(it) }
+                currentConfig.`interface`.mtu.ifPresent { newInterfaceBuilder.setMtu(it) }
+
+                val newConfig = Config.Builder()
+                    .setInterface(newInterfaceBuilder.build())
+                    .addPeers(currentConfig.peers)
+                    .build()
+
+                tunnel.setConfigAsync(newConfig)
+                binding?.config = newConfig
+                updateScionToggleButton(newMode == "SCION")
+                val label = if (newMode == "SCION") "SCION" else "IP"
+                Toast.makeText(context, "Switched to $label mode", Toast.LENGTH_SHORT).show()
+            } catch (e: Throwable) {
+                Toast.makeText(context, "Error switching mode: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun updateScionToggleButton(isScion: Boolean) {
+        val btn = binding?.root?.findViewById<MaterialButton>(R.id.btn_scion_ip_toggle) ?: return
+        if (isScion) {
+            btn.text = "SCION"
+            btn.setTextColor(resources.getColor(R.color.scitra_primary, null))
+        } else {
+            btn.text = "IP"
+            btn.setTextColor(resources.getColor(R.color.scitra_on_surface_variant, null))
         }
     }
 }

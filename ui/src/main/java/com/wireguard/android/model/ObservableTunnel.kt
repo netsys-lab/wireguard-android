@@ -100,7 +100,7 @@ class ObservableTunnel internal constructor(
 
     @get:Bindable
     val isScion: Boolean
-        get() = config?.getInterface()?.getBootstrapUrl()?.isNotEmpty() == true
+        get() = config?.getInterface()?.getTunnelMode()?.isScion == true
 
     fun onConfigChanged(config: Config?): Config? {
         this.config = config

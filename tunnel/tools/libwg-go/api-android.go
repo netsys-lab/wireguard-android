@@ -10,25 +10,25 @@ package main
 import "C"
 
 import (
-    "context"
+	"context"
 	"fmt"
 	"math"
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"runtime/debug"
 	"strings"
-	"unsafe"
-	"path/filepath"
 	"time"
+	"unsafe"
 
 	"golang.org/x/sys/unix"
 	"golang.zx2c4.com/wireguard/conn"
 	"golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/ipc"
-	"golang.zx2c4.com/wireguard/tun"
 	bootstrap "golang.zx2c4.com/wireguard/translator/bootstrap"
+	"golang.zx2c4.com/wireguard/tun"
 )
 
 type AndroidLogger struct {
@@ -93,10 +93,10 @@ func wgTurnOn(interfaceName string, tunFd int32, settings string) int32 {
 
 	logger.Verbosef("Attaching to interface %v", name)
 	scionConfig := device.ScionDeviceConfig{
-        Enabled:       false,
-        InterfaceName: name,
-    }
-    //SCION start disabled is enabled in app later.
+		Enabled:       false,
+		InterfaceName: name,
+	}
+	//SCION start disabled is enabled in app later.
 	device := device.NewDevice(tun, conn.NewStdNetBind(), logger, scionConfig)
 
 	err = device.IpcSet(settings)
@@ -133,7 +133,9 @@ func wgTurnOn(interfaceName string, tunFd int32, settings string) int32 {
 	err = device.Up()
 	if err != nil {
 		logger.Errorf("Unable to bring up device: %v", err)
-		uapiFile.Close()
+		if uapiFile != nil {
+			uapiFile.Close()
+		}
 		device.Close()
 		return -1
 	}
@@ -147,7 +149,9 @@ func wgTurnOn(interfaceName string, tunFd int32, settings string) int32 {
 	}
 	if i == math.MaxInt32 {
 		logger.Errorf("Unable to find empty handle")
-		uapiFile.Close()
+		if uapiFile != nil {
+			uapiFile.Close()
+		}
 		device.Close()
 		return -1
 	}
@@ -249,13 +253,14 @@ Downloads SCION topology + certificates from a bootstrap server. It:
 This gives the Go backend the SCION network topology it needs to know which paths exist.
 */
 func wgScionBootstrap(configDir string, bootstrapURL string) *C.char {
-    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-    defer cancel()
-    if err := bootstrap.BootstrapFetch(ctx, bootstrapURL, configDir); err != nil {
-        return C.CString(err.Error())
-    }
-    return C.CString("ok")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := bootstrap.BootstrapFetch(ctx, bootstrapURL, configDir); err != nil {
+		return C.CString(err.Error())
+	}
+	return C.CString("ok")
 }
+
 //export wgInitScion
 /*
 Initializes the SCION translator on an already running WireGuard device. It:
@@ -267,20 +272,51 @@ Initializes the SCION translator on an already running WireGuard device. It:
 This is the deferred init — the tunnel is already up, now SCION is enabled on it.
 */
 func wgInitScion(tunnelHandle int32, configDir string, interfaceName string) *C.char {
-    handle, ok := tunnelHandles[tunnelHandle]
-    if !ok {
-        return C.CString("invalid handle")
-    }
-    scionConfig := device.ScionDeviceConfig{
-        Enabled:       true,
-        ConfigDir:     configDir,
-        InterfaceName: interfaceName,
-    }
-    if err := handle.device.InitSCION(scionConfig); err != nil {
-        return C.CString(err.Error())
-    }
-    return C.CString("ok")
+	handle, ok := tunnelHandles[tunnelHandle]
+	if !ok {
+		return C.CString("invalid handle")
+	}
+	scionConfig := device.ScionDeviceConfig{
+		Enabled:       true,
+		ConfigDir:     configDir,
+		InterfaceName: interfaceName,
+	}
+	if err := handle.device.InitSCION(scionConfig); err != nil {
+		return C.CString(err.Error())
+	}
+	return C.CString("ok")
 }
+
+//export wgInitScionWithBootstrapRetry
+func wgInitScionWithBootstrapRetry(tunnelHandle int32, configDir string, interfaceName string, bootstrapURL string) *C.char {
+	handle, ok := tunnelHandles[tunnelHandle]
+	if !ok {
+		return C.CString("invalid handle")
+	}
+
+	if configDir == "" {
+		configDir = filepath.Join(os.TempDir(), "wg-scion")
+	}
+
+	scionConfig := device.ScionDeviceConfig{
+		Enabled:       true,
+		ConfigDir:     configDir,
+		InterfaceName: interfaceName,
+	}
+
+	err := handle.device.InitSCIONWithBootstrapRetry(
+		context.Background(),
+		scionConfig,
+		bootstrapURL,
+		device.DefaultSCIONInitRetryOptions(),
+	)
+	if err != nil {
+		return C.CString(err.Error())
+	}
+
+	return C.CString("ok")
+}
+
 //export wgGetScionStatus
 /*
 Returns a JSON snapshot of the SCION path pool:
@@ -288,16 +324,15 @@ which ISD-AS pairs have cached paths, their latencies, expiry, etc.
 This is for the UI to display SCION status.
 */
 func wgGetScionStatus(tunnelHandle int32) *C.char {
-    handle, ok := tunnelHandles[tunnelHandle]
-    if !ok {
-        return C.CString("{}")
-    }
-    json, err := handle.device.SCIONPathSnapshotJSON()
-    if err != nil {
-        return C.CString("{}")
-    }
-    return C.CString(json)
+	handle, ok := tunnelHandles[tunnelHandle]
+	if !ok {
+		return C.CString("{}")
+	}
+	json, err := handle.device.SCIONPathSnapshotJSON()
+	if err != nil {
+		return C.CString("{}")
+	}
+	return C.CString(json)
 }
-
 
 func main() {}

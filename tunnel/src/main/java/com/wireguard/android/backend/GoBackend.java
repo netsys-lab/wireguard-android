@@ -43,6 +43,7 @@ import androidx.collection.ArraySet;
 public final class GoBackend implements Backend {
     private static final int DNS_RESOLUTION_RETRIES = 10;
     private static final String TAG = "WireGuard/GoBackend";
+    private static final String TAG_SCION = "WireGuard/GoBackend/SCION";
     @Nullable private static AlwaysOnCallback alwaysOnCallback;
     private static CompletableFuture<VpnService> vpnService = new CompletableFuture<>();
     private final Context context;
@@ -87,6 +88,12 @@ public final class GoBackend implements Backend {
     private static native String wgScionBootstrap(String configDir, String bootstrapURL);
     private static native String wgInitScion(int handle, String configDir, String interfaceName);
     private static native String wgGetScionStatus(int handle);
+    private static native String wgInitScionWithBootstrapRetry(
+        int tunnelHandle,
+        String configDir,
+        String interfaceName,
+        String bootstrapUrl
+    );
 
     /**
      * This gives a path like /data/data/com.wireguard.android.debug/files/scion/
@@ -112,6 +119,22 @@ public final class GoBackend implements Backend {
         if (currentTunnelHandle == -1)
             return "{}";
         return wgGetScionStatus(currentTunnelHandle);
+    }
+    private String initScionWithBootstrapRetry(
+            final int tunnelHandle,
+            final String configDir,
+            final String interfaceName,
+            final String bootstrapUrl
+    ) {
+        if (tunnelHandle == -1)
+            return "no tunnel running";
+
+        return wgInitScionWithBootstrapRetry(
+                tunnelHandle,
+                configDir,
+                interfaceName,
+                bootstrapUrl
+        );
     }
 
     /**
@@ -382,6 +405,50 @@ public final class GoBackend implements Backend {
 
             service.protect(wgGetSocketV4(currentTunnelHandle));
             service.protect(wgGetSocketV6(currentTunnelHandle));
+
+            // === SCION Init (Schritt 2) ===
+            if (config.getInterface().isScionEnabled()) {
+                final String bootstrapUrl = config.getInterface().getBootstrapUrl();
+                if (bootstrapUrl != null && !bootstrapUrl.isEmpty()) {
+                    final String configDir = getScionConfigDir();
+                    Log.i(TAG_SCION, "SCION tunnel detected, starting backend bootstrap/init retry...");
+                    Log.d(TAG_SCION, "ConfigDir: " + configDir);
+                    Log.d(TAG_SCION, "BootstrapURL: " + bootstrapUrl);
+
+                    // Bootstrap + Init in Go backend with retry.
+                    final int scionTunnelHandle = currentTunnelHandle;
+                    final String scionInterfaceName = tunnel.getName();
+
+                    CompletableFuture.runAsync(() -> {
+                        try {
+                            Log.i(TAG_SCION, "Starting SCION bootstrap/init with backend retry...");
+                            Log.d(TAG_SCION, "ConfigDir: " + configDir);
+                            Log.d(TAG_SCION, "BootstrapURL: " + bootstrapUrl);
+                            Log.d(TAG_SCION, "InterfaceName: " + scionInterfaceName);
+                            Log.d(TAG_SCION, "TunnelHandle: " + scionTunnelHandle);
+
+                            final String result = initScionWithBootstrapRetry(
+                                    scionTunnelHandle,
+                                    configDir,
+                                    scionInterfaceName,
+                                    bootstrapUrl
+                            );
+
+                            if ("ok".equals(result)) {
+                                Log.i(TAG_SCION, "SCION bootstrap/init completed successfully");
+                            } else {
+                                Log.e(TAG_SCION, "SCION bootstrap/init failed after retries: " + result);
+                            }
+                        } catch (Exception e) {
+                            Log.e(TAG_SCION, "SCION bootstrap/init error: " + e.getMessage(), e);
+                        }
+                    });
+                } else {
+                    Log.w(TAG_SCION, "TunnelMode=SCION but BootstrapURL is empty");
+                }
+            } else {
+                Log.d(TAG, "TunnelMode=IP, skipping SCION init");
+            }
         } else {
             if (currentTunnelHandle == -1) {
                 Log.w(TAG, "Tunnel already down");

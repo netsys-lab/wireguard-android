@@ -71,19 +71,21 @@ public final class Config {
         boolean seenInterfaceSection = false;
         @Nullable String bootstrapUrl = null;
         @Nullable String pathPolicy = null;
+        @Nullable String tunnelModeRaw = null;
         @Nullable String line;
         while ((line = reader.readLine()) != null) {
             final String trimmedLine = line.trim();
             if (trimmedLine.startsWith("#")) {
-                if (trimmedLine.toUpperCase(Locale.ENGLISH).contains("BOOTSTRAPURL")) {
-                    final int equalsIndex = trimmedLine.indexOf('=');
-                    if (equalsIndex != -1) {
-                        bootstrapUrl = trimmedLine.substring(equalsIndex + 1).trim();
-                    }
-                } else if (trimmedLine.toUpperCase(Locale.ENGLISH).contains("PATHPOLICY")) {
-                    final int equalsIndex = trimmedLine.indexOf('=');
-                    if (equalsIndex != -1) {
-                        pathPolicy = trimmedLine.substring(equalsIndex + 1).trim();
+                final String upper = trimmedLine.toUpperCase(Locale.ENGLISH);
+                final int equalsIndex = trimmedLine.indexOf('=');
+                if (equalsIndex != -1) {
+                    final String value = trimmedLine.substring(equalsIndex + 1).trim();
+                    if (upper.contains("TUNNELMODE")) {
+                        tunnelModeRaw = value;
+                    } else if (upper.contains("BOOTSTRAPURL")) {
+                        bootstrapUrl = value;
+                    } else if (upper.contains("PATHPOLICY")) {
+                        pathPolicy = value;
                     }
                 }
             }
@@ -125,7 +127,7 @@ public final class Config {
             throw new BadConfigException(Section.CONFIG, Location.TOP_LEVEL,
                     Reason.MISSING_SECTION, null);
         // Combine all [Interface] sections in the file.
-        builder.parseInterface(interfaceLines, bootstrapUrl, pathPolicy);
+        builder.parseInterface(interfaceLines, tunnelModeRaw, bootstrapUrl, pathPolicy);
         return builder.build();
     }
 
@@ -224,17 +226,17 @@ public final class Config {
 
         public Builder parseInterface(final Iterable<? extends CharSequence> lines)
                 throws BadConfigException {
-            return parseInterface(lines, null);
+            return parseInterface(lines, null, null, null);
         }
 
         public Builder parseInterface(final Iterable<? extends CharSequence> lines, @Nullable final String bootstrapUrl)
                 throws BadConfigException {
-            return parseInterface(lines, bootstrapUrl, null);
+            return parseInterface(lines, null, bootstrapUrl, null);
         }
 
-        public Builder parseInterface(final Iterable<? extends CharSequence> lines, @Nullable final String bootstrapUrl, @Nullable final String pathPolicy)
+        public Builder parseInterface(final Iterable<? extends CharSequence> lines, @Nullable final String tunnelModeRaw, @Nullable final String bootstrapUrl, @Nullable final String pathPolicy)
                 throws BadConfigException {
-            return setInterface(Interface.parse(lines, bootstrapUrl, pathPolicy));
+            return setInterface(Interface.parse(lines, tunnelModeRaw, bootstrapUrl, pathPolicy));
         }
 
         public Builder parsePeer(final Iterable<? extends CharSequence> lines)

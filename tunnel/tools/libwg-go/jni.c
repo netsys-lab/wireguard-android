@@ -16,7 +16,57 @@ extern char *wgGetConfig(int handle);
 extern char *wgVersion();
 extern char *wgScionBootstrap(struct go_string configDir, struct go_string bootstrapURL);
 extern char *wgInitScion(int handle, struct go_string configDir, struct go_string interfaceName);
+extern char *wgInitScionWithBootstrapRetry(
+        int handle,
+        struct go_string configDir,
+        struct go_string interfaceName,
+        struct go_string bootstrapURL
+);
 extern char *wgGetScionStatus(int handle);
+
+JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgInitScionWithBootstrapRetry(
+        JNIEnv *env,
+        jclass c,
+        jint handle,
+        jstring configDir,
+        jstring interfaceName,
+        jstring bootstrapURL)
+{
+    const char *configDir_str = (*env)->GetStringUTFChars(env, configDir, 0);
+    size_t configDir_len = (*env)->GetStringUTFLength(env, configDir);
+
+    const char *interfaceName_str = (*env)->GetStringUTFChars(env, interfaceName, 0);
+    size_t interfaceName_len = (*env)->GetStringUTFLength(env, interfaceName);
+
+    const char *bootstrapURL_str = (*env)->GetStringUTFChars(env, bootstrapURL, 0);
+    size_t bootstrapURL_len = (*env)->GetStringUTFLength(env, bootstrapURL);
+
+    char *result = wgInitScionWithBootstrapRetry(
+            handle,
+            (struct go_string){
+                    .str = configDir_str,
+                    .n = configDir_len
+            },
+            (struct go_string){
+                    .str = interfaceName_str,
+                    .n = interfaceName_len
+            },
+            (struct go_string){
+                    .str = bootstrapURL_str,
+                    .n = bootstrapURL_len
+            });
+
+    (*env)->ReleaseStringUTFChars(env, configDir, configDir_str);
+    (*env)->ReleaseStringUTFChars(env, interfaceName, interfaceName_str);
+    (*env)->ReleaseStringUTFChars(env, bootstrapURL, bootstrapURL_str);
+
+    if (!result)
+        return NULL;
+
+    jstring ret = (*env)->NewStringUTF(env, result);
+    free(result);
+    return ret;
+}
 
 JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgScionBootstrap(JNIEnv *env, jclass c, jstring configDir, jstring bootstrapURL)
 {

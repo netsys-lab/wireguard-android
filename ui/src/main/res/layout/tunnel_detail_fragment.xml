@@ -150,6 +150,167 @@
                 android:background="@drawable/scitra_section_card_bg"
                 android:padding="20dp"
                 android:layout_marginTop="16dp">
+                android:layout_marginStart="8dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginEnd="8dp"
+                android:layout_marginBottom="8dp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/interface_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/interface_title"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                    <com.wireguard.android.widget.ToggleSwitch
+                        android:id="@+id/tunnel_switch"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:nextFocusDown="@id/interface_name_text"
+                        android:nextFocusForward="@id/interface_name_text"
+                        app:checked="@{tunnel.state == State.UP}"
+                        app:layout_constraintBaseline_toBottomOf="@+id/interface_title"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:onBeforeCheckedChanged="@{fragment::setTunnelState}" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_scion_ip_toggle"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:textAllCaps="false"
+                        android:textSize="12sp"
+                        android:minWidth="64dp"
+                        android:onClick="@{fragment::onToggleScionIp}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintBaseline_toBottomOf="@+id/interface_title" />
+
+                    <TextView
+                        android:id="@+id/interface_name_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/interface_name_text"
+                        android:text="@string/name"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/btn_scion_ip_toggle" />
+
+                    <TextView
+                        android:id="@+id/interface_name_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/name"
+                        android:nextFocusUp="@id/tunnel_switch"
+                        android:nextFocusDown="@id/public_key_text"
+                        android:nextFocusForward="@id/public_key_text"
+                        android:onClick="@{ClipboardUtils::copyTextView}"
+                        android:text="@{tunnel.name}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/interface_name_label"
+                        tools:text="wg0" />
+
+                    <TextView
+                        android:id="@+id/public_key_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/public_key_text"
+                        android:text="@string/public_key"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@id/interface_name_text" />
+
+                    <TextView
+                        android:id="@+id/public_key_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/public_key"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:nextFocusUp="@id/interface_name_text"
+                        android:nextFocusDown="@id/addresses_text"
+                        android:nextFocusForward="@id/addresses_text"
+                        android:onClick="@{ClipboardUtils::copyTextView}"
+                        android:singleLine="true"
+                        android:text="@{config.interface.keyPair.publicKey.toBase64}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/public_key_label"
+                        tools:text="wOs2eguFEohqIZxlSJ1CAT9584tc6ejj9hfGFsoBVkA=" />
+
+                    <TextView
+                        android:id="@+id/addresses_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/addresses_text"
+                        android:text="@string/addresses"
+                        android:visibility="@{config.interface.addresses.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@id/public_key_text" />
+
+                    <TextView
+                        android:id="@+id/addresses_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/addresses"
+                        android:nextFocusUp="@id/public_key_text"
+                        android:nextFocusDown="@id/dns_servers_text"
+                        android:nextFocusForward="@id/dns_servers_text"
+                        android:onClick="@{ClipboardUtils::copyTextView}"
+                        android:text="@{config.interface.addresses}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{config.interface.addresses.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/addresses_label"
+                        tools:text="fc00:bbbb:bbbb:bb11::3:368b/128" />
+
+                    <TextView
+                        android:id="@+id/dns_servers_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/dns_servers_text"
+                        android:text="@string/dns_servers"
+                        android:visibility="@{config.interface.dnsServers.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@id/addresses_text" />
+
+                    <TextView
+                        android:id="@+id/dns_servers_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/dns_servers"
+                        android:nextFocusUp="@id/addresses_text"
+                        android:nextFocusDown="@id/dns_search_domains_text"
+                        android:nextFocusForward="@id/dns_search_domains_text"
+                        android:onClick="@{ClipboardUtils::copyTextView}"
+                        android:text="@{config.interface.dnsServers}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{config.interface.dnsServers.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/dns_servers_label"
+                        tools:text="8.8.8.8, 8.8.4.4" />
+
+                    <TextView
+                        android:id="@+id/dns_search_domains_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/dns_search_domain_text"
+                        android:text="@string/dns_search_domains"
+                        android:visibility="@{config.interface.dnsSearchDomains.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@id/dns_servers_text" />
 
                 <!-- Section header -->
                 <LinearLayout
@@ -513,6 +674,45 @@
                 android:textColor="@color/scitra_on_surface"
                 android:textSize="20sp"
                 android:textStyle="bold" />
+                        android:layout_marginTop="4dp"
+                        android:text="Configure Path Policy"
+                        android:textColor="@color/scitra_primary"
+                        android:onClick="@{fragment::onRequestConfigurePathPolicy}"
+                        android:visibility="@{config.interface.bootstrapUrl.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/path_policy_label"
+                        app:icon="@drawable/ic_action_edit"
+                        app:iconTint="@color/scitra_primary" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_view_config"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="View Config"
+                        android:onClick="@{fragment::onViewConfigClick}"
+                        app:layout_constraintTop_toBottomOf="@+id/btn_edit_path_policy"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_edit_tunnel"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/edit"
+                        android:textColor="@color/scitra_primary"
+                        android:onClick="@{fragment::onEditClick}"
+                        app:icon="@drawable/ic_action_edit"
+                        app:iconTint="@color/scitra_primary"
+                        app:layout_constraintTop_toBottomOf="@+id/btn_view_config"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent" />
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <LinearLayout
                 android:id="@+id/peers_layout"

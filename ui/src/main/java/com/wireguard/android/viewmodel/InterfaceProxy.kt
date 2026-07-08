@@ -76,6 +76,13 @@ class InterfaceProxy : BaseObservable, Parcelable {
         }
 
     @get:Bindable
+    var tunnelMode: String = "IP"
+        set(value) {
+            field = value
+            notifyPropertyChanged(BR.tunnelMode)
+        }
+
+    @get:Bindable
     val publicKey: String
         get() = try {
             KeyPair(Key.fromBase64(privateKey)).publicKey.toBase64()
@@ -93,6 +100,7 @@ class InterfaceProxy : BaseObservable, Parcelable {
         privateKey = parcel.readString() ?: ""
         bootstrapUrl = parcel.readString() ?: ""
         pathPolicy = parcel.readString() ?: ""
+        tunnelMode = parcel.readString() ?: "IP"
     }
 
     constructor(other: Interface) {
@@ -107,6 +115,7 @@ class InterfaceProxy : BaseObservable, Parcelable {
         privateKey = keyPair.privateKey.toBase64()
         bootstrapUrl = other.bootstrapUrl
         pathPolicy = other.pathPolicy
+        tunnelMode = other.tunnelMode.name
     }
 
     constructor()
@@ -132,6 +141,7 @@ class InterfaceProxy : BaseObservable, Parcelable {
         if (privateKey.isNotEmpty()) builder.parsePrivateKey(privateKey)
         builder.setBootstrapUrl(bootstrapUrl)
         builder.setPathPolicy(pathPolicy)
+        builder.setTunnelMode(com.wireguard.config.Interface.TunnelMode.valueOf(tunnelMode))
         return builder.build()
     }
 
@@ -145,6 +155,7 @@ class InterfaceProxy : BaseObservable, Parcelable {
         dest.writeString(privateKey)
         dest.writeString(bootstrapUrl)
         dest.writeString(pathPolicy)
+        dest.writeString(tunnelMode)
     }
 
     private class InterfaceProxyCreator : Parcelable.Creator<InterfaceProxy> {
