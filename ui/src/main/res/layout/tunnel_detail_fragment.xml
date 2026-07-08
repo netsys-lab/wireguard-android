@@ -12,6 +12,8 @@
 
         <import type="com.wireguard.android.util.ClipboardUtils" />
 
+        <import type="android.view.View" />
+
         <variable
             name="fragment"
             type="com.wireguard.android.fragment.TunnelDetailFragment" />
@@ -28,20 +30,126 @@
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="?attr/colorSurface"
+        android:background="@color/scitra_background"
         android:clickable="true"
         android:focusable="true"
         android:fitsSystemWindows="true"
         android:clipToPadding="false">
 
-        <androidx.constraintlayout.widget.ConstraintLayout
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingBottom="32dp">
 
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/tunnel_detail_card"
+            <!-- ═══════════════════════════════════════ -->
+            <!-- TOP BAR: Back arrow + Tunnel Name + Settings Gear -->
+            <!-- ═══════════════════════════════════════ -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingVertical="16dp">
+
+                <ImageView
+                    android:id="@+id/btn_back"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_arrow_back"
+                    app:tint="@color/scitra_primary"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/cancel"
+                    android:onClick="@{fragment::onBackPressed}" />
+
+                <TextView
+                    android:id="@+id/tunnel_name_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@{tunnel.name}"
+                    android:textColor="@color/scitra_on_surface"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    tools:text="Zurich-ETH-01" />
+
+                <ImageView
+                    android:id="@+id/btn_edit"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_settings"
+                    app:tint="@color/scitra_on_surface_variant"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/edit"
+                    android:onClick="@{fragment::onEditTunnel}" />
+
+            </LinearLayout>
+
+            <!-- ═══════════════════════════════════════ -->
+            <!-- STATUS ROW: SCION badge + Tunnel Status + Toggle -->
+            <!-- ═══════════════════════════════════════ -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingVertical="8dp"
+                android:paddingHorizontal="4dp">
+
+                <!-- SCION CONNECTION badge (only for SCION tunnels) -->
+                <TextView
+                    android:id="@+id/scion_badge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/scitra_status_badge_bg"
+                    android:text="@string/scion_connection"
+                    android:textColor="@color/status_green"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.05"
+                    android:visibility="@{config != null &amp;&amp; !config.interface.bootstrapUrl.isEmpty() ? View.VISIBLE : View.GONE}" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/tunnel_status_label"
+                    android:textColor="@color/scitra_on_surface_variant"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.05"
+                    android:layout_marginEnd="12dp" />
+
+                <com.wireguard.android.widget.ToggleSwitch
+                    android:id="@+id/tunnel_switch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:nextFocusDown="@id/interface_name_text"
+                    android:nextFocusForward="@id/interface_name_text"
+                    app:checked="@{tunnel.state == State.UP}"
+                    app:onBeforeCheckedChanged="@{fragment::setTunnelState}" />
+
+            </LinearLayout>
+
+            <!-- ═══════════════════════════════════════ -->
+            <!-- INTERFACE DETAILS CARD -->
+            <!-- ═══════════════════════════════════════ -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/scitra_section_card_bg"
+                android:padding="20dp"
+                android:layout_marginTop="16dp">
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="16dp"
                 android:layout_marginEnd="8dp"
@@ -204,174 +312,368 @@
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toBottomOf="@id/dns_servers_text" />
 
-                    <TextView
-                        android:id="@+id/dns_search_domains_text"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:contentDescription="@string/dns_search_domains"
-                        android:nextFocusUp="@id/dns_servers_text"
-                        android:nextFocusDown="@id/listen_port_text"
-                        android:nextFocusForward="@id/listen_port_text"
-                        android:onClick="@{ClipboardUtils::copyTextView}"
-                        android:text="@{config.interface.dnsSearchDomains}"
-                        android:textAppearance="?attr/textAppearanceBodyLarge"
-                        android:visibility="@{config.interface.dnsSearchDomains.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toBottomOf="@+id/dns_search_domains_label"
-                        tools:text="zx2c4.com" />
+                <!-- Section header -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="16dp">
 
                     <TextView
-                        android:id="@+id/listen_port_label"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:labelFor="@+id/listen_port_text"
-                        android:text="@string/listen_port"
-                        android:visibility="@{!config.interface.listenPort.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
-                        app:layout_constraintEnd_toStartOf="@id/mtu_label"
-                        app:layout_constraintHorizontal_weight="0.5"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toBottomOf="@id/dns_search_domains_text" />
+                        android:layout_weight="1"
+                        android:text="@string/interface_details"
+                        android:textColor="@color/scitra_on_surface_variant"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.1" />
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_code_brackets"
+                        android:contentDescription="@string/interface_details" />
+
+                </LinearLayout>
+
+                <!-- Local Address -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/local_address"
+                    android:textColor="@color/scitra_on_surface_variant"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.05"
+                    android:visibility="@{config != null &amp;&amp; !config.interface.addresses.isEmpty() ? View.VISIBLE : View.GONE}" />
+
+                <TextView
+                    android:id="@+id/interface_name_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@{config.interface.addresses}"
+                    android:textColor="@color/scitra_on_surface"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:onClick="@{ClipboardUtils::copyTextView}"
+                    android:contentDescription="@string/addresses"
+                    android:visibility="@{config != null &amp;&amp; !config.interface.addresses.isEmpty() ? View.VISIBLE : View.GONE}"
+                    tools:text="10.0.0.1/24" />
+
+                <!-- ISD-AS Identification (SCION only) -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/isd_as_identification"
+                    android:textColor="@color/scitra_on_surface_variant"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.05"
+                    android:visibility="@{config != null &amp;&amp; !config.interface.bootstrapUrl.isEmpty() ? View.VISIBLE : View.GONE}" />
+
+                <TextView
+                    android:id="@+id/isd_as_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="1-ff00:0:110"
+                    android:textColor="@color/scitra_on_surface"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:onClick="@{ClipboardUtils::copyTextView}"
+                    android:visibility="@{config != null &amp;&amp; !config.interface.bootstrapUrl.isEmpty() ? View.VISIBLE : View.GONE}"
+                    tools:text="1-ff00:0:110" />
+
+            </LinearLayout>
+
+            <!-- ═══════════════════════════════════════ -->
+            <!-- NETWORK INFO CARD -->
+            <!-- ═══════════════════════════════════════ -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/scitra_section_card_bg"
+                android:padding="20dp"
+                android:layout_marginTop="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/network_info"
+                    android:textColor="@color/scitra_on_surface_variant"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.1"
+                    android:layout_marginBottom="16dp" />
+
+                <!-- Gateway (first peer endpoint or placeholder) -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gateway_label"
+                    android:textColor="@color/scitra_on_surface_variant"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.05" />
+
+                <TextView
+                    android:id="@+id/gateway_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textColor="@color/scitra_on_surface"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:onClick="@{ClipboardUtils::copyTextView}"
+                    tools:text="192.168.1.1" />
+
+                <!-- DNS Servers -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/dns_servers"
+                    android:textColor="@color/scitra_on_surface_variant"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.05"
+                    android:visibility="@{config != null &amp;&amp; !config.interface.dnsServers.isEmpty() ? View.VISIBLE : View.GONE}" />
+
+                <TextView
+                    android:id="@+id/dns_servers_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@{config.interface.dnsServers}"
+                    android:textColor="@color/scitra_on_surface"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:onClick="@{ClipboardUtils::copyTextView}"
+                    android:contentDescription="@string/dns_servers"
+                    android:visibility="@{config != null &amp;&amp; !config.interface.dnsServers.isEmpty() ? View.VISIBLE : View.GONE}"
+                    tools:text="1.1.1.1\n8.8.8.8" />
+
+            </LinearLayout>
+
+            <!-- ═══════════════════════════════════════ -->
+            <!-- PATH SELECTION CARD (SCION only) -->
+            <!-- ═══════════════════════════════════════ -->
+            <LinearLayout
+                android:id="@+id/path_selection_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/scitra_section_card_bg"
+                android:padding="20dp"
+                android:layout_marginTop="12dp"
+                android:visibility="@{config != null &amp;&amp; !config.interface.bootstrapUrl.isEmpty() ? View.VISIBLE : View.GONE}">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/path_selection"
+                    android:textColor="@color/scitra_on_surface_variant"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.1"
+                    android:layout_marginBottom="16dp" />
+
+                <!-- Path Selection Chips -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                    android:layout_marginBottom="20dp">
 
                     <TextView
-                        android:id="@+id/listen_port_text"
+                        android:id="@+id/chip_shortest"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="6dp"
+                        android:gravity="center"
+                        android:text="@string/path_shortest"
+                        android:textColor="@color/scitra_on_primary"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/scitra_chip_selected"
+                        android:onClick="@{fragment::onPathChipClicked}" />
+
+                    <TextView
+                        android:id="@+id/chip_most_reliable"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_weight="1"
+                        android:layout_marginHorizontal="3dp"
+                        android:gravity="center"
+                        android:text="@string/path_most_reliable"
+                        android:textColor="@color/scitra_on_surface_variant"
+                        android:textSize="12sp"
+                        android:background="@drawable/scitra_chip_unselected"
+                        android:onClick="@{fragment::onPathChipClicked}" />
+
+                    <TextView
+                        android:id="@+id/chip_longest"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="6dp"
+                        android:gravity="center"
+                        android:text="@string/path_longest"
+                        android:textColor="@color/scitra_on_surface_variant"
+                        android:textSize="12sp"
+                        android:background="@drawable/scitra_chip_unselected"
+                        android:onClick="@{fragment::onPathChipClicked}" />
+
+                </LinearLayout>
+
+                <!-- Path Visualization (mocked) -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingVertical="8dp">
+
+                    <!-- Node: Local -->
+                    <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:contentDescription="@string/listen_port"
-                        android:nextFocusRight="@id/mtu_text"
-                        android:nextFocusUp="@id/dns_search_domains_text"
-                        android:nextFocusDown="@id/applications_text"
-                        android:nextFocusForward="@id/mtu_text"
-                        android:onClick="@{ClipboardUtils::copyTextView}"
-                        android:text="@{config.interface.listenPort}"
-                        android:textAppearance="?attr/textAppearanceBodyLarge"
-                        android:visibility="@{!config.interface.listenPort.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
-                        app:layout_constraintEnd_toStartOf="@id/mtu_label"
-                        app:layout_constraintHorizontal_weight="0.5"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toBottomOf="@+id/listen_port_label"
-                        tools:text="51820" />
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:gravity="center">
 
-                    <TextView
-                        android:id="@+id/mtu_label"
+                        <FrameLayout
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@drawable/scitra_path_node_bg">
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:gravity="center"
+                                android:text="L"
+                                android:textColor="@color/scitra_primary"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+                        </FrameLayout>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="LOCAL"
+                            android:textColor="@color/scitra_on_surface_variant"
+                            android:textSize="9sp"
+                            android:letterSpacing="0.05" />
+                    </LinearLayout>
+
+                    <!-- Line connector -->
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="2dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/scitra_path_line"
+                        android:layout_marginBottom="18dp" />
+
+                    <!-- Node: Intermediate -->
+                    <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:labelFor="@+id/mtu_text"
-                        android:text="@string/mtu"
-                        android:visibility="@{!config.interface.mtu.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintHorizontal_weight="0.5"
-                        app:layout_constraintLeft_toRightOf="@id/listen_port_label"
-                        app:layout_constraintStart_toEndOf="@id/listen_port_label"
-                        app:layout_constraintTop_toBottomOf="@id/dns_search_domains_text" />
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:gravity="center">
 
-                    <TextView
-                        android:id="@+id/mtu_text"
+                        <FrameLayout
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@drawable/scitra_path_node_bg">
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:gravity="center"
+                                android:text="I4"
+                                android:textColor="@color/scitra_primary"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+                        </FrameLayout>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="ISD-1"
+                            android:textColor="@color/scitra_on_surface_variant"
+                            android:textSize="9sp"
+                            android:letterSpacing="0.05" />
+                    </LinearLayout>
+
+                    <!-- Line connector -->
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="2dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/scitra_path_line"
+                        android:layout_marginBottom="18dp" />
+
+                    <!-- Node: Destination -->
+                    <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:contentDescription="@string/mtu"
-                        android:nextFocusLeft="@id/listen_port_text"
-                        android:nextFocusUp="@id/dns_servers_text"
-                        android:nextFocusForward="@id/applications_text"
-                        android:onClick="@{ClipboardUtils::copyTextView}"
-                        android:text="@{config.interface.mtu}"
-                        android:textAppearance="?attr/textAppearanceBodyLarge"
-                        android:visibility="@{!config.interface.mtu.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintHorizontal_weight="0.5"
-                        app:layout_constraintStart_toEndOf="@id/listen_port_label"
-                        app:layout_constraintStart_toStartOf="@+id/mtu_label"
-                        app:layout_constraintTop_toBottomOf="@+id/mtu_label"
-                        tools:text="1500" />
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:gravity="center">
 
-                    <androidx.constraintlayout.widget.Barrier
-                        android:id="@+id/listen_port_mtu_barrier"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        app:barrierDirection="bottom"
-                        app:constraint_referenced_ids="listen_port_text,mtu_text" />
+                        <FrameLayout
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@drawable/scitra_path_node_bg">
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:gravity="center"
+                                android:text="Z1"
+                                android:textColor="@color/scitra_primary"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+                        </FrameLayout>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="ZRH-01"
+                            android:textColor="@color/scitra_on_surface_variant"
+                            android:textSize="9sp"
+                            android:letterSpacing="0.05" />
+                    </LinearLayout>
 
-                    <TextView
-                        android:id="@+id/applications_label"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:labelFor="@+id/applications_text"
-                        android:text="@string/applications"
-                        android:visibility="@{config.interface.includedApplications.isEmpty() &amp;&amp; config.interface.excludedApplications.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toBottomOf="@+id/listen_port_mtu_barrier" />
+                </LinearLayout>
 
-                    <TextView
-                        android:id="@+id/applications_text"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:contentDescription="@string/applications"
-                        android:nextFocusUp="@id/mtu_text"
-                        android:nextFocusDown="@id/peers_layout"
-                        android:nextFocusForward="@id/peers_layout"
-                        android:onClick="@{ClipboardUtils::copyTextView}"
-                        android:text="@{config.interface.includedApplications.isEmpty() ? @plurals/n_excluded_applications(config.interface.excludedApplications.size(), config.interface.excludedApplications.size()) : @plurals/n_included_applications(config.interface.includedApplications.size(), config.interface.includedApplications.size())}"
-                        android:textAppearance="?attr/textAppearanceBodyLarge"
-                        android:visibility="@{config.interface.includedApplications.isEmpty() &amp;&amp; config.interface.excludedApplications.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toBottomOf="@+id/applications_label"
-                        tools:text="8 excluded" />
+                <!-- Current Path label -->
+                <TextView
+                    android:id="@+id/current_path_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="CURRENT PATH:  SHORTEST"
+                    android:textColor="@color/scitra_primary"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.05" />
 
-                    <androidx.constraintlayout.widget.Barrier
-                        android:id="@+id/applications_barrier"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        app:barrierDirection="bottom"
-                        app:constraint_referenced_ids="applications_text,listen_port_mtu_barrier" />
+            </LinearLayout>
 
-                    <TextView
-                        android:id="@+id/bootstrap_url_label"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:labelFor="@+id/bootstrap_url_text"
-                        android:text="Bootstrap URL"
-                        android:visibility="@{config.interface.bootstrapUrl.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toBottomOf="@+id/applications_barrier" />
-
-                    <TextView
-                        android:id="@+id/bootstrap_url_text"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:contentDescription="Bootstrap URL"
-                        android:onClick="@{ClipboardUtils::copyTextView}"
-                        android:text="@{config.interface.bootstrapUrl}"
-                        android:textAppearance="?attr/textAppearanceBodyLarge"
-                        android:visibility="@{config.interface.bootstrapUrl.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toBottomOf="@+id/bootstrap_url_label"
-                        tools:text="https://scion.bootstrap.org" />
-
-                    <androidx.constraintlayout.widget.Barrier
-                        android:id="@+id/bootstrap_url_barrier"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        app:barrierDirection="bottom"
-                        app:constraint_referenced_ids="bootstrap_url_text,applications_barrier" />
-
-                    <TextView
-                        android:id="@+id/path_policy_label"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="SCION Path Policy"
-                        android:visibility="@{config.interface.bootstrapUrl.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toBottomOf="@+id/bootstrap_url_barrier" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_edit_path_policy"
-                        style="@style/Widget.Material3.Button.TextButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
+            <!-- ═══════════════════════════════════════ -->
+            <!-- ACTIVE PEERS SECTION -->
+            <!-- ═══════════════════════════════════════ -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="12dp"
+                android:text="@string/active_peers"
+                android:textColor="@color/scitra_on_surface"
+                android:textSize="20sp"
+                android:textStyle="bold" />
                         android:layout_marginTop="4dp"
                         android:text="Configure Path Policy"
                         android:textColor="@color/scitra_primary"
@@ -416,14 +718,12 @@
                 android:id="@+id/peers_layout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
                 android:divider="@null"
                 android:orientation="vertical"
                 app:items="@{config.peers}"
                 app:layout="@{@layout/tunnel_detail_peer}"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/tunnel_detail_card"
                 tools:ignore="UselessLeaf" />
-        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        </LinearLayout>
     </ScrollView>
 </layout>

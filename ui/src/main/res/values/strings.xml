@@ -150,6 +150,7 @@
     <string name="log_export_subject">WireGuard Android Log File</string>
     <string name="log_export_success">Saved to “%s”</string>
     <string name="log_export_title">Export log file</string>
+    <string name="log_share_title">Share log file</string>
     <string name="log_saver_activity_label">Save log</string>
     <string name="log_viewer_pref_summary">Logs may assist with debugging</string>
     <string name="log_viewer_pref_title">View application log</string>
@@ -260,4 +261,25 @@
     <string name="biometric_prompt_private_key_title">Authenticate to view private key</string>
     <string name="biometric_auth_error">Authentication failure</string>
     <string name="biometric_auth_error_reason">Authentication failure: %s</string>
+
+    <!-- Status Screen -->
+    <string name="scion_connection">SCION CONNECTION</string>
+    <string name="tunnel_status_label">TUNNEL STATUS</string>
+    <string name="interface_details">INTERFACE DETAILS</string>
+    <string name="local_address">LOCAL ADDRESS</string>
+    <string name="isd_as_identification">ISD-AS IDENTIFICATION</string>
+    <string name="network_info">NETWORK INFO</string>
+    <string name="gateway_label">GATEWAY</string>
+    <string name="path_selection">PATH SELECTION</string>
+    <string name="path_shortest">Shortest</string>
+    <string name="path_most_reliable">Most Reliable</string>
+    <string name="path_longest">Longest</string>
+    <string name="current_path_label">CURRENT PATH:</string>
+    <string name="active_peers">Active Peers</string>
+    <string name="remote_public_key">REMOTE PUBLIC KEY</string>
+
+    <!-- Splash Screen -->
+    <string name="splash_tagline">Secure SCION Connectivity</string>
+    <string name="splash_powered_by">POWERED BY SCION</string>
 </resources>
+

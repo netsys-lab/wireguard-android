@@ -48,6 +48,8 @@ class PathPolicyDialogFragment : DialogFragment() {
     private lateinit var btnBack: View
     private lateinit var btnNext: View
     private lateinit var btnBackArrow: View
+    private lateinit var btnAdvanced: View
+    private lateinit var advancedConfigContainer: View
 
     // Step 3 - App Filter
     private lateinit var rvAppList: RecyclerView
@@ -68,8 +70,13 @@ class PathPolicyDialogFragment : DialogFragment() {
     private lateinit var tvValidationTitle: TextView
     private lateinit var tvValidationDesc: TextView
 
-    private var currentStep = 0
-    private val totalSteps = 6
+    private var currentStep = 0  // Index into activeSteps
+
+    // Advanced mode
+    private var isAdvancedMode = false
+    // ViewFlipper child indices: 0=Identity, 1=Traffic, 2=Apps, 3=PolicyRules, 4=Ordering, 5=Review
+    private var activeSteps = listOf(0, 1, 2, 5)  // Simple mode default
+    private val allStepIndices = listOf(0, 1, 2, 3, 4, 5)
 
     // App filter state
     private var isAppExcludeMode = false
@@ -154,10 +161,13 @@ class PathPolicyDialogFragment : DialogFragment() {
         chipAppInclude = root.findViewById(R.id.chip_app_include)
         chipAppExclude = root.findViewById(R.id.chip_app_exclude)
 
+        // Review step views
         tvJsonPreview = root.findViewById(R.id.tv_json_preview)
         tvValidationIcon = root.findViewById(R.id.tv_validation_icon)
         tvValidationTitle = root.findViewById(R.id.tv_validation_title)
         tvValidationDesc = root.findViewById(R.id.tv_validation_desc)
+        btnAdvanced = root.findViewById(R.id.btn_advanced_config)
+        advancedConfigContainer = root.findViewById(R.id.advanced_config_container)
 
         // Close / Back Arrow
         root.findViewById<View>(R.id.close_dialog).setOnClickListener { dismiss() }
@@ -170,6 +180,9 @@ class PathPolicyDialogFragment : DialogFragment() {
 
         // App filter setup
         setupAppFilter()
+
+        // Advanced config button
+        btnAdvanced.setOnClickListener { enableAdvancedMode() }
 
         // ACL add button
         root.findViewById<View>(R.id.btn_add_acl).setOnClickListener {
@@ -189,7 +202,7 @@ class PathPolicyDialogFragment : DialogFragment() {
         }
 
         btnNext.setOnClickListener {
-            if (currentStep < totalSteps - 1) {
+            if (currentStep < activeSteps.size - 1) {
                 navigateToStep(currentStep + 1)
             } else {
                 saveAndDismiss()
@@ -396,8 +409,11 @@ class PathPolicyDialogFragment : DialogFragment() {
         stepLines.clear()
 
         val ctx = requireContext()
+        val numSteps = activeSteps.size
 
-        for (i in 0 until totalSteps) {
+        for (i in 0 until numSteps) {
+            val flipperIndex = activeSteps[i]
+
             // Column for dot + label
             val column = LinearLayout(ctx).apply {
                 orientation = LinearLayout.VERTICAL
@@ -416,9 +432,9 @@ class PathPolicyDialogFragment : DialogFragment() {
             stepDots.add(dot)
             column.addView(dot)
 
-            // Label
+            // Label — look up from steps list using the ViewFlipper index
             val label = TextView(ctx).apply {
-                text = steps[i].shortLabel
+                text = steps[flipperIndex].shortLabel
                 textSize = 9f
                 setTextColor(ctx.getColor(R.color.scitra_on_surface_variant))
                 gravity = Gravity.CENTER
@@ -434,7 +450,7 @@ class PathPolicyDialogFragment : DialogFragment() {
             stepIndicatorContainer.addView(column)
 
             // Connector line (between dots, not after last)
-            if (i < totalSteps - 1) {
+            if (i < numSteps - 1) {
                 val line = View(ctx).apply {
                     layoutParams = LinearLayout.LayoutParams(0, 2).apply {
                         weight = 1f
@@ -488,23 +504,28 @@ class PathPolicyDialogFragment : DialogFragment() {
     }
 
     private fun navigateToStep(step: Int) {
-        if (step < 0 || step >= totalSteps) return
+        if (step < 0 || step >= activeSteps.size) return
 
-        // If moving to step 6 (review), generate the JSON preview
-        if (step == 5) {
+        // The ViewFlipper child index for this logical step
+        val flipperIndex = activeSteps[step]
+
+        // If navigating to the Review step (always flipper index 5), generate JSON preview
+        if (flipperIndex == 5) {
             generateJsonPreview()
+            advancedConfigContainer.visibility = if (isAdvancedMode) View.GONE else View.VISIBLE
         }
 
         currentStep = step
-        wizardFlipper.displayedChild = step
+        wizardFlipper.displayedChild = flipperIndex
         updateStepIndicator()
         updateStepHeader()
         updateNavigationButtons()
     }
 
     private fun updateStepHeader() {
-        val info = steps[currentStep]
-        tvStepBadge.text = "● STEP ${currentStep + 1} OF $totalSteps"
+        val flipperIndex = activeSteps[currentStep]
+        val info = steps[flipperIndex]
+        tvStepBadge.text = "● STEP ${currentStep + 1} OF ${activeSteps.size}"
         tvStepTitle.text = info.title
         tvStepSubtitle.text = info.subtitle
     }
@@ -520,11 +541,37 @@ class PathPolicyDialogFragment : DialogFragment() {
             back?.text = "Back"
         }
 
-        if (currentStep == totalSteps - 1) {
+        if (currentStep == activeSteps.size - 1) {
             next?.text = "Save Policy"
         } else {
             next?.text = "Next  →"
         }
+    }
+
+    private fun enableAdvancedMode() {
+        if (isAdvancedMode) return
+        isAdvancedMode = true
+
+        // Expand to all 6 steps
+        activeSteps = allStepIndices.toList()
+
+        // Hide the advanced button and container
+        btnAdvanced.visibility = View.GONE
+        advancedConfigContainer.visibility = View.GONE
+
+        // Rebuild the step indicator to show all 6 dots
+        buildStepIndicator()
+
+        // If currently on Review (flipperIndex 5), navigate to the first advanced step (Policy Rules, index 3)
+        if (wizardFlipper.displayedChild == 5) {
+            navigateToStep(3)
+        } else {
+            updateStepIndicator()
+            updateStepHeader()
+            updateNavigationButtons()
+        }
+
+        Toast.makeText(context, "Advanced configuration enabled", Toast.LENGTH_SHORT).show()
     }
 
     // ========== ACL MANAGEMENT ==========
@@ -722,6 +769,23 @@ class PathPolicyDialogFragment : DialogFragment() {
                 }
                 updateAppCount()
                 appAdapter?.notifyDataSetChanged()
+            }
+
+            // Auto-detect advanced fields — if the JSON has ACL, ordering,
+            // requirements, extends, failover, or sequence, enable advanced mode
+            val policiesForAutoDetect = rootObj.optJSONObject("policies")
+            if (policiesForAutoDetect != null) {
+                val keys = policiesForAutoDetect.keys()
+                while (keys.hasNext()) {
+                    val policy = policiesForAutoDetect.optJSONObject(keys.next()) ?: continue
+                    val hasAdvanced = policy.has("acl") || policy.has("ordering") ||
+                            policy.has("requirements") || policy.has("extends") ||
+                            policy.has("failover") || policy.has("sequence")
+                    if (hasAdvanced) {
+                        enableAdvancedMode()
+                        break
+                    }
+                }
             }
 
         } catch (e: Exception) {

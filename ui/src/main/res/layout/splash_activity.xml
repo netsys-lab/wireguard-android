@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright © 2017-2025 WireGuard LLC. All Rights Reserved.
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/scitra_background"
+    android:fitsSystemWindows="true">
+
+    <LinearLayout
+        android:id="@+id/splash_content"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:gravity="center_horizontal">
+
+        <!-- Glow behind logo -->
+        <FrameLayout
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:layout_marginBottom="24dp">
+
+            <View
+                android:id="@+id/glow_ring"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/scitra_glow_bg"
+                android:layout_margin="-20dp"
+                android:alpha="0" />
+
+            <ImageView
+                android:id="@+id/splash_logo"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@drawable/logo_scitra"
+                android:background="@drawable/scitra_logo_bg"
+                android:scaleType="centerCrop"
+                android:clipToOutline="true"
+                android:alpha="0" />
+        </FrameLayout>
+
+        <!-- App Name -->
+        <TextView
+            android:id="@+id/splash_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="WG SCITRA"
+            android:textColor="@color/scitra_on_surface"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:letterSpacing="-0.02"
+            android:alpha="0" />
+
+        <!-- Tagline -->
+        <TextView
+            android:id="@+id/splash_subtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/splash_tagline"
+            android:textColor="@color/scitra_on_surface_variant"
+            android:textSize="14sp"
+            android:alpha="0" />
+
+        <!-- Loading indicator -->
+        <ProgressBar
+            android:id="@+id/splash_progress"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginTop="40dp"
+            android:indeterminate="true"
+            android:indeterminateTintMode="src_in"
+            android:indeterminateTint="@color/scitra_primary"
+            android:alpha="0"
+            style="?android:attr/progressBarStyleSmall" />
+
+    </LinearLayout>
+
+    <!-- Bottom branding -->
+    <LinearLayout
+        android:id="@+id/splash_footer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal|bottom"
+        android:layout_marginBottom="48dp"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:alpha="0">
+
+        <View
+            android:layout_width="40dp"
+            android:layout_height="2dp"
+            android:background="@color/scitra_primary"
+            android:layout_marginBottom="12dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/splash_powered_by"
+            android:textColor="@color/scitra_on_surface_variant"
+            android:textSize="11sp"
+            android:letterSpacing="0.1" />
+
+    </LinearLayout>
+
+</FrameLayout>

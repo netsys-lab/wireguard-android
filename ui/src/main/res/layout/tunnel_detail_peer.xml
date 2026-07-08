@@ -15,216 +15,223 @@
             type="com.wireguard.config.Peer" />
     </data>
 
-    <com.google.android.material.card.MaterialCardView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="8dp">
+        android:orientation="vertical"
+        android:background="@drawable/scitra_peer_card_bg"
+        android:padding="20dp"
+        android:layout_marginBottom="12dp">
 
-        <androidx.constraintlayout.widget.ConstraintLayout
+        <!-- Peer Title -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
+
+            <!-- Bullet dot -->
+            <View
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:layout_marginEnd="10dp"
+                android:background="@drawable/scitra_path_node_bg" />
 
             <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/peer_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/peer"
-                android:textAppearance="?attr/textAppearanceTitleMedium"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+                android:textColor="@color/scitra_on_surface"
+                android:textSize="16sp"
+                android:textStyle="bold" />
 
-            <TextView
-                android:id="@+id/public_key_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:labelFor="@+id/public_key_text"
-                android:text="@string/public_key"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/peer_title" />
+        </LinearLayout>
 
-            <TextView
-                android:id="@+id/public_key_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:contentDescription="@string/public_key"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:nextFocusDown="@id/pre_shared_key_text"
-                android:nextFocusForward="@id/pre_shared_key_text"
-                android:onClick="@{ClipboardUtils::copyTextView}"
-                android:singleLine="true"
-                android:text="@{item.publicKey.toBase64}"
-                android:textAppearance="?attr/textAppearanceBodyLarge"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/public_key_label"
-                tools:text="wOs2eguFEohqIZxlSJ1CAT9584tc6ejj9hfGFsoBVkA=" />
+        <!-- Remote Public Key -->
+        <TextView
+            android:id="@+id/public_key_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/remote_public_key"
+            android:textColor="@color/scitra_on_surface_variant"
+            android:textSize="11sp"
+            android:letterSpacing="0.05"
+            android:layout_marginBottom="4dp" />
 
-            <TextView
-                android:id="@+id/pre_shared_key_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:labelFor="@+id/pre_shared_key_text"
-                android:text="@string/pre_shared_key"
-                android:visibility="@{!item.preSharedKey.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/public_key_text" />
+        <TextView
+            android:id="@+id/public_key_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/public_key"
+            android:nextFocusDown="@id/endpoint_text"
+            android:nextFocusForward="@id/endpoint_text"
+            android:onClick="@{ClipboardUtils::copyTextView}"
+            android:text="@{item.publicKey.toBase64}"
+            android:textColor="@color/scitra_on_surface"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:background="@drawable/scitra_json_preview_bg"
+            android:padding="12dp"
+            android:layout_marginBottom="16dp"
+            tools:text="ABBv2NM7X1PRONm0L52BBCIDm72NM7X1PRONm0L52\nTBB" />
 
-            <TextView
-                android:id="@+id/pre_shared_key_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:contentDescription="@string/pre_shared_key"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:nextFocusUp="@id/public_key_text"
-                android:nextFocusDown="@id/allowed_ips_text"
-                android:nextFocusForward="@id/allowed_ips_text"
-                android:singleLine="true"
-                android:text="@string/pre_shared_key_enabled"
-                android:textAppearance="?attr/textAppearanceBodyLarge"
-                android:visibility="@{!item.preSharedKey.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/pre_shared_key_label"
-                tools:text="8VyS8W8XeMcBWfKp1GuG3/fZlnUQFkqMNbrdmZtVQIM=" />
+        <!-- Endpoint -->
+        <TextView
+            android:id="@+id/endpoint_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/endpoint"
+            android:textColor="@color/scitra_on_surface_variant"
+            android:textSize="11sp"
+            android:letterSpacing="0.05"
+            android:layout_marginBottom="4dp"
+            android:visibility="@{!item.endpoint.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}" />
 
-            <TextView
-                android:id="@+id/allowed_ips_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:labelFor="@+id/allowed_ips_text"
-                android:text="@string/allowed_ips"
-                android:visibility="@{item.allowedIps.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/pre_shared_key_text" />
+        <TextView
+            android:id="@+id/endpoint_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/endpoint"
+            android:nextFocusDown="@id/allowed_ips_text"
+            android:nextFocusForward="@id/allowed_ips_text"
+            android:onClick="@{ClipboardUtils::copyTextView}"
+            android:text="@{item.endpoint}"
+            android:textColor="@color/scitra_primary"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="12dp"
+            android:visibility="@{!item.endpoint.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+            tools:text="1.2.3.4:51820" />
 
-            <TextView
-                android:id="@+id/allowed_ips_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:contentDescription="@string/allowed_ips"
-                android:nextFocusUp="@id/pre_shared_key_text"
-                android:nextFocusDown="@id/endpoint_text"
-                android:nextFocusForward="@id/endpoint_text"
-                android:onClick="@{ClipboardUtils::copyTextView}"
-                android:text="@{item.allowedIps}"
-                android:textAppearance="?attr/textAppearanceBodyLarge"
-                android:visibility="@{item.allowedIps.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/allowed_ips_label"
-                tools:text="0.0.0.0/5, 8.0.0.0/7, 11.0.0.0/8, 12.0.0.0/6, 16.0.0.0/4, 32.0.0.0/3" />
+        <!-- Allowed IPs -->
+        <TextView
+            android:id="@+id/allowed_ips_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/allowed_ips"
+            android:textColor="@color/scitra_on_surface_variant"
+            android:textSize="11sp"
+            android:letterSpacing="0.05"
+            android:layout_marginBottom="4dp"
+            android:visibility="@{item.allowedIps.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}" />
 
-            <TextView
-                android:id="@+id/endpoint_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:labelFor="@+id/endpoint_text"
-                android:text="@string/endpoint"
-                android:visibility="@{!item.endpoint.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/allowed_ips_text" />
+        <TextView
+            android:id="@+id/allowed_ips_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/allowed_ips"
+            android:nextFocusUp="@id/endpoint_text"
+            android:nextFocusDown="@id/transfer_text"
+            android:nextFocusForward="@id/transfer_text"
+            android:onClick="@{ClipboardUtils::copyTextView}"
+            android:text="@{item.allowedIps}"
+            android:textColor="@color/scitra_primary"
+            android:textSize="14sp"
+            android:layout_marginBottom="12dp"
+            android:visibility="@{item.allowedIps.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
+            tools:text="0.0.0.0/0" />
 
-            <TextView
-                android:id="@+id/endpoint_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:contentDescription="@string/endpoint"
-                android:nextFocusUp="@id/allowed_ips_text"
-                android:nextFocusDown="@id/persistent_keepalive_text"
-                android:nextFocusForward="@id/persistent_keepalive_text"
-                android:onClick="@{ClipboardUtils::copyTextView}"
-                android:text="@{item.endpoint}"
-                android:textAppearance="?attr/textAppearanceBodyLarge"
-                android:visibility="@{!item.endpoint.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/endpoint_label"
-                tools:text="192.168.0.1:51820" />
+        <!-- Pre-shared Key (hidden detail) -->
+        <TextView
+            android:id="@+id/pre_shared_key_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/pre_shared_key"
+            android:textColor="@color/scitra_on_surface_variant"
+            android:textSize="11sp"
+            android:letterSpacing="0.05"
+            android:layout_marginBottom="4dp"
+            android:visibility="@{!item.preSharedKey.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}" />
 
-            <TextView
-                android:id="@+id/persistent_keepalive_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:labelFor="@+id/persistent_keepalive_text"
-                android:text="@string/persistent_keepalive"
-                android:visibility="@{!item.persistentKeepalive.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/endpoint_text" />
+        <TextView
+            android:id="@+id/pre_shared_key_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/pre_shared_key_enabled"
+            android:textColor="@color/scitra_on_surface"
+            android:textSize="14sp"
+            android:layout_marginBottom="12dp"
+            android:visibility="@{!item.preSharedKey.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+            tools:text="Enabled" />
 
-            <TextView
-                android:id="@+id/persistent_keepalive_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:contentDescription="@string/persistent_keepalive"
-                android:nextFocusUp="@id/endpoint_text"
-                android:nextFocusDown="@id/transfer_text"
-                android:nextFocusForward="@id/transfer_text"
-                android:onClick="@{ClipboardUtils::copyTextView}"
-                android:text="@{@plurals/persistent_keepalive_seconds_unit(item.persistentKeepalive.orElse(0), item.persistentKeepalive.orElse(0))}"
-                android:textAppearance="?attr/textAppearanceBodyLarge"
-                android:visibility="@{!item.persistentKeepalive.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/persistent_keepalive_label"
-                tools:text="every 3 seconds" />
+        <!-- Persistent Keepalive -->
+        <TextView
+            android:id="@+id/persistent_keepalive_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/persistent_keepalive"
+            android:textColor="@color/scitra_on_surface_variant"
+            android:textSize="11sp"
+            android:letterSpacing="0.05"
+            android:layout_marginBottom="4dp"
+            android:visibility="@{!item.persistentKeepalive.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}" />
 
-            <TextView
-                android:id="@+id/transfer_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_below="@+id/persistent_keepalive_text"
-                android:layout_marginTop="8dp"
-                android:labelFor="@+id/transfer_text"
-                android:text="@string/transfer"
-                android:visibility="gone"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/persistent_keepalive_text"
-                tools:visibility="visible" />
+        <TextView
+            android:id="@+id/persistent_keepalive_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:onClick="@{ClipboardUtils::copyTextView}"
+            android:text="@{@plurals/persistent_keepalive_seconds_unit(item.persistentKeepalive.orElse(0), item.persistentKeepalive.orElse(0))}"
+            android:textColor="@color/scitra_on_surface"
+            android:textSize="14sp"
+            android:layout_marginBottom="12dp"
+            android:visibility="@{!item.persistentKeepalive.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+            tools:text="every 25 seconds" />
 
-            <TextView
-                android:id="@+id/transfer_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_below="@+id/transfer_label"
-                android:contentDescription="@string/transfer"
-                android:nextFocusUp="@id/persistent_keepalive_text"
-                android:onClick="@{ClipboardUtils::copyTextView}"
-                android:textAppearance="?attr/textAppearanceBodyLarge"
-                android:visibility="gone"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/transfer_label"
-                tools:text="1024 MB"
-                tools:visibility="visible" />
+        <!-- Transfer stats (updated at runtime) -->
+        <TextView
+            android:id="@+id/transfer_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/transfer"
+            android:textColor="@color/scitra_on_surface_variant"
+            android:textSize="11sp"
+            android:letterSpacing="0.05"
+            android:layout_marginBottom="4dp"
+            android:visibility="gone"
+            tools:visibility="visible" />
 
-            <TextView
-                android:id="@+id/latest_handshake_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_below="@+id/transfer_text"
-                android:layout_marginTop="8dp"
-                android:labelFor="@+id/latest_handshake_text"
-                android:text="@string/latest_handshake"
-                android:visibility="gone"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/transfer_text"
-                tools:visibility="visible" />
+        <TextView
+            android:id="@+id/transfer_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/transfer"
+            android:nextFocusUp="@id/allowed_ips_text"
+            android:onClick="@{ClipboardUtils::copyTextView}"
+            android:textColor="@color/scitra_on_surface"
+            android:textSize="14sp"
+            android:layout_marginBottom="12dp"
+            android:visibility="gone"
+            tools:text="↓ 1.2 MB  ↑ 340 KB"
+            tools:visibility="visible" />
 
-            <TextView
-                android:id="@+id/latest_handshake_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_below="@+id/latest_handshake_label"
-                android:contentDescription="@string/latest_handshake"
-                android:nextFocusUp="@id/transfer_text"
-                android:onClick="@{ClipboardUtils::copyTextView}"
-                android:textAppearance="?attr/textAppearanceBodyLarge"
-                android:visibility="gone"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/latest_handshake_label"
-                tools:text="4 minutes, 27 seconds ago"
-                tools:visibility="visible" />
-        </androidx.constraintlayout.widget.ConstraintLayout>
-    </com.google.android.material.card.MaterialCardView>
+        <!-- Latest Handshake (updated at runtime) -->
+        <TextView
+            android:id="@+id/latest_handshake_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/latest_handshake"
+            android:textColor="@color/scitra_on_surface_variant"
+            android:textSize="11sp"
+            android:letterSpacing="0.05"
+            android:layout_marginBottom="4dp"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/latest_handshake_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/latest_handshake"
+            android:nextFocusUp="@id/transfer_text"
+            android:onClick="@{ClipboardUtils::copyTextView}"
+            android:textColor="@color/scitra_on_surface"
+            android:textSize="14sp"
+            android:visibility="gone"
+            tools:text="4 minutes, 27 seconds ago"
+            tools:visibility="visible" />
+
+    </LinearLayout>
 </layout>
