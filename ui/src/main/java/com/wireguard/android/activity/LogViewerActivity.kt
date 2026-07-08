@@ -25,6 +25,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.collection.CircularArray
@@ -67,6 +68,7 @@ class LogViewerActivity : AppCompatActivity() {
     private var rawLogLines = CircularArray<String>()
     private var recyclerView: RecyclerView? = null
     private var saveButton: MenuItem? = null
+    private lateinit var revokeLastActivityResultLauncher: ActivityResultLauncher<Intent>
     private val year by lazy {
         val yearFormatter: DateFormat = SimpleDateFormat("yyyy", Locale.US)
         yearFormatter.format(Date())
@@ -107,26 +109,8 @@ class LogViewerActivity : AppCompatActivity() {
 
         lifecycleScope.launch(Dispatchers.IO) { streamingLog() }
 
-        val revokeLastActivityResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        revokeLastActivityResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
             revokeLastUri()
-        }
-
-        binding.shareFab.setOnClickListener {
-            lifecycleScope.launch {
-                revokeLastUri()
-                val key = KeyPair().privateKey.toHex()
-                LOGS[key] = rawLogBytes()
-                lastUri = Uri.parse("content://${BuildConfig.APPLICATION_ID}.exported-log/$key")
-                val shareIntent = ShareCompat.IntentBuilder(this@LogViewerActivity)
-                    .setType("text/plain")
-                    .setSubject(getString(R.string.log_export_subject))
-                    .setStream(lastUri)
-                    .setChooserTitle(R.string.log_export_title)
-                    .createChooserIntent()
-                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                grantUriPermission("android", lastUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                revokeLastActivityResultLauncher.launch(shareIntent)
-            }
         }
     }
 
@@ -140,6 +124,25 @@ class LogViewerActivity : AppCompatActivity() {
         return when (item.itemId) {
             android.R.id.home -> {
                 finish()
+                true
+            }
+
+            R.id.share_log -> {
+                lifecycleScope.launch {
+                    revokeLastUri()
+                    val key = KeyPair().privateKey.toHex()
+                    LOGS[key] = rawLogBytes()
+                    lastUri = Uri.parse("content://${BuildConfig.APPLICATION_ID}.exported-log/$key")
+                    val shareIntent = ShareCompat.IntentBuilder(this@LogViewerActivity)
+                        .setType("text/plain")
+                        .setSubject(getString(R.string.log_export_subject))
+                        .setStream(lastUri)
+                        .setChooserTitle(R.string.log_export_title)
+                        .createChooserIntent()
+                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    grantUriPermission("android", lastUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    revokeLastActivityResultLauncher.launch(shareIntent)
+                }
                 true
             }
 
@@ -187,7 +190,6 @@ class LogViewerActivity : AppCompatActivity() {
             else getString(R.string.log_export_error, ErrorMessages[exception]),
             if (exception == null) Snackbar.LENGTH_SHORT else Snackbar.LENGTH_LONG
         )
-            .setAnchorView(binding.shareFab)
             .show()
     }
 
