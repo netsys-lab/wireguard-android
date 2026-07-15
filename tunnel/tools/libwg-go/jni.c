@@ -20,7 +20,9 @@ extern char *wgInitScionWithBootstrapRetry(
         int handle,
         struct go_string configDir,
         struct go_string interfaceName,
-        struct go_string bootstrapURL
+        struct go_string bootstrapURL,
+        struct go_string localIPv4,
+        struct go_string localIPv6
 );
 extern char *wgGetScionStatus(int handle);
 
@@ -30,7 +32,9 @@ JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgInitSci
         jint handle,
         jstring configDir,
         jstring interfaceName,
-        jstring bootstrapURL)
+        jstring bootstrapURL,
+        jstring localIPv4,
+        jstring localIPv6)
 {
     const char *configDir_str = (*env)->GetStringUTFChars(env, configDir, 0);
     size_t configDir_len = (*env)->GetStringUTFLength(env, configDir);
@@ -40,6 +44,12 @@ JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgInitSci
 
     const char *bootstrapURL_str = (*env)->GetStringUTFChars(env, bootstrapURL, 0);
     size_t bootstrapURL_len = (*env)->GetStringUTFLength(env, bootstrapURL);
+
+    const char *localIPv4_str = (*env)->GetStringUTFChars(env, localIPv4, 0);
+    size_t localIPv4_len = (*env)->GetStringUTFLength(env, localIPv4);
+
+    const char *localIPv6_str = (*env)->GetStringUTFChars(env, localIPv6, 0);
+    size_t localIPv6_len = (*env)->GetStringUTFLength(env, localIPv6);
 
     char *result = wgInitScionWithBootstrapRetry(
             handle,
@@ -54,11 +64,21 @@ JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgInitSci
             (struct go_string){
                     .str = bootstrapURL_str,
                     .n = bootstrapURL_len
+            },
+            (struct go_string){
+                    .str = localIPv4_str,
+                    .n = localIPv4_len
+            },
+            (struct go_string){
+                    .str = localIPv6_str,
+                    .n = localIPv6_len
             });
 
     (*env)->ReleaseStringUTFChars(env, configDir, configDir_str);
     (*env)->ReleaseStringUTFChars(env, interfaceName, interfaceName_str);
     (*env)->ReleaseStringUTFChars(env, bootstrapURL, bootstrapURL_str);
+    (*env)->ReleaseStringUTFChars(env, localIPv4, localIPv4_str);
+    (*env)->ReleaseStringUTFChars(env, localIPv6, localIPv6_str);
 
     if (!result)
         return NULL;
