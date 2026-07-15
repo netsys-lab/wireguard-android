@@ -4,24 +4,20 @@
  */
 package com.wireguard.android.fragment
 
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.app.AlertDialog
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.graphics.Typeface
+import android.widget.ImageView
 import android.widget.TextView
-import androidx.core.view.MenuProvider
+import android.widget.Toast
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.FragmentTransaction
 import androidx.fragment.app.commit
 import androidx.lifecycle.lifecycleScope
 import com.wireguard.android.R
 import com.wireguard.android.backend.Tunnel
-import android.widget.Toast
 import com.wireguard.android.widget.ToggleSwitch
 import com.wireguard.android.databinding.TunnelDetailFragmentBinding
 import com.wireguard.android.databinding.TunnelDetailPeerBinding
@@ -31,17 +27,24 @@ import com.wireguard.config.Config
 import com.wireguard.config.Interface
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 /**
- * Fragment that shows details about a specific tunnel.
+ * Fragment that shows the connection status hub for a specific tunnel.
+ * Displays connection state, uptime timer, speed stats, and mock flow data.
  */
 class TunnelDetailFragment : BaseFragment() {
     private var binding: TunnelDetailFragmentBinding? = null
     private var lastState = Tunnel.State.TOGGLE
     private var timerActive = true
-    private var selectedPathChip = PathChip.SHORTEST
 
-    private enum class PathChip { SHORTEST, MOST_RELIABLE, LONGEST }
+    // Simple connection timer
+    private var connectedSinceMillis: Long = 0L
+
+    // Speed calculation
+    private var lastRxBytes: Long = 0L
+    private var lastTxBytes: Long = 0L
+    private var lastStatsTimeMillis: Long = 0L
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -55,6 +58,7 @@ class TunnelDetailFragment : BaseFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        loadMockFlowIcons()
     }
 
     override fun onDestroyView() {
@@ -68,6 +72,7 @@ class TunnelDetailFragment : BaseFragment() {
         lifecycleScope.launch {
             while (timerActive) {
                 updateStats()
+                updateTimer()
                 delay(1000)
             }
         }
@@ -83,14 +88,17 @@ class TunnelDetailFragment : BaseFragment() {
                 try {
                     val config = newTunnel.getConfigAsync()
                     binding.config = config
-                    updateNetworkInfo(config)
-                    binding.config = newTunnel.getConfigAsync()
                 } catch (_: Throwable) {
                     binding.config = null
                 }
             }
         }
+        // Reset timer and speed on tunnel change
         lastState = Tunnel.State.TOGGLE
+        connectedSinceMillis = 0L
+        lastRxBytes = 0L
+        lastTxBytes = 0L
+        lastStatsTimeMillis = 0L
         lifecycleScope.launch { updateStats() }
     }
 
@@ -108,207 +116,8 @@ class TunnelDetailFragment : BaseFragment() {
 
     // ─── Navigation ─────────────────────────────────────────
 
-    /**
-     * Back button pressed — navigate back to the tunnel list.
-     */
     fun onBackPressed(@Suppress("UNUSED_PARAMETER") view: View) {
         activity?.onBackPressedDispatcher?.onBackPressed()
-    }
-
-    /**
-     * Settings gear pressed — navigate to the tunnel editor.
-     */
-    fun onEditTunnel(@Suppress("UNUSED_PARAMETER") view: View) {
-        val activity = activity ?: return
-        val isTwoPaneLayout = activity.findViewById<View?>(R.id.master_detail_wrapper) != null
-        parentFragmentManager.commit {
-            replace(
-                if (isTwoPaneLayout) R.id.detail_container else R.id.list_detail_container,
-                TunnelEditorFragment()
-            )
-            setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
-            addToBackStack(null)
-        }
-    }
-
-    // ─── Path Selection Chips ───────────────────────────────
-
-    /**
-     * Path chip clicked — update selection visual state.
-     */
-    fun onPathChipClicked(view: View) {
-        val binding = binding ?: return
-        selectedPathChip = when (view.id) {
-            R.id.chip_shortest -> PathChip.SHORTEST
-            R.id.chip_most_reliable -> PathChip.MOST_RELIABLE
-            R.id.chip_longest -> PathChip.LONGEST
-            else -> return
-        }
-        updatePathChips()
-    }
-
-    private fun updatePathChips() {
-        val binding = binding ?: return
-        val chips = listOf(
-            binding.chipShortest to PathChip.SHORTEST,
-            binding.chipMostReliable to PathChip.MOST_RELIABLE,
-            binding.chipLongest to PathChip.LONGEST
-        )
-        for ((chip, type) in chips) {
-            if (type == selectedPathChip) {
-                chip.setBackgroundResource(R.drawable.scitra_chip_selected)
-                chip.setTextColor(resources.getColor(R.color.scitra_on_primary, null))
-                chip.paint.isFakeBoldText = true
-            } else {
-                chip.setBackgroundResource(R.drawable.scitra_chip_unselected)
-                chip.setTextColor(resources.getColor(R.color.scitra_on_surface_variant, null))
-                chip.paint.isFakeBoldText = false
-            }
-        }
-        // Update the "CURRENT PATH:" label
-        val pathName = when (selectedPathChip) {
-            PathChip.SHORTEST -> "SHORTEST"
-            PathChip.MOST_RELIABLE -> "MOST RELIABLE"
-            PathChip.LONGEST -> "LONGEST"
-        }
-        binding.currentPathText.text = getString(R.string.current_path_label) + "  " + pathName
-    }
-
-    // ─── Network Info ───────────────────────────────────────
-
-    private fun updateNetworkInfo(config: Config) {
-        val binding = binding ?: return
-        // Gateway: use the first peer's endpoint if available
-        val firstEndpoint = config.peers.firstOrNull()?.endpoint
-        if (firstEndpoint != null && firstEndpoint.isPresent) {
-            val ep = firstEndpoint.get()
-            binding.gatewayText.text = ep.host
-            binding.gatewayText.visibility = View.VISIBLE
-        } else {
-            binding.gatewayText.text = "—"
-        }
-    }
-
-    // ─── Stats Polling ──────────────────────────────────────
-
-    private suspend fun updateStats() {
-        val binding = binding ?: return
-        val tunnel = binding.tunnel ?: return
-        if (!isResumed) return
-        val state = tunnel.state
-        if (state != Tunnel.State.UP && lastState == state) return
-        lastState = state
-        try {
-            val statistics = tunnel.getStatisticsAsync()
-            for (i in 0 until binding.peersLayout.childCount) {
-                val peer: TunnelDetailPeerBinding = DataBindingUtil.getBinding(binding.peersLayout.getChildAt(i))
-                    ?: continue
-                val publicKey = peer.item!!.publicKey
-                val peerStats = statistics.peer(publicKey)
-                if (peerStats == null || (peerStats.rxBytes == 0L && peerStats.txBytes == 0L)) {
-                    peer.transferLabel.visibility = View.GONE
-                    peer.transferText.visibility = View.GONE
-                } else {
-                    peer.transferText.text = getString(
-                        R.string.transfer_rx_tx,
-                        QuantityFormatter.formatBytes(peerStats.rxBytes),
-                        QuantityFormatter.formatBytes(peerStats.txBytes)
-                    )
-                    peer.transferLabel.visibility = View.VISIBLE
-                    peer.transferText.visibility = View.VISIBLE
-                }
-                if (peerStats == null || peerStats.latestHandshakeEpochMillis == 0L) {
-                    peer.latestHandshakeLabel.visibility = View.GONE
-                    peer.latestHandshakeText.visibility = View.GONE
-                } else {
-                    peer.latestHandshakeText.text = QuantityFormatter.formatEpochAgo(peerStats.latestHandshakeEpochMillis)
-                    peer.latestHandshakeLabel.visibility = View.VISIBLE
-                    peer.latestHandshakeText.visibility = View.VISIBLE
-                }
-            }
-        } catch (e: Throwable) {
-            for (i in 0 until binding.peersLayout.childCount) {
-                val peer: TunnelDetailPeerBinding = DataBindingUtil.getBinding(binding.peersLayout.getChildAt(i))
-                    ?: continue
-                peer.transferLabel.visibility = View.GONE
-                peer.transferText.visibility = View.GONE
-                peer.latestHandshakeLabel.visibility = View.GONE
-                peer.latestHandshakeText.visibility = View.GONE
-            }
-        }
-    }
-
-    fun onRequestConfigurePathPolicy(view: View?) {
-        val pathPolicyJson = binding?.config?.`interface`?.pathPolicy ?: ""
-        val dialog = PathPolicyDialogFragment.newInstance(pathPolicyJson)
-        childFragmentManager.setFragmentResultListener(PathPolicyDialogFragment.REQUEST_KEY_POLICY, viewLifecycleOwner) { _, bundle ->
-            val resultJson = bundle.getString(PathPolicyDialogFragment.KEY_RESULT_JSON)
-            if (resultJson != null) {
-                savePathPolicy(resultJson)
-            }
-        }
-        dialog.show(childFragmentManager, null)
-    }
-
-    private fun savePathPolicy(newJson: String) {
-        val tunnel = binding?.tunnel ?: return
-        lifecycleScope.launch {
-            try {
-                val currentConfig = tunnel.getConfigAsync()
-                val newInterfaceBuilder = Interface.Builder()
-                    .addAddresses(currentConfig.`interface`.addresses)
-                    .addDnsServers(currentConfig.`interface`.dnsServers)
-                    .addDnsSearchDomains(currentConfig.`interface`.dnsSearchDomains)
-                    .excludeApplications(currentConfig.`interface`.excludedApplications)
-                    .includeApplications(currentConfig.`interface`.includedApplications)
-                    .setKeyPair(currentConfig.`interface`.keyPair)
-                    .setBootstrapUrl(currentConfig.`interface`.bootstrapUrl)
-                    .setPathPolicy(newJson)
-                    .setTunnelMode(currentConfig.`interface`.tunnelMode)
-                
-                currentConfig.`interface`.listenPort.ifPresent { newInterfaceBuilder.setListenPort(it) }
-                currentConfig.`interface`.mtu.ifPresent { newInterfaceBuilder.setMtu(it) }
-
-                val newConfig = Config.Builder()
-                    .setInterface(newInterfaceBuilder.build())
-                    .addPeers(currentConfig.peers)
-                    .build()
-
-                tunnel.setConfigAsync(newConfig)
-                binding?.config = newConfig
-                Toast.makeText(context, "Path Policy updated successfully!", Toast.LENGTH_SHORT).show()
-            } catch (e: Throwable) {
-                Toast.makeText(context, "Error saving Path Policy: " + e.message, Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-
-    fun onViewConfigClick(view: View) {
-        val tunnel = binding?.tunnel ?: return
-        lifecycleScope.launch {
-            try {
-                val config = tunnel.getConfigAsync()
-                val configText = config.toWgQuickString()
-
-                val dialog = AlertDialog.Builder(requireContext())
-                    .setTitle("Configuration: ${tunnel.name}")
-                    .setMessage(configText)
-                    .setPositiveButton("OK", null)
-                    .setNeutralButton("Copy") { _, _ ->
-                        val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        val clip = ClipData.newPlainText("config", configText)
-                        clipboard.setPrimaryClip(clip)
-                        Toast.makeText(context, "Config copied to clipboard", Toast.LENGTH_SHORT).show()
-                    }
-                    .create()
-                dialog.show()
-
-                // Monospace Font für bessere Lesbarkeit
-                dialog.findViewById<TextView>(android.R.id.message)?.typeface = Typeface.MONOSPACE
-            } catch (e: Throwable) {
-                Toast.makeText(context, "Error loading config: ${e.message}", Toast.LENGTH_LONG).show()
-            }
-        }
     }
 
     fun onEditClick(view: View) {
@@ -326,6 +135,179 @@ class TunnelDetailFragment : BaseFragment() {
             .addToBackStack(null)
             .commit()
     }
+
+    fun onSeeAllFlows(@Suppress("UNUSED_PARAMETER") view: View) {
+        // TODO: Navigate to full flows screen
+        Toast.makeText(context, "Path Information coming soon", Toast.LENGTH_SHORT).show()
+    }
+
+    fun onFlowItemClicked(view: View) {
+        // Show Path Selection bottom sheet
+        val flowName = when (view.id) {
+            R.id.flow_item_1 -> "Google Chrome"
+            R.id.flow_item_2 -> "Slack"
+            R.id.flow_item_3 -> "System Update"
+            else -> "Unknown"
+        }
+        val sheet = PathSelectionBottomSheet.newInstance(flowName)
+        sheet.show(childFragmentManager, "path_selection")
+    }
+
+    // ─── Mock Flow Icons ────────────────────────────────────
+
+    private fun loadMockFlowIcons() {
+        val binding = binding ?: return
+        val pm = context?.packageManager ?: return
+
+        // Try to load real app icons for 3 popular apps
+        val appIconPairs = listOf(
+            Triple("com.android.chrome", binding.flowIcon1, binding.flowName1),
+            Triple("com.slack", binding.flowIcon2, binding.flowName2),
+            Triple("com.google.android.gms", binding.flowIcon3, binding.flowName3)
+        )
+
+        // Get installed apps to pick icons from
+        val installedApps = try {
+            pm.getInstalledApplications(PackageManager.GET_META_DATA)
+                .filter { pm.getLaunchIntentForApp(it.packageName) != null }
+                .take(10)
+        } catch (_: Exception) {
+            emptyList()
+        }
+
+        for ((index, triple) in appIconPairs.withIndex()) {
+            val (packageName, iconView, nameView) = triple
+            try {
+                val icon = pm.getApplicationIcon(packageName)
+                iconView.setImageDrawable(icon)
+            } catch (_: PackageManager.NameNotFoundException) {
+                // Try to use an installed app instead
+                if (index < installedApps.size) {
+                    try {
+                        val appInfo = installedApps[index]
+                        iconView.setImageDrawable(pm.getApplicationIcon(appInfo))
+                        nameView.text = pm.getApplicationLabel(appInfo).toString()
+                    } catch (_: Exception) {
+                        // Keep default globe icon
+                    }
+                }
+            }
+        }
+    }
+
+    private fun PackageManager.getLaunchIntentForApp(packageName: String): android.content.Intent? {
+        return getLaunchIntentForPackage(packageName)
+    }
+
+    // ─── Tunnel State ───────────────────────────────────────
+
+    fun setTunnelState(checked: Boolean) {
+        val tunnel = binding?.tunnel ?: return
+        val state = if (checked) Tunnel.State.UP else Tunnel.State.DOWN
+        lifecycleScope.launch {
+            try {
+                tunnel.setStateAsync(state)
+            } catch (e: Throwable) {
+                Toast.makeText(context, com.wireguard.android.util.ErrorMessages[e], Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    // ─── Timer ──────────────────────────────────────────────
+
+    private fun updateTimer() {
+        val binding = binding ?: return
+        val tunnel = binding.tunnel ?: return
+
+        if (tunnel.state == Tunnel.State.UP) {
+            if (connectedSinceMillis == 0L) {
+                connectedSinceMillis = System.currentTimeMillis()
+            }
+            val elapsed = System.currentTimeMillis() - connectedSinceMillis
+            val seconds = (elapsed / 1000) % 60
+            val minutes = (elapsed / (1000 * 60)) % 60
+            val hours = (elapsed / (1000 * 60 * 60))
+            binding.uptimeTimer.text = String.format(Locale.US, "%02d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            connectedSinceMillis = 0L
+            binding.uptimeTimer.text = "00:00:00"
+        }
+    }
+
+    // ─── Stats Polling ──────────────────────────────────────
+
+    private suspend fun updateStats() {
+        val binding = binding ?: return
+        val tunnel = binding.tunnel ?: return
+        if (!isResumed) return
+        val state = tunnel.state
+        if (state != Tunnel.State.UP && lastState == state) return
+        lastState = state
+
+        if (state != Tunnel.State.UP) {
+            binding.downloadSpeed.text = "↓ 0.0"
+            binding.uploadSpeed.text = "↑ 0.0"
+            binding.hubWifiIcon.setColorFilter(androidx.core.content.ContextCompat.getColor(requireContext(), R.color.scitra_outline))
+            
+            // Animate shadow off
+            binding.hubContainer.animate().translationZ(0f).setDuration(300).start()
+            
+            lastRxBytes = 0L
+            lastTxBytes = 0L
+            lastStatsTimeMillis = 0L
+            return
+        } else {
+            binding.hubWifiIcon.setColorFilter(androidx.core.content.ContextCompat.getColor(requireContext(), R.color.scitra_primary))
+            
+            // Animate shadow on (light glow effect)
+            binding.hubContainer.animate().translationZ(24f).setDuration(300).start()
+        }
+
+        try {
+            val statistics = tunnel.getStatisticsAsync()
+
+            // Aggregate all peer stats
+            var totalRx = 0L
+            var totalTx = 0L
+            for (i in 0 until binding.peersLayout.childCount) {
+                val peer: TunnelDetailPeerBinding = DataBindingUtil.getBinding(binding.peersLayout.getChildAt(i))
+                    ?: continue
+                val publicKey = peer.item!!.publicKey
+                val peerStats = statistics.peer(publicKey) ?: continue
+                totalRx += peerStats.rxBytes
+                totalTx += peerStats.txBytes
+            }
+
+            // Calculate speed (bytes per second)
+            val now = System.currentTimeMillis()
+            if (lastStatsTimeMillis > 0 && lastRxBytes > 0) {
+                val timeDelta = (now - lastStatsTimeMillis) / 1000.0
+                if (timeDelta > 0) {
+                    val rxSpeed = (totalRx - lastRxBytes) / timeDelta
+                    val txSpeed = (totalTx - lastTxBytes) / timeDelta
+                    binding.downloadSpeed.text = "↓ ${formatSpeed(rxSpeed)}"
+                    binding.uploadSpeed.text = "↑ ${formatSpeed(txSpeed)}"
+                }
+            }
+            lastRxBytes = totalRx
+            lastTxBytes = totalTx
+            lastStatsTimeMillis = now
+
+        } catch (_: Throwable) {
+            // Silently ignore
+        }
+    }
+
+    private fun formatSpeed(bytesPerSecond: Double): String {
+        return when {
+            bytesPerSecond < 0 -> "0.0"
+            bytesPerSecond < 1024 -> String.format(Locale.US, "%.1f B/s", bytesPerSecond)
+            bytesPerSecond < 1024 * 1024 -> String.format(Locale.US, "%.1f KB/s", bytesPerSecond / 1024)
+            else -> String.format(Locale.US, "%.1f MB/s", bytesPerSecond / (1024 * 1024))
+        }
+    }
+
+    // ─── SCION Toggle ───────────────────────────────────────
 
     fun toggleScionMode(view: View, checked: Boolean) {
         val toggleSwitch = view as? ToggleSwitch ?: return
@@ -358,11 +340,11 @@ class TunnelDetailFragment : BaseFragment() {
 
                 tunnel.setConfigAsync(newConfig)
                 binding?.config = newConfig
-                toggleSwitch?.setCheckedInternal(checked)
+                toggleSwitch.setCheckedInternal(checked)
                 val label = if (newMode == "SCION") "SCION" else "IP"
                 Toast.makeText(context, "Switched to $label mode", Toast.LENGTH_SHORT).show()
             } catch (e: Throwable) {
-                toggleSwitch?.setCheckedInternal(!checked)
+                toggleSwitch.setCheckedInternal(!checked)
                 Toast.makeText(context, "Error switching mode: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }

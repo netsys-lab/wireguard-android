@@ -282,5 +282,20 @@
     <!-- Splash Screen -->
     <string name="splash_tagline">Secure SCION Connectivity</string>
     <string name="splash_powered_by">POWERED BY SCION</string>
+
+    <!-- Connection Status Hub -->
+    <string name="status_connected">CONNECTED</string>
+    <string name="status_disconnected">DISCONNECTED</string>
+    <string name="top_flows">TOP FLOWS</string>
+    <string name="see_all">See All  ›</string>
+    <string name="show_all_active_flows">Show all active flows</string>
+    <string name="edit_interface">Edit Interface</string>
+    <string name="path_information">Path Information</string>
+    <string name="active_flows">ACTIVE FLOWS</string>
+    <string name="real_time_monitoring">Real-time Monitoring</string>
+    <string name="confirm_path_selection">Confirm Path Selection</string>
+    <string name="path_selection_title">Path Selection</string>
+    <string name="optimizing_connection">Optimizing connection for %s traffic</string>
+    <string name="recommended">RECOMMENDED</string>
 </resources>
 
