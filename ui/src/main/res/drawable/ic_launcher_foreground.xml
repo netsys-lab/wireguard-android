@@ -7,10 +7,10 @@
     <!-- Centered and padded Scitra logo to fit the adaptive icon 72dp safe zone -->
     <item
         android:gravity="center"
-        android:width="72dp"
-        android:height="72dp">
+        android:width="48dp"
+        android:height="48dp">
         <bitmap
-            android:src="@drawable/logo_scitra"
+            android:src="@drawable/scitra_app_icon"
             android:gravity="fill" />
     </item>
 </layer-list>

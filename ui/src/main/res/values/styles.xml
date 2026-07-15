@@ -14,7 +14,7 @@
         <item name="bottomSheetDialogTheme">@style/WireGuardTheme.BottomSheetDialog</item>
         <item name="android:statusBarColor">@color/scitra_background</item>
         <item name="android:navigationBarColor">@color/scitra_background</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 
     <!-- Various additional API-specific features in values-v*/styles.xml -->
@@ -65,7 +65,7 @@
         <item name="android:windowActionBar">false</item>
         <item name="android:statusBarColor">@color/scitra_background</item>
         <item name="android:navigationBarColor">@color/scitra_background</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 
 </resources>
