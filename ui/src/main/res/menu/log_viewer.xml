@@ -14,4 +14,9 @@
         android:icon="@drawable/ic_action_save"
         android:title="@string/log_export_title"
         app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/clear_log"
+        android:icon="@drawable/ic_action_delete"
+        android:title="@string/log_clear_title"
+        app:showAsAction="never" />
 </menu>

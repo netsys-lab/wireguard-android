@@ -12,8 +12,10 @@ import "C"
 import (
 	"context"
 	"fmt"
+	"log"
 	"math"
 	"net"
+	"net/netip"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -34,6 +36,14 @@ import (
 type AndroidLogger struct {
 	level C.int
 	tag   *C.char
+}
+
+type androidLogWriter struct{}
+
+func (w *androidLogWriter) Write(p []byte) (n int, err error) {
+    tag := cstring("WireGuard/GoBackend")
+    C.__android_log_write(C.ANDROID_LOG_DEBUG, tag, (*C.char)(unsafe.Pointer(&p[0])))
+    return len(p), nil
 }
 
 func cstring(s string) *C.char {
@@ -57,6 +67,7 @@ type TunnelHandle struct {
 var tunnelHandles map[int32]TunnelHandle
 
 func init() {
+	log.SetOutput(&androidLogWriter{})
 	tunnelHandles = make(map[int32]TunnelHandle)
 	signals := make(chan os.Signal)
 	signal.Notify(signals, unix.SIGUSR2)
@@ -78,6 +89,11 @@ func init() {
 
 //export wgTurnOn
 func wgTurnOn(interfaceName string, tunFd int32, settings string) int32 {
+	// Defensive: clone all strings from cgo to ensure Go owns independent copies.
+	// cgo //export string params reference caller memory that may be freed after return.
+	interfaceName = strings.Clone(interfaceName)
+	settings = strings.Clone(settings)
+
 	tag := cstring("WireGuard/GoBackend/" + interfaceName)
 	logger := &device.Logger{
 		Verbosef: AndroidLogger{level: C.ANDROID_LOG_DEBUG, tag: tag}.Printf,
@@ -239,6 +255,7 @@ func wgVersion() *C.char {
 
 //export wgScionTestBridge
 func wgScionTestBridge(inputPath string) *C.char {
+	inputPath = strings.Clone(inputPath)
 	outStr := filepath.Join(inputPath, "scion_configs", "certs")
 	return C.CString(fmt.Sprintf("Greetings from Go! Your SCION config path is: %s", outStr))
 }
@@ -253,6 +270,9 @@ Downloads SCION topology + certificates from a bootstrap server. It:
 This gives the Go backend the SCION network topology it needs to know which paths exist.
 */
 func wgScionBootstrap(configDir string, bootstrapURL string) *C.char {
+	configDir = strings.Clone(configDir)
+	bootstrapURL = strings.Clone(bootstrapURL)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if err := bootstrap.BootstrapFetch(ctx, bootstrapURL, configDir); err != nil {
@@ -272,6 +292,10 @@ Initializes the SCION translator on an already running WireGuard device. It:
 This is the deferred init — the tunnel is already up, now SCION is enabled on it.
 */
 func wgInitScion(tunnelHandle int32, configDir string, interfaceName string) *C.char {
+	// Defensive: clone all strings from cgo to ensure Go owns independent copies.
+	configDir = strings.Clone(configDir)
+	interfaceName = strings.Clone(interfaceName)
+
 	handle, ok := tunnelHandles[tunnelHandle]
 	if !ok {
 		return C.CString("invalid handle")
@@ -288,7 +312,14 @@ func wgInitScion(tunnelHandle int32, configDir string, interfaceName string) *C.
 }
 
 //export wgInitScionWithBootstrapRetry
-func wgInitScionWithBootstrapRetry(tunnelHandle int32, configDir string, interfaceName string, bootstrapURL string) *C.char {
+func wgInitScionWithBootstrapRetry(tunnelHandle int32, configDir string, interfaceName string, bootstrapURL string, localIPv4 string, localIPv6 string) *C.char {
+	// Defensive: clone all strings from cgo to ensure Go owns independent copies.
+	configDir = strings.Clone(configDir)
+	interfaceName = strings.Clone(interfaceName)
+	bootstrapURL = strings.Clone(bootstrapURL)
+	localIPv4 = strings.Clone(localIPv4)
+	localIPv6 = strings.Clone(localIPv6)
+
 	handle, ok := tunnelHandles[tunnelHandle]
 	if !ok {
 		return C.CString("invalid handle")
@@ -302,6 +333,19 @@ func wgInitScionWithBootstrapRetry(tunnelHandle int32, configDir string, interfa
 		Enabled:       true,
 		ConfigDir:     configDir,
 		InterfaceName: interfaceName,
+	}
+
+	// Parse explicitly configured local addresses (Android path).
+	// These bypass net.InterfaceByName which is unavailable on Android.
+	if localIPv4 != "" {
+		if addr, err := netip.ParseAddr(localIPv4); err == nil {
+			scionConfig.LocalIPv4 = addr
+		}
+	}
+	if localIPv6 != "" {
+		if addr, err := netip.ParseAddr(localIPv6); err == nil {
+			scionConfig.LocalIPv6 = addr
+		}
 	}
 
 	err := handle.device.InitSCIONWithBootstrapRetry(

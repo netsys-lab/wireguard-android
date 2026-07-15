@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright © 2017-2025 WireGuard LLC. All Rights Reserved.
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+
+        <import type="android.view.View" />
+
+        <variable
+            name="sendEnabled"
+            type="boolean" />
+
+        <variable
+            name="isSending"
+            type="boolean" />
+
+        <variable
+            name="statusText"
+            type="String" />
+
+        <variable
+            name="charCount"
+            type="String" />
+
+        <variable
+            name="buttonText"
+            type="String" />
+
+        <variable
+            name="isTcp"
+            type="boolean" />
+
+    </data>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/scitra_background"
+        android:clickable="true"
+        android:focusable="true"
+        android:fitsSystemWindows="true"
+        android:clipToPadding="false">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingBottom="32dp">
+
+            <!-- Top Bar -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingVertical="16dp">
+
+                <ImageView
+                    android:id="@+id/btn_back"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_arrow_back"
+                    app:tint="@color/scitra_primary"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/cancel" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/debug_packet_sender_title"
+                    android:textColor="@color/scitra_on_surface"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+
+                <!-- Spacer for centering -->
+                <View
+                    android:layout_width="40dp"
+                    android:layout_height="0dp" />
+
+            </LinearLayout>
+
+            <!-- Description Card -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/scitra_section_card_bg"
+                android:padding="20dp"
+                android:layout_marginTop="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/debug_packet_description"
+                    android:textColor="@color/scitra_on_surface"
+                    android:textSize="14sp"
+                    android:lineSpacingExtra="4dp" />
+
+                <!-- External Link -->
+                <TextView
+                    android:id="@+id/link_inspector"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/debug_packet_open_inspector"
+                    android:textColor="@color/scitra_primary"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:background="?android:attr/selectableItemBackground" />
+
+            </LinearLayout>
+
+            <!-- Protocol Selection Card -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/scitra_section_card_bg"
+                android:padding="20dp"
+                android:layout_marginTop="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="PROTOCOL"
+                    android:textColor="@color/scitra_on_surface_variant"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.1"
+                    android:layout_marginBottom="12dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:background="@drawable/scitra_toggle_bg"
+                    android:padding="4dp">
+
+                    <TextView
+                        android:id="@+id/btn_udp"
+                        android:layout_width="0dp"
+                        android:layout_height="40dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="@string/debug_packet_protocol_udp"
+                        android:textColor="@color/scitra_on_primary"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/scitra_chip_selected" />
+
+                    <TextView
+                        android:id="@+id/btn_tcp"
+                        android:layout_width="0dp"
+                        android:layout_height="40dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="@string/debug_packet_protocol_tcp"
+                        android:textColor="@color/scitra_on_surface_variant"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/scitra_chip_unselected" />
+
+                </LinearLayout>
+
+                <!-- TCP Notice -->
+                <TextView
+                    android:id="@+id/text_tcp_notice"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/debug_packet_tcp_notice"
+                    android:textColor="@color/scitra_on_surface_variant"
+                    android:textSize="12sp"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
+            </LinearLayout>
+
+            <!-- Message Input Card -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/scitra_section_card_bg"
+                android:padding="20dp"
+                android:layout_marginTop="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="MESSAGE"
+                    android:textColor="@color/scitra_on_surface_variant"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.1"
+                    android:layout_marginBottom="12dp" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/text_input_layout"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/debug_packet_text_hint"
+                    app:boxStrokeColor="@color/scitra_primary"
+                    app:hintTextColor="@color/scitra_on_surface_variant"
+                    app:boxBackgroundColor="@color/scitra_surface_container_low">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/edit_text_message"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textMultiLine"
+                        android:minLines="3"
+                        android:maxLines="6"
+                        android:maxLength="512"
+                        android:textColor="@color/scitra_on_surface"
+                        android:textColorHint="@color/scitra_on_surface_variant"
+                        android:background="@null" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <TextView
+                    android:id="@+id/text_char_count"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    android:layout_marginTop="8dp"
+                    android:text="@{charCount}"
+                    android:textColor="@color/scitra_on_surface_variant"
+                    android:textSize="12sp"
+                    tools:text="0 / 512" />
+
+            </LinearLayout>
+
+            <!-- Target Info Card (read-only) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/scitra_section_card_bg"
+                android:padding="20dp"
+                android:layout_marginTop="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="TARGET"
+                    android:textColor="@color/scitra_on_surface_variant"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.1"
+                    android:layout_marginBottom="12dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/debug_packet_translator_info"
+                    android:textColor="@color/scitra_on_surface"
+                    android:textSize="14sp"
+                    android:fontFamily="monospace" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/debug_packet_scion_target"
+                    android:textColor="@color/scitra_on_surface"
+                    android:textSize="14sp"
+                    android:fontFamily="monospace" />
+
+            </LinearLayout>
+
+            <!-- Send Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_send"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="16dp"
+                android:text="@{buttonText}"
+                android:textColor="@color/scitra_on_primary"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:background="@drawable/scitra_btn_primary"
+                android:enabled="@{sendEnabled}"
+                app:backgroundTint="@null" />
+
+            <!-- Status Text -->
+            <TextView
+                android:id="@+id/text_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@{statusText}"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:minHeight="20dp"
+                tools:text="Sent"
+                tools:textColor="@color/scitra_success" />
+
+            <!-- Log Panel -->
+            <include layout="@layout/debug_packet_log_panel" />
+
+        </LinearLayout>
+    </ScrollView>
+</layout>

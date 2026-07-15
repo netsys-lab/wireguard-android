@@ -150,6 +150,7 @@
     <string name="log_export_subject">WireGuard Android Log File</string>
     <string name="log_export_success">Saved to “%s”</string>
     <string name="log_export_title">Export log file</string>
+    <string name="log_clear_title">Clear Log</string>
     <string name="log_share_title">Share log file</string>
     <string name="log_saver_activity_label">Save log</string>
     <string name="log_viewer_pref_summary">Logs may assist with debugging</string>
@@ -282,5 +283,32 @@
     <!-- Splash Screen -->
     <string name="splash_tagline">Secure SCION Connectivity</string>
     <string name="splash_powered_by">POWERED BY SCION</string>
+
+    <!-- Debug Packet Sender -->
+    <string name="debug_packet_sender_title">Debug Packet Sender</string>
+    <string name="debug_packet_sender_summary">Send test packets through the SCION tunnel</string>
+    <string name="debug_packet_description">Send a test packet through the active SCION tunnel to the ETH Zürich SCION Packet Inspector. Ensure a SCION tunnel is active before sending.</string>
+    <string name="debug_packet_open_inspector">Open ETH Zürich SCION Packet Inspector</string>
+    <string name="debug_packet_protocol_udp">UDP</string>
+    <string name="debug_packet_protocol_tcp">TCP</string>
+    <string name="debug_packet_send_button">Send test packet</string>
+    <string name="debug_packet_sending_button">Sending…</string>
+    <string name="debug_packet_text_hint">Enter test message…</string>
+    <string name="debug_packet_char_count">%1$d / %2$d</string>
+    <string name="debug_packet_translator_info">Translator: [fc04:800:900::ffff:8184:af68]:30041</string>
+    <string name="debug_packet_scion_target">SCION target: 64-2:0:9,[129.132.175.104]:30041</string>
+    <string name="debug_packet_status_ready"></string>
+    <string name="debug_packet_status_sending">Sending…</string>
+    <string name="debug_packet_status_success">Sent</string>
+    <string name="debug_packet_tcp_notice">The TCP payload may not be displayed in the Packet Inspector.</string>
+    <string name="debug_packet_error_empty">Please enter a message to send.</string>
+    <string name="debug_packet_error_too_long">Message exceeds %d character limit.</string>
+    <string name="debug_packet_error_send_failed">Could not send the packet. Make sure the SCION tunnel is ready.</string>
+    <string name="debug_packet_log_title">LOG</string>
+    <string name="debug_packet_log_empty">No log entries yet</string>
+    <string name="debug_packet_log_save">Save</string>
+    <string name="debug_packet_log_clear">Clear</string>
+    <string name="debug_packet_log_expand">Expand</string>
+    <string name="debug_packet_log_collapse">Collapse</string>
 </resources>
 

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright © 2017-2025 WireGuard LLC. All Rights Reserved.
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/log_panel"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/scitra_section_card_bg"
+    android:padding="12dp"
+    android:layout_marginTop="12dp">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="8dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/debug_packet_log_title"
+            android:textColor="@color/scitra_on_surface_variant"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.1" />
+
+        <TextView
+            android:id="@+id/btn_log_save"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/debug_packet_log_save"
+            android:textColor="@color/scitra_primary"
+            android:textSize="12sp"
+            android:background="?android:attr/selectableItemBackground"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="4dp"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:id="@+id/btn_log_clear"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/debug_packet_log_clear"
+            android:textColor="@color/scitra_primary"
+            android:textSize="12sp"
+            android:background="?android:attr/selectableItemBackground"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="4dp"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:id="@+id/btn_log_expand"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/debug_packet_log_expand"
+            android:textColor="@color/scitra_primary"
+            android:textSize="12sp"
+            android:background="?android:attr/selectableItemBackground"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="4dp" />
+
+    </LinearLayout>
+
+    <!-- Log entries RecyclerView -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/log_recycler_view"
+        android:layout_width="match_parent"
+        android:layout_height="80dp"
+        android:overScrollMode="never"
+        android:visibility="gone"
+        tools:listitem="@layout/debug_packet_log_entry"
+        tools:itemCount="5"
+        tools:visibility="visible" />
+
+    <!-- Empty state -->
+    <TextView
+        android:id="@+id/log_empty_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/debug_packet_log_empty"
+        android:textColor="@color/scitra_on_surface_variant"
+        android:textSize="12sp"
+        android:gravity="center"
+        android:paddingVertical="8dp" />
+
+</LinearLayout>

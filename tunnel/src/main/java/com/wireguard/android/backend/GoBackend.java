@@ -92,7 +92,9 @@ public final class GoBackend implements Backend {
         int tunnelHandle,
         String configDir,
         String interfaceName,
-        String bootstrapUrl
+        String bootstrapUrl,
+        String localIPv4,
+        String localIPv6
     );
 
     /**
@@ -124,7 +126,9 @@ public final class GoBackend implements Backend {
             final int tunnelHandle,
             final String configDir,
             final String interfaceName,
-            final String bootstrapUrl
+            final String bootstrapUrl,
+            final String localIPv4,
+            final String localIPv6
     ) {
         if (tunnelHandle == -1)
             return "no tunnel running";
@@ -133,7 +137,9 @@ public final class GoBackend implements Backend {
                 tunnelHandle,
                 configDir,
                 interfaceName,
-                bootstrapUrl
+                bootstrapUrl,
+                localIPv4,
+                localIPv6
         );
     }
 
@@ -411,13 +417,31 @@ public final class GoBackend implements Backend {
                 final String bootstrapUrl = config.getInterface().getBootstrapUrl();
                 if (bootstrapUrl != null && !bootstrapUrl.isEmpty()) {
                     final String configDir = getScionConfigDir();
+
+                    // Extract local addresses from the tunnel config for the Go backend.
+                    // These bypass net.InterfaceByName which is unavailable on Android.
+                    String localIPv4 = null;
+                    String localIPv6 = null;
+                    for (final InetNetwork addr : config.getInterface().getAddresses()) {
+                        final java.net.InetAddress a = addr.getAddress();
+                        if (a instanceof java.net.Inet4Address) {
+                            localIPv4 = a.getHostAddress();
+                        } else if (a instanceof java.net.Inet6Address) {
+                            localIPv6 = a.getHostAddress();
+                        }
+                    }
+
                     Log.i(TAG_SCION, "SCION tunnel detected, starting backend bootstrap/init retry...");
                     Log.d(TAG_SCION, "ConfigDir: " + configDir);
                     Log.d(TAG_SCION, "BootstrapURL: " + bootstrapUrl);
+                    Log.d(TAG_SCION, "LocalIPv4: " + localIPv4);
+                    Log.d(TAG_SCION, "LocalIPv6: " + localIPv6);
 
                     // Bootstrap + Init in Go backend with retry.
                     final int scionTunnelHandle = currentTunnelHandle;
                     final String scionInterfaceName = tunnel.getName();
+                    final String scionLocalIPv4 = localIPv4;
+                    final String scionLocalIPv6 = localIPv6;
 
                     CompletableFuture.runAsync(() -> {
                         try {
@@ -426,12 +450,16 @@ public final class GoBackend implements Backend {
                             Log.d(TAG_SCION, "BootstrapURL: " + bootstrapUrl);
                             Log.d(TAG_SCION, "InterfaceName: " + scionInterfaceName);
                             Log.d(TAG_SCION, "TunnelHandle: " + scionTunnelHandle);
+                            Log.d(TAG_SCION, "LocalIPv4: " + scionLocalIPv4);
+                            Log.d(TAG_SCION, "LocalIPv6: " + scionLocalIPv6);
 
                             final String result = initScionWithBootstrapRetry(
                                     scionTunnelHandle,
                                     configDir,
                                     scionInterfaceName,
-                                    bootstrapUrl
+                                    bootstrapUrl,
+                                    scionLocalIPv4,
+                                    scionLocalIPv6
                             );
 
                             if ("ok".equals(result)) {

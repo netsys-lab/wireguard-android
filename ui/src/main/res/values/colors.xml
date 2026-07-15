@@ -81,6 +81,7 @@
     <color name="scitra_outline_variant">#27272A</color>
     <color name="scitra_outline">#52525B</color>
     <color name="scitra_secondary">#71717A</color>
+    <color name="scitra_error">#F87171</color>
 
     <!-- Wizard Colors -->
     <color name="scitra_success">#4ADE80</color>
