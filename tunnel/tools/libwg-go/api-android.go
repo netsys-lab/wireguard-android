@@ -7,6 +7,7 @@ package main
 
 // #cgo LDFLAGS: -llog
 // #include <android/log.h>
+// #include <stdlib.h>
 import "C"
 
 import (
@@ -22,6 +23,7 @@ import (
 	"runtime"
 	"runtime/debug"
 	"strings"
+	"sync"
 	"time"
 	"unsafe"
 
@@ -33,17 +35,39 @@ import (
 	"golang.zx2c4.com/wireguard/tun"
 )
 
+// Buffer and chunk limits are defined in logcat_writer.go.
+
+// logTag is the process-global logcat tag, allocated once via C.CString.
+var (
+	logTag     *C.char
+	logTagOnce sync.Once
+)
+
+func getLogTag() *C.char {
+	logTagOnce.Do(func() {
+		logTag = C.CString("WireGuard/GoBackend")
+	})
+	return logTag
+}
+
+// defaultLogFunc writes a single null-terminated record to __android_log_write.
+// The package-level logFunc variable (in logcat_writer.go) defaults to this.
+func defaultLogFunc(msg string) {
+	cMsg := C.CString(msg)
+	defer C.free(unsafe.Pointer(cMsg))
+	C.__android_log_write(C.ANDROID_LOG_DEBUG, getLogTag(), cMsg)
+}
+
+// logWriter is the package-level singleton passed to log.SetOutput.
+var logWriter = &androidLogWriter{}
+
+// Flush writes any buffered partial log line to logcat.
+// Call at process shutdown only; the writer is process-global.
+func Flush() { logWriter.Flush() }
+
 type AndroidLogger struct {
 	level C.int
 	tag   *C.char
-}
-
-type androidLogWriter struct{}
-
-func (w *androidLogWriter) Write(p []byte) (n int, err error) {
-    tag := cstring("WireGuard/GoBackend")
-    C.__android_log_write(C.ANDROID_LOG_DEBUG, tag, (*C.char)(unsafe.Pointer(&p[0])))
-    return len(p), nil
 }
 
 func cstring(s string) *C.char {
@@ -56,7 +80,10 @@ func cstring(s string) *C.char {
 }
 
 func (l AndroidLogger) Printf(format string, args ...interface{}) {
-	C.__android_log_write(l.level, l.tag, cstring(fmt.Sprintf(format, args...)))
+	msg := fmt.Sprintf(format, args...)
+	cMsg := C.CString(msg)
+	defer C.free(unsafe.Pointer(cMsg))
+	C.__android_log_write(l.level, l.tag, cMsg)
 }
 
 type TunnelHandle struct {
@@ -67,7 +94,8 @@ type TunnelHandle struct {
 var tunnelHandles map[int32]TunnelHandle
 
 func init() {
-	log.SetOutput(&androidLogWriter{})
+	logFunc = defaultLogFunc
+	log.SetOutput(logWriter)
 	tunnelHandles = make(map[int32]TunnelHandle)
 	signals := make(chan os.Signal)
 	signal.Notify(signals, unix.SIGUSR2)
@@ -94,7 +122,7 @@ func wgTurnOn(interfaceName string, tunFd int32, settings string) int32 {
 	interfaceName = strings.Clone(interfaceName)
 	settings = strings.Clone(settings)
 
-	tag := cstring("WireGuard/GoBackend/" + interfaceName)
+	tag := C.CString("WireGuard/GoBackend/" + interfaceName)
 	logger := &device.Logger{
 		Verbosef: AndroidLogger{level: C.ANDROID_LOG_DEBUG, tag: tag}.Printf,
 		Errorf:   AndroidLogger{level: C.ANDROID_LOG_ERROR, tag: tag}.Printf,
