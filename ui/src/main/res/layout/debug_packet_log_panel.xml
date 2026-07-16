@@ -4,6 +4,7 @@
   ~ SPDX-License-Identifier: Apache-2.0
   -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/log_panel"
     android:layout_width="match_parent"
@@ -13,7 +14,7 @@
     android:padding="12dp"
     android:layout_marginTop="12dp">
 
-    <!-- Header -->
+    <!-- Header / toolbar -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -22,27 +23,40 @@
         android:layout_marginBottom="8dp">
 
         <TextView
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:text="@string/debug_packet_log_title"
             android:textColor="@color/scitra_on_surface_variant"
             android:textSize="11sp"
             android:textStyle="bold"
             android:letterSpacing="0.1" />
 
-        <TextView
-            android:id="@+id/btn_log_save"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/debug_packet_log_save"
-            android:textColor="@color/scitra_primary"
-            android:textSize="12sp"
-            android:background="?android:attr/selectableItemBackground"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="4dp"
-            android:layout_marginEnd="8dp" />
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
 
+        <!-- Search toggle -->
+        <ImageButton
+            android:id="@+id/btn_log_search"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_search"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/debug_packet_log_search"
+            app:tint="@color/scitra_primary" />
+
+        <!-- Pause / Resume autoscroll -->
+        <ImageButton
+            android:id="@+id/btn_log_pause"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_pause"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/debug_packet_log_pause"
+            app:tint="@color/scitra_primary" />
+
+        <!-- Clear -->
         <TextView
             android:id="@+id/btn_log_clear"
             android:layout_width="wrap_content"
@@ -52,31 +66,88 @@
             android:textSize="12sp"
             android:background="?android:attr/selectableItemBackground"
             android:paddingHorizontal="8dp"
-            android:paddingVertical="4dp"
-            android:layout_marginEnd="8dp" />
+            android:paddingVertical="8dp"
+            android:layout_marginStart="4dp" />
 
-        <TextView
-            android:id="@+id/btn_log_expand"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/debug_packet_log_expand"
-            android:textColor="@color/scitra_primary"
-            android:textSize="12sp"
-            android:background="?android:attr/selectableItemBackground"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="4dp" />
+        <!-- More (overflow) -->
+        <ImageButton
+            android:id="@+id/btn_log_more"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_more_vert"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/debug_packet_log_more"
+            app:tint="@color/scitra_primary" />
 
     </LinearLayout>
+
+    <!-- Search row -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/log_search_box"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/debug_packet_log_search_hint"
+        android:visibility="gone"
+        app:boxStrokeColor="@color/scitra_primary"
+        app:hintTextColor="@color/scitra_on_surface_variant"
+        app:boxBackgroundColor="@color/scitra_surface_container_low"
+        tools:visibility="visible">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/log_search_input"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:imeOptions="actionDone"
+            android:textColor="@color/scitra_on_surface"
+            android:textColorHint="@color/scitra_on_surface_variant"
+            android:background="@null"
+            android:textSize="13sp" />
+
+    </com.google.android.material.textfield.TextInputLayout>
 
     <!-- Log entries RecyclerView -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/log_recycler_view"
         android:layout_width="match_parent"
-        android:layout_height="80dp"
+        android:layout_height="260dp"
         android:overScrollMode="never"
         android:visibility="gone"
         tools:listitem="@layout/debug_packet_log_entry"
         tools:itemCount="5"
+        tools:visibility="visible" />
+
+    <!-- Paused / new-lines indicator -->
+    <TextView
+        android:id="@+id/log_new_lines"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="4dp"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="4dp"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:textColor="@color/scitra_on_surface"
+        android:background="@drawable/log_new_lines_bg"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true"
+        tools:text="23 new lines"
+        tools:visibility="visible" />
+
+    <!-- Trimmed indicator -->
+    <TextView
+        android:id="@+id/log_trimmed"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textSize="10sp"
+        android:gravity="center"
+        android:textColor="@color/scitra_on_surface_variant"
+        android:visibility="gone"
+        tools:text="Older lines removed to keep 5000 entries"
         tools:visibility="visible" />
 
     <!-- Empty state -->

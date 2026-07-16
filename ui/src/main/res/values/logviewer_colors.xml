@@ -7,4 +7,18 @@
     <color name="error_tag_color">#aa0000</color>
     <color name="info_tag_color">#00aa00</color>
     <color name="warning_tag_color">#aaaa00</color>
+
+    <!-- Log viewer severity badge colors (light theme) -->
+    <color name="log_level_trace">#E5E7EB</color>
+    <color name="log_level_debug">#9CA3AF</color>
+    <color name="log_level_info">#3B82F6</color>
+    <color name="log_level_warn">#B45309</color>
+    <color name="log_level_error">#B91C1C</color>
+    <color name="log_level_fatal">#7F1D1D</color>
+    <color name="log_level_trace_text">#374151</color>
+    <color name="log_level_debug_text">#374151</color>
+    <color name="log_level_info_text">#FFFFFF</color>
+    <color name="log_level_warn_text">#FFFFFF</color>
+    <color name="log_level_error_text">#FFFFFF</color>
+    <color name="log_level_fatal_text">#FFFFFF</color>
 </resources>

@@ -310,5 +310,24 @@
     <string name="debug_packet_log_clear">Clear</string>
     <string name="debug_packet_log_expand">Expand</string>
     <string name="debug_packet_log_collapse">Collapse</string>
+    <string name="debug_packet_log_error">Log stream error: %s</string>
+    <string name="debug_packet_log_search">Search</string>
+    <string name="debug_packet_log_search_hint">Search packetId=, refreshId=, socket-write, SCION-PATH…</string>
+    <string name="debug_packet_log_pause">Pause autoscroll</string>
+    <string name="debug_packet_log_resume">Resume autoscroll</string>
+    <string name="debug_packet_log_more">More actions</string>
+    <string name="debug_packet_log_compact">Compact view</string>
+    <string name="debug_packet_log_detailed">Detailed view</string>
+    <string name="debug_packet_log_level_filter">Level filter</string>
+    <string name="debug_packet_log_component_filter">Component filter</string>
+    <string name="debug_packet_log_all">All</string>
+    <string name="debug_packet_log_new_lines">%1$d new lines</string>
+    <string name="debug_packet_log_trimmed">Older lines removed to keep %1$d entries</string>
+    <string name="debug_packet_log_long_press_hint">Tap to collapse. Long-press to copy this line.</string>
+    <string name="debug_packet_log_copied">Line copied to clipboard</string>
+    <string name="debug_packet_log_trace_copied">Packet trace (%1$d lines) copied to clipboard</string>
+    <string name="debug_packet_log_filter_level">Levels</string>
+    <string name="debug_packet_log_filter_component">Components</string>
+    <string name="debug_packet_log_copy_trace">Copy packet trace</string>
 </resources>
 
