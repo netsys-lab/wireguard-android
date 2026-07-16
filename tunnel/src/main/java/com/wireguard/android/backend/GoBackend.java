@@ -14,6 +14,7 @@ import android.util.Log;
 
 import com.wireguard.android.backend.BackendException.Reason;
 import com.wireguard.android.backend.Tunnel.State;
+import com.wireguard.android.tunnel.BuildConfig;
 import com.wireguard.android.util.SharedLibraryLoader;
 import com.wireguard.config.Config;
 import com.wireguard.config.InetEndpoint;
@@ -44,6 +45,15 @@ public final class GoBackend implements Backend {
     private static final int DNS_RESOLUTION_RETRIES = 10;
     private static final String TAG = "WireGuard/GoBackend";
     private static final String TAG_SCION = "WireGuard/GoBackend/SCION";
+
+    // SCION logging configuration: values generated from gradle/scion-logging.properties.
+    // Debug builds use project-configured values; release builds are hardcoded to safe defaults.
+    private static final String SCION_LOG_LEVEL = BuildConfig.SCION_LOG_LEVEL;
+    private static final String SCION_LOG_COMPONENTS = BuildConfig.SCION_LOG_COMPONENTS;
+    private static final boolean SCION_LOG_FULL_TOPOLOGY = BuildConfig.SCION_LOG_FULL_TOPOLOGY;
+    private static final boolean SCION_LOG_PACKET_BYTES = BuildConfig.SCION_LOG_PACKET_BYTES;
+    private static final boolean SCION_LOG_PATH_BYTES = BuildConfig.SCION_LOG_PATH_BYTES;
+    private static final boolean SCION_LOG_INTERNAL_STRUCTS = BuildConfig.SCION_LOG_INTERNAL_STRUCTS;
     @Nullable private static AlwaysOnCallback alwaysOnCallback;
     private static CompletableFuture<VpnService> vpnService = new CompletableFuture<>();
     private final Context context;
@@ -94,7 +104,13 @@ public final class GoBackend implements Backend {
         String interfaceName,
         String bootstrapUrl,
         String localIPv4,
-        String localIPv6
+        String localIPv6,
+        String logLevel,
+        String logComponents,
+        boolean logFullTopology,
+        boolean logPacketBytes,
+        boolean logPathBytes,
+        boolean logInternalStructs
     );
 
     /**
@@ -133,13 +149,27 @@ public final class GoBackend implements Backend {
         if (tunnelHandle == -1)
             return "no tunnel running";
 
+        Log.d(TAG_SCION, "SCION native init configuration:");
+        Log.d(TAG_SCION, "  level=" + SCION_LOG_LEVEL);
+        Log.d(TAG_SCION, "  components=" + SCION_LOG_COMPONENTS);
+        Log.d(TAG_SCION, "  fullTopology=" + SCION_LOG_FULL_TOPOLOGY);
+        Log.d(TAG_SCION, "  packetBytes=" + SCION_LOG_PACKET_BYTES);
+        Log.d(TAG_SCION, "  pathBytes=" + SCION_LOG_PATH_BYTES);
+        Log.d(TAG_SCION, "  internalStructs=" + SCION_LOG_INTERNAL_STRUCTS);
+
         return wgInitScionWithBootstrapRetry(
                 tunnelHandle,
                 configDir,
                 interfaceName,
                 bootstrapUrl,
                 localIPv4,
-                localIPv6
+                localIPv6,
+                SCION_LOG_LEVEL,
+                SCION_LOG_COMPONENTS,
+                SCION_LOG_FULL_TOPOLOGY,
+                SCION_LOG_PACKET_BYTES,
+                SCION_LOG_PATH_BYTES,
+                SCION_LOG_INTERNAL_STRUCTS
         );
     }
 
@@ -436,6 +466,8 @@ public final class GoBackend implements Backend {
                     Log.d(TAG_SCION, "BootstrapURL: " + bootstrapUrl);
                     Log.d(TAG_SCION, "LocalIPv4: " + localIPv4);
                     Log.d(TAG_SCION, "LocalIPv6: " + localIPv6);
+                    Log.d(TAG_SCION, "LogLevel: " + SCION_LOG_LEVEL);
+                    Log.d(TAG_SCION, "LogComponents: " + SCION_LOG_COMPONENTS);
 
                     // Bootstrap + Init in Go backend with retry.
                     final int scionTunnelHandle = currentTunnelHandle;

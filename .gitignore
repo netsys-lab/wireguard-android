@@ -16,3 +16,4 @@ build/
 *.jks
 gradlew.bat
 maint/
+gradle/scion-logging.local.properties
