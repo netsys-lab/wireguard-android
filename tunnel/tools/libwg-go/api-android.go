@@ -340,13 +340,28 @@ func wgInitScion(tunnelHandle int32, configDir string, interfaceName string) *C.
 }
 
 //export wgInitScionWithBootstrapRetry
-func wgInitScionWithBootstrapRetry(tunnelHandle int32, configDir string, interfaceName string, bootstrapURL string, localIPv4 string, localIPv6 string) *C.char {
+func wgInitScionWithBootstrapRetry(
+	tunnelHandle int32,
+	configDir string,
+	interfaceName string,
+	bootstrapURL string,
+	localIPv4 string,
+	localIPv6 string,
+	logLevel string,
+	logComponents string,
+	logFullTopology bool,
+	logPacketBytes bool,
+	logPathBytes bool,
+	logInternalStructs bool,
+) *C.char {
 	// Defensive: clone all strings from cgo to ensure Go owns independent copies.
 	configDir = strings.Clone(configDir)
 	interfaceName = strings.Clone(interfaceName)
 	bootstrapURL = strings.Clone(bootstrapURL)
 	localIPv4 = strings.Clone(localIPv4)
 	localIPv6 = strings.Clone(localIPv6)
+	logLevel = strings.Clone(logLevel)
+	logComponents = strings.Clone(logComponents)
 
 	handle, ok := tunnelHandles[tunnelHandle]
 	if !ok {
@@ -357,10 +372,14 @@ func wgInitScionWithBootstrapRetry(tunnelHandle int32, configDir string, interfa
 		configDir = filepath.Join(os.TempDir(), "wg-scion")
 	}
 
+	// Parse log configuration from Android
+	logCfg := device.ParseSCIONLogConfig(logLevel, logComponents)
+
 	scionConfig := device.ScionDeviceConfig{
 		Enabled:       true,
 		ConfigDir:     configDir,
 		InterfaceName: interfaceName,
+		LogConfig:     &logCfg,
 	}
 
 	// Parse explicitly configured local addresses (Android path).

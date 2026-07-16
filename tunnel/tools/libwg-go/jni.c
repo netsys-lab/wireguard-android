@@ -22,7 +22,13 @@ extern char *wgInitScionWithBootstrapRetry(
         struct go_string interfaceName,
         struct go_string bootstrapURL,
         struct go_string localIPv4,
-        struct go_string localIPv6
+        struct go_string localIPv6,
+        struct go_string logLevel,
+        struct go_string logComponents,
+        int logFullTopology,
+        int logPacketBytes,
+        int logPathBytes,
+        int logInternalStructs
 );
 extern char *wgGetScionStatus(int handle);
 
@@ -34,7 +40,13 @@ JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgInitSci
         jstring interfaceName,
         jstring bootstrapURL,
         jstring localIPv4,
-        jstring localIPv6)
+        jstring localIPv6,
+        jstring logLevel,
+        jstring logComponents,
+        jboolean logFullTopology,
+        jboolean logPacketBytes,
+        jboolean logPathBytes,
+        jboolean logInternalStructs)
 {
     const char *configDir_str = (*env)->GetStringUTFChars(env, configDir, 0);
     size_t configDir_len = (*env)->GetStringUTFLength(env, configDir);
@@ -50,6 +62,12 @@ JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgInitSci
 
     const char *localIPv6_str = (*env)->GetStringUTFChars(env, localIPv6, 0);
     size_t localIPv6_len = (*env)->GetStringUTFLength(env, localIPv6);
+
+    const char *logLevel_str = (*env)->GetStringUTFChars(env, logLevel, 0);
+    size_t logLevel_len = (*env)->GetStringUTFLength(env, logLevel);
+
+    const char *logComponents_str = (*env)->GetStringUTFChars(env, logComponents, 0);
+    size_t logComponents_len = (*env)->GetStringUTFLength(env, logComponents);
 
     char *result = wgInitScionWithBootstrapRetry(
             handle,
@@ -72,13 +90,27 @@ JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgInitSci
             (struct go_string){
                     .str = localIPv6_str,
                     .n = localIPv6_len
-            });
+            },
+            (struct go_string){
+                    .str = logLevel_str,
+                    .n = logLevel_len
+            },
+            (struct go_string){
+                    .str = logComponents_str,
+                    .n = logComponents_len
+            },
+            logFullTopology ? 1 : 0,
+            logPacketBytes ? 1 : 0,
+            logPathBytes ? 1 : 0,
+            logInternalStructs ? 1 : 0);
 
     (*env)->ReleaseStringUTFChars(env, configDir, configDir_str);
     (*env)->ReleaseStringUTFChars(env, interfaceName, interfaceName_str);
     (*env)->ReleaseStringUTFChars(env, bootstrapURL, bootstrapURL_str);
     (*env)->ReleaseStringUTFChars(env, localIPv4, localIPv4_str);
     (*env)->ReleaseStringUTFChars(env, localIPv6, localIPv6_str);
+    (*env)->ReleaseStringUTFChars(env, logLevel, logLevel_str);
+    (*env)->ReleaseStringUTFChars(env, logComponents, logComponents_str);
 
     if (!result)
         return NULL;
