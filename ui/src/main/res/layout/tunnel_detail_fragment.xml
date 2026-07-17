@@ -27,511 +27,510 @@
             type="com.wireguard.config.Config" />
     </data>
 
-    <ScrollView
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@color/scitra_background"
-        android:clickable="true"
-        android:focusable="true"
-        android:fitsSystemWindows="true"
-        android:clipToPadding="false">
+        android:fitsSystemWindows="true">
 
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingBottom="80dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="20dp"
+                android:paddingBottom="16dp">
+
+                <!-- ═══════════════════════════════════════ -->
+                <!-- TOP BAR: Back arrow + Tunnel Name -->
+                <!-- ═══════════════════════════════════════ -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingVertical="16dp">
+
+                    <ImageView
+                        android:id="@+id/btn_back"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_arrow_back"
+                        app:tint="@color/scitra_primary"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/cancel"
+                        android:onClick="@{fragment::onBackPressed}" />
+
+                    <TextView
+                        android:id="@+id/tunnel_name_title"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@{tunnel.name}"
+                        android:textColor="@color/scitra_on_surface"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        tools:text="WG 67" />
+
+                    <!-- Spacer to balance back arrow -->
+                    <View
+                        android:layout_width="40dp"
+                        android:layout_height="40dp" />
+
+                </LinearLayout>
+
+                <!-- ═══════════════════════════════════════ -->
+                <!-- STATUS ROW: SCION badge + Toggle -->
+                <!-- ═══════════════════════════════════════ -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingVertical="4dp">
+
+                    <!-- SCION badge -->
+                    <TextView
+                        android:id="@+id/scion_badge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/scitra_status_badge_bg"
+                        android:text="@{config != null &amp;&amp; config.interface.scionEnabled ? @string/scion_connection : @string/normal_connection}"
+                        android:textColor="@{config != null &amp;&amp; config.interface.scionEnabled ? @color/status_green : @color/scitra_on_surface_variant}"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.05" />
+
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:layout_weight="1" />
+
+                    <!-- SCION/IP toggle switch -->
+                    <com.wireguard.android.widget.ToggleSwitch
+                        android:id="@+id/scion_ip_toggle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:checked="@{config != null &amp;&amp; config.interface.scionEnabled}"
+                        app:onBeforeCheckedChanged="@{fragment::toggleScionMode}" />
+
+                </LinearLayout>
+
+                <!-- ═══════════════════════════════════════ -->
+                <!-- CONNECTION STATUS HUB -->
+                <!-- ═══════════════════════════════════════ -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal"
+                    android:paddingVertical="24dp">
+
+                    <!-- WiFi Icon Circle -->
+                    <FrameLayout
+                        android:id="@+id/hub_container"
+                        android:layout_width="140dp"
+                        android:layout_height="140dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:onClick="@{() -> fragment.setTunnelState(!tunnel.state.equals(State.UP))}"
+                        android:foreground="?android:attr/selectableItemBackground"
+                        android:background="@drawable/scitra_connection_hub_bg">
+
+                        <ImageView
+                            android:id="@+id/hub_wifi_icon"
+                            android:layout_width="56dp"
+                            android:layout_height="56dp"
+                            android:layout_gravity="center"
+                            android:src="@drawable/ic_wifi_signal" />
+                    </FrameLayout>
+
+                    <!-- Status text -->
+                    <TextView
+                        android:id="@+id/status_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="@{tunnel.state == State.UP ? @string/status_connected : @string/status_disconnected}"
+                        android:textColor="@{tunnel.state == State.UP ? @color/status_green : @color/scitra_outline}"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.15"
+                        tools:text="CONNECTED"
+                        tools:textColor="@color/status_green" />
+
+                    <!-- Uptime timer -->
+                    <TextView
+                        android:id="@+id/uptime_timer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="00:00:00"
+                        android:textColor="@color/scitra_primary"
+                        android:textSize="13sp"
+                        android:visibility="@{tunnel.state == State.UP ? View.VISIBLE : View.GONE}"
+                        tools:text="01:02:52"
+                        tools:visibility="visible" />
+
+                    <!-- Speed indicators -->
+                    <LinearLayout
+                        android:id="@+id/speed_row"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginTop="12dp"
+                        android:visibility="@{tunnel.state == State.UP ? View.VISIBLE : View.GONE}">
+
+                        <!-- Download speed -->
+                        <TextView
+                            android:id="@+id/download_speed"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="↓ 0.0"
+                            android:textColor="@color/scitra_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            tools:text="↓ 42.5" />
+
+                        <View
+                            android:layout_width="24dp"
+                            android:layout_height="1dp" />
+
+                        <!-- Upload speed -->
+                        <TextView
+                            android:id="@+id/upload_speed"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="↑ 0.0"
+                            android:textColor="@color/scitra_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            tools:text="↑ 12.8" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- ═══════════════════════════════════════ -->
+                <!-- TOP FLOWS SECTION -->
+                <!-- ═══════════════════════════════════════ -->
+                <LinearLayout
+                    android:id="@+id/flows_section"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="@{tunnel.state == State.UP ? View.VISIBLE : View.GONE}">
+
+                    <!-- Header row -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="12dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/top_flows"
+                            android:textColor="@color/scitra_on_surface"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            android:letterSpacing="0.1" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/see_all"
+                            android:textColor="@color/scitra_primary_container"
+                            android:textSize="12sp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:background="?android:attr/selectableItemBackgroundBorderless"
+                            android:onClick="@{fragment::onSeeAllFlows}" />
+                    </LinearLayout>
+
+                    <!-- Flow Item 1 -->
+                    <LinearLayout
+                        android:id="@+id/flow_item_1"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:background="@drawable/scitra_flow_item_bg"
+                        android:padding="14dp"
+                        android:layout_marginBottom="8dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:onClick="@{fragment::onFlowItemClicked}">
+
+                        <ImageView
+                            android:id="@+id/flow_icon_1"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:src="@drawable/ic_globe"
+                            android:layout_marginEnd="12dp"
+                            android:contentDescription="App icon" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/flow_name_1"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Google Chrome"
+                                android:textColor="@color/scitra_on_surface"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/flow_ip_1"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="142.250.184.206"
+                                android:textColor="@color/scitra_on_surface_variant"
+                                android:textSize="11sp" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:gravity="end">
+
+                            <TextView
+                                android:id="@+id/flow_upload_1"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="↑ 12.4 KB/s"
+                                android:textColor="@color/scitra_primary_container"
+                                android:textSize="11sp" />
+
+                            <TextView
+                                android:id="@+id/flow_download_1"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="↓ 452.1 KB/s"
+                                android:textColor="@color/scitra_primary"
+                                android:textSize="11sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Flow Item 2 -->
+                    <LinearLayout
+                        android:id="@+id/flow_item_2"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:background="@drawable/scitra_flow_item_bg"
+                        android:padding="14dp"
+                        android:layout_marginBottom="8dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:onClick="@{fragment::onFlowItemClicked}">
+
+                        <ImageView
+                            android:id="@+id/flow_icon_2"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:src="@drawable/ic_globe"
+                            android:layout_marginEnd="12dp"
+                            android:contentDescription="App icon" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/flow_name_2"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Slack"
+                                android:textColor="@color/scitra_on_surface"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/flow_ip_2"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="34.225.100.155"
+                                android:textColor="@color/scitra_on_surface_variant"
+                                android:textSize="11sp" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:gravity="end">
+
+                            <TextView
+                                android:id="@+id/flow_upload_2"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="↑ 2.1 KB/s"
+                                android:textColor="@color/scitra_primary_container"
+                                android:textSize="11sp" />
+
+                            <TextView
+                                android:id="@+id/flow_download_2"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="↓ 5.8 KB/s"
+                                android:textColor="@color/scitra_primary"
+                                android:textSize="11sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Flow Item 3 -->
+                    <LinearLayout
+                        android:id="@+id/flow_item_3"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:background="@drawable/scitra_flow_item_bg"
+                        android:padding="14dp"
+                        android:layout_marginBottom="8dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:onClick="@{fragment::onFlowItemClicked}">
+
+                        <ImageView
+                            android:id="@+id/flow_icon_3"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:src="@drawable/ic_globe"
+                            android:layout_marginEnd="12dp"
+                            android:contentDescription="App icon" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/flow_name_3"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="System Update"
+                                android:textColor="@color/scitra_on_surface"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/flow_ip_3"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="17.248.145.74"
+                                android:textColor="@color/scitra_on_surface_variant"
+                                android:textSize="11sp" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:gravity="end">
+
+                            <TextView
+                                android:id="@+id/flow_upload_3"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="↑ 1.2 MB/s"
+                                android:textColor="@color/scitra_primary_container"
+                                android:textSize="11sp" />
+
+                            <TextView
+                                android:id="@+id/flow_download_3"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="↓ 24.8 MB/s"
+                                android:textColor="@color/scitra_primary"
+                                android:textSize="11sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Show all active flows link -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_horizontal"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/show_all_active_flows"
+                        android:textColor="@color/scitra_primary_container"
+                        android:textSize="13sp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:onClick="@{fragment::onSeeAllFlows}" />
+
+                </LinearLayout>
+
+                <!-- Active Peers (hidden, kept for data binding) -->
+                <LinearLayout
+                    android:id="@+id/peers_layout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:divider="@null"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    app:items="@{config.peers}"
+                    app:layout="@{@layout/tunnel_detail_peer}"
+                    tools:ignore="UselessLeaf" />
+
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!-- EDIT INTERFACE BUTTON (pinned bottom) -->
+        <!-- ═══════════════════════════════════════ -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingHorizontal="16dp"
-            android:paddingBottom="32dp">
+            android:layout_gravity="bottom"
+            android:padding="16dp"
+            android:background="@color/scitra_background"
+            android:elevation="8dp">
 
-            <!-- ═══════════════════════════════════════ -->
-            <!-- TOP BAR: Back arrow + Tunnel Name + Settings Gear -->
-            <!-- ═══════════════════════════════════════ -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingVertical="16dp">
-
-                <ImageView
-                    android:id="@+id/btn_back"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:padding="8dp"
-                    android:src="@drawable/ic_arrow_back"
-                    app:tint="@color/scitra_primary"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/cancel"
-                    android:onClick="@{fragment::onBackPressed}" />
-
-                <TextView
-                    android:id="@+id/tunnel_name_title"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@{tunnel.name}"
-                    android:textColor="@color/scitra_on_surface"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:gravity="center"
-                    android:maxLines="1"
-                    android:ellipsize="end"
-                    tools:text="Zurich-ETH-01" />
-
-                <ImageView
-                    android:id="@+id/btn_edit"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:padding="8dp"
-                    android:src="@drawable/ic_settings"
-                    app:tint="@color/scitra_on_surface_variant"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/edit"
-                    android:onClick="@{fragment::onEditTunnel}" />
-
-            </LinearLayout>
-
-            <!-- ═══════════════════════════════════════ -->
-            <!-- STATUS ROW: SCION badge + Tunnel Status + Toggle -->
-            <!-- ═══════════════════════════════════════ -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingVertical="8dp"
-                android:paddingHorizontal="4dp">
-
-                <!-- SCION/IP toggle switch (left of badge) -->
-                <com.wireguard.android.widget.ToggleSwitch
-                    android:id="@+id/scion_ip_toggle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="8dp"
-                    app:checked="@{config != null &amp;&amp; config.interface.scionEnabled}"
-                    app:onBeforeCheckedChanged="@{fragment::toggleScionMode}" />
-
-                <!-- Connection type badge -->
-                <TextView
-                    android:id="@+id/scion_badge"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/scitra_status_badge_bg"
-                    android:text="@{config != null &amp;&amp; config.interface.scionEnabled ? @string/scion_connection : @string/normal_connection}"
-                    android:textColor="@{config != null &amp;&amp; config.interface.scionEnabled ? @color/status_green : @color/scitra_on_surface_variant}"
-                    android:textSize="10sp"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.05" />
-
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="0dp"
-                    android:layout_weight="1" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/tunnel_status_label"
-                    android:textColor="@color/scitra_on_surface_variant"
-                    android:textSize="11sp"
-                    android:letterSpacing="0.05"
-                    android:layout_marginEnd="12dp" />
-
-                <com.wireguard.android.widget.ToggleSwitch
-                    android:id="@+id/tunnel_switch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:nextFocusDown="@id/local_address_text"
-                    android:nextFocusForward="@id/local_address_text"
-                    app:checked="@{tunnel.state == State.UP}"
-                    app:onBeforeCheckedChanged="@{fragment::setTunnelState}" />
-
-            </LinearLayout>
-
-            <!-- ═══════════════════════════════════════ -->
-            <!-- INTERFACE DETAILS CARD -->
-            <!-- ═══════════════════════════════════════ -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="@drawable/scitra_section_card_bg"
-                android:padding="20dp"
-                android:layout_marginTop="16dp">
-
-                <!-- Section header -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginBottom="16dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/interface_details"
-                        android:textColor="@color/scitra_on_surface_variant"
-                        android:textSize="11sp"
-                        android:textStyle="bold"
-                        android:letterSpacing="0.1" />
-
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@drawable/ic_code_brackets"
-                        android:contentDescription="@string/interface_details" />
-
-                </LinearLayout>
-
-                <!-- Local Address -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/local_address"
-                    android:textColor="@color/scitra_on_surface_variant"
-                    android:textSize="11sp"
-                    android:letterSpacing="0.05"
-                    android:visibility="@{config != null &amp;&amp; !config.interface.addresses.isEmpty() ? View.VISIBLE : View.GONE}" />
-
-                <TextView
-                    android:id="@+id/local_address_text"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="@{config.interface.addresses}"
-                    android:textColor="@color/scitra_on_surface"
-                    android:textSize="20sp"
-                    android:textStyle="bold"
-                    android:onClick="@{ClipboardUtils::copyTextView}"
-                    android:contentDescription="@string/addresses"
-                    android:visibility="@{config != null &amp;&amp; !config.interface.addresses.isEmpty() ? View.VISIBLE : View.GONE}"
-                    tools:text="10.0.0.1/24" />
-
-                <!-- ISD-AS Identification (SCION only) -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:text="@string/isd_as_identification"
-                    android:textColor="@color/scitra_on_surface_variant"
-                    android:textSize="11sp"
-                    android:letterSpacing="0.05"
-                    android:visibility="@{config != null &amp;&amp; config.interface.scionEnabled ? View.VISIBLE : View.GONE}" />
-
-                <TextView
-                    android:id="@+id/isd_as_text"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="1-ff00:0:110"
-                    android:textColor="@color/scitra_on_surface"
-                    android:textSize="20sp"
-                    android:textStyle="bold"
-                    android:onClick="@{ClipboardUtils::copyTextView}"
-                    android:visibility="@{config != null &amp;&amp; config.interface.scionEnabled ? View.VISIBLE : View.GONE}"
-                    tools:text="1-ff00:0:110" />
-
-            </LinearLayout>
-
-            <!-- ═══════════════════════════════════════ -->
-            <!-- NETWORK INFO CARD -->
-            <!-- ═══════════════════════════════════════ -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="@drawable/scitra_section_card_bg"
-                android:padding="20dp"
-                android:layout_marginTop="12dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/network_info"
-                    android:textColor="@color/scitra_on_surface_variant"
-                    android:textSize="11sp"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.1"
-                    android:layout_marginBottom="16dp" />
-
-                <!-- Gateway (first peer endpoint or placeholder) -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/gateway_label"
-                    android:textColor="@color/scitra_on_surface_variant"
-                    android:textSize="11sp"
-                    android:letterSpacing="0.05" />
-
-                <TextView
-                    android:id="@+id/gateway_text"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:textColor="@color/scitra_on_surface"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:onClick="@{ClipboardUtils::copyTextView}"
-                    tools:text="192.168.1.1" />
-
-                <!-- DNS Servers -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:text="@string/dns_servers"
-                    android:textColor="@color/scitra_on_surface_variant"
-                    android:textSize="11sp"
-                    android:letterSpacing="0.05"
-                    android:visibility="@{config != null &amp;&amp; !config.interface.dnsServers.isEmpty() ? View.VISIBLE : View.GONE}" />
-
-                <TextView
-                    android:id="@+id/dns_servers_text"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="@{config.interface.dnsServers}"
-                    android:textColor="@color/scitra_on_surface"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:onClick="@{ClipboardUtils::copyTextView}"
-                    android:contentDescription="@string/dns_servers"
-                    android:visibility="@{config != null &amp;&amp; !config.interface.dnsServers.isEmpty() ? View.VISIBLE : View.GONE}"
-                    tools:text="1.1.1.1\n8.8.8.8" />
-
-            </LinearLayout>
-
-            <!-- ═══════════════════════════════════════ -->
-            <!-- PATH SELECTION CARD (SCION only) -->
-            <!-- ═══════════════════════════════════════ -->
-            <LinearLayout
-                android:id="@+id/path_selection_card"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="@drawable/scitra_section_card_bg"
-                android:padding="20dp"
-                android:layout_marginTop="12dp"
-                android:visibility="@{config != null &amp;&amp; config.interface.scionEnabled ? View.VISIBLE : View.GONE}">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/path_selection"
-                    android:textColor="@color/scitra_on_surface_variant"
-                    android:textSize="11sp"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.1"
-                    android:layout_marginBottom="16dp" />
-
-                <!-- Path Selection Chips -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center"
-                    android:layout_marginBottom="20dp">
-
-                    <TextView
-                        android:id="@+id/chip_shortest"
-                        android:layout_width="0dp"
-                        android:layout_height="36dp"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="6dp"
-                        android:gravity="center"
-                        android:text="@string/path_shortest"
-                        android:textColor="@color/scitra_on_primary"
-                        android:textSize="12sp"
-                        android:textStyle="bold"
-                        android:background="@drawable/scitra_chip_selected"
-                        android:onClick="@{fragment::onPathChipClicked}" />
-
-                    <TextView
-                        android:id="@+id/chip_most_reliable"
-                        android:layout_width="0dp"
-                        android:layout_height="36dp"
-                        android:layout_weight="1"
-                        android:layout_marginHorizontal="3dp"
-                        android:gravity="center"
-                        android:text="@string/path_most_reliable"
-                        android:textColor="@color/scitra_on_surface_variant"
-                        android:textSize="12sp"
-                        android:background="@drawable/scitra_chip_unselected"
-                        android:onClick="@{fragment::onPathChipClicked}" />
-
-                    <TextView
-                        android:id="@+id/chip_longest"
-                        android:layout_width="0dp"
-                        android:layout_height="36dp"
-                        android:layout_weight="1"
-                        android:layout_marginStart="6dp"
-                        android:gravity="center"
-                        android:text="@string/path_longest"
-                        android:textColor="@color/scitra_on_surface_variant"
-                        android:textSize="12sp"
-                        android:background="@drawable/scitra_chip_unselected"
-                        android:onClick="@{fragment::onPathChipClicked}" />
-
-                </LinearLayout>
-
-                <!-- Path Visualization (mocked) -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingVertical="8dp">
-
-                    <!-- Node: Local -->
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical"
-                        android:gravity="center">
-
-                        <FrameLayout
-                            android:layout_width="36dp"
-                            android:layout_height="36dp"
-                            android:background="@drawable/scitra_path_node_bg">
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:gravity="center"
-                                android:text="L"
-                                android:textColor="@color/scitra_primary"
-                                android:textSize="14sp"
-                                android:textStyle="bold" />
-                        </FrameLayout>
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:text="LOCAL"
-                            android:textColor="@color/scitra_on_surface_variant"
-                            android:textSize="9sp"
-                            android:letterSpacing="0.05" />
-                    </LinearLayout>
-
-                    <!-- Line connector -->
-                    <View
-                        android:layout_width="0dp"
-                        android:layout_height="2dp"
-                        android:layout_weight="1"
-                        android:background="@drawable/scitra_path_line"
-                        android:layout_marginBottom="18dp" />
-
-                    <!-- Node: Intermediate -->
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical"
-                        android:gravity="center">
-
-                        <FrameLayout
-                            android:layout_width="36dp"
-                            android:layout_height="36dp"
-                            android:background="@drawable/scitra_path_node_bg">
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:gravity="center"
-                                android:text="I4"
-                                android:textColor="@color/scitra_primary"
-                                android:textSize="14sp"
-                                android:textStyle="bold" />
-                        </FrameLayout>
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:text="ISD-1"
-                            android:textColor="@color/scitra_on_surface_variant"
-                            android:textSize="9sp"
-                            android:letterSpacing="0.05" />
-                    </LinearLayout>
-
-                    <!-- Line connector -->
-                    <View
-                        android:layout_width="0dp"
-                        android:layout_height="2dp"
-                        android:layout_weight="1"
-                        android:background="@drawable/scitra_path_line"
-                        android:layout_marginBottom="18dp" />
-
-                    <!-- Node: Destination -->
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical"
-                        android:gravity="center">
-
-                        <FrameLayout
-                            android:layout_width="36dp"
-                            android:layout_height="36dp"
-                            android:background="@drawable/scitra_path_node_bg">
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:gravity="center"
-                                android:text="Z1"
-                                android:textColor="@color/scitra_primary"
-                                android:textSize="14sp"
-                                android:textStyle="bold" />
-                        </FrameLayout>
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:text="ZRH-01"
-                            android:textColor="@color/scitra_on_surface_variant"
-                            android:textSize="9sp"
-                            android:letterSpacing="0.05" />
-                    </LinearLayout>
-
-                </LinearLayout>
-
-                <!-- Current Path label -->
-                <TextView
-                    android:id="@+id/current_path_text"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="CURRENT PATH:  SHORTEST"
-                    android:textColor="@color/scitra_primary"
-                    android:textSize="11sp"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.05" />
-
-            </LinearLayout>
-
-            <!-- ═══════════════════════════════════════ -->
-            <!-- ACTIVE PEERS SECTION -->
-            <!-- ═══════════════════════════════════════ -->
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="12dp"
-                android:text="@string/active_peers"
-                android:textColor="@color/scitra_on_surface"
-                android:textSize="20sp"
-                android:textStyle="bold" />
-
-            <LinearLayout
-                android:id="@+id/peers_layout"
+                android:id="@+id/btn_edit_interface"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:divider="@null"
-                android:orientation="vertical"
-                app:items="@{config.peers}"
-                app:layout="@{@layout/tunnel_detail_peer}"
-                tools:ignore="UselessLeaf" />
-
+                android:layout_height="52dp"
+                android:gravity="center"
+                android:text="@string/edit_interface"
+                android:textColor="@color/scitra_on_primary"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:background="@drawable/scitra_edit_btn_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:onClick="@{fragment::onEditClick}"
+                android:drawableStart="@drawable/ic_action_edit"
+                android:drawablePadding="8dp"
+                android:drawableTint="@color/scitra_on_primary"
+                android:paddingHorizontal="24dp" />
         </LinearLayout>
-    </ScrollView>
+    </FrameLayout>
 </layout>

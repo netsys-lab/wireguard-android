@@ -33,3 +33,6 @@
 -keepclasseswithmembers class * {
     @androidx.annotation.Keep <init>(...);
 }
+
+# Workaround for R8 crashing during Kotlin metadata rewrite on Updater coroutine
+-keep class com.wireguard.android.updater.Updater** { *; }

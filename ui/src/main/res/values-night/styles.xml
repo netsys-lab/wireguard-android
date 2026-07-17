@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Dark mode: use light icons on dark status bar -->
+    <style name="AppThemeBase" parent="WireGuardTheme">
+        <item name="materialCardViewStyle">@style/WireGuardTheme.MaterialCardView</item>
+        <item name="toolbarStyle">@style/WireGuardTheme.Toolbar</item>
+        <item name="bottomSheetDialogTheme">@style/WireGuardTheme.BottomSheetDialog</item>
+        <item name="android:statusBarColor">@color/scitra_background</item>
+        <item name="android:navigationBarColor">@color/scitra_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/scitra_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/transparent_splash_icon</item>
+        <item name="postSplashScreenTheme">@style/AppTheme</item>
+        <item name="android:statusBarColor">@color/scitra_background</item>
+        <item name="android:navigationBarColor">@color/scitra_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

@@ -14,7 +14,7 @@
         <item name="bottomSheetDialogTheme">@style/WireGuardTheme.BottomSheetDialog</item>
         <item name="android:statusBarColor">@color/scitra_background</item>
         <item name="android:navigationBarColor">@color/scitra_background</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 
     <!-- Various additional API-specific features in values-v*/styles.xml -->
@@ -59,13 +59,13 @@
         <item name="android:windowBackground">@color/scitra_background</item>
     </style>
 
-    <style name="SplashTheme" parent="AppTheme">
-        <item name="android:windowBackground">@drawable/scitra_splash_bg</item>
-        <item name="android:windowNoTitle">true</item>
-        <item name="android:windowActionBar">false</item>
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/scitra_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/transparent_splash_icon</item>
+        <item name="postSplashScreenTheme">@style/AppTheme</item>
         <item name="android:statusBarColor">@color/scitra_background</item>
         <item name="android:navigationBarColor">@color/scitra_background</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 
 </resources>

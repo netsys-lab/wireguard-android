@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentTransaction
 import androidx.fragment.app.commit
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.wireguard.android.R
 import com.wireguard.android.fragment.TunnelDetailFragment
 import com.wireguard.android.fragment.TunnelEditorFragment
@@ -58,8 +59,12 @@ class MainActivity : BaseActivity(), FragmentManager.OnBackStackChangedListener 
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_activity)
+
+        // Dismiss the system splash screen instantly to show our in-app overlay
+        splashScreen.setKeepOnScreenCondition { false }
 
         actionBar = supportActionBar
         actionBar?.hide()
@@ -68,7 +73,37 @@ class MainActivity : BaseActivity(), FragmentManager.OnBackStackChangedListener 
         backPressedCallback = onBackPressedDispatcher.addCallback(this) { handleBackPressed() }
         onBackStackChanged()
 
+        val loadingOverlay = findViewById<View>(R.id.loading_overlay)
+        val progressBar = findViewById<com.google.android.material.progressindicator.LinearProgressIndicator>(R.id.loading_progress)
+        
+        // Reactive Loading Animation
+        val progressAnimator = android.animation.ObjectAnimator.ofInt(progressBar, "progress", 0, 100).apply {
+            duration = 1500
+            interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+        }
 
+        lifecycleScope.launch {
+            val startTime = System.currentTimeMillis()
+            progressAnimator.start()
+            
+            // Wait for real backend to load
+            com.wireguard.android.Application.getBackend()
+            
+            // Ensure we wait at least 1500ms for the animation to complete
+            val elapsed = System.currentTimeMillis() - startTime
+            if (elapsed < 1500) {
+                kotlinx.coroutines.delay(1500 - elapsed)
+            }
+            
+            // Smoothly fade out the overlay
+            loadingOverlay.animate()
+                .alpha(0f)
+                .setDuration(400)
+                .withEndAction {
+                    loadingOverlay.visibility = View.GONE
+                }
+                .start()
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {

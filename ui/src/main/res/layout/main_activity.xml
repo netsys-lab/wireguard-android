@@ -2,19 +2,65 @@
   ~ Copyright © 2017-2025 WireGuard LLC. All Rights Reserved.
   ~ SPDX-License-Identifier: Apache-2.0
   -->
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/main_activity_container"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="false"
     tools:context=".activity.MainActivity">
 
-    <androidx.fragment.app.FragmentContainerView
-        android:id="@+id/list_detail_container"
-        android:name="com.wireguard.android.fragment.TunnelListFragment"
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
+        android:id="@+id/main_activity_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <androidx.fragment.app.FragmentContainerView
+            android:id="@+id/list_detail_container"
+            android:name="com.wireguard.android.fragment.TunnelListFragment"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:tag="LIST" />
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
+
+    <!-- Reactive Loading Overlay -->
+    <FrameLayout
+        android:id="@+id/loading_overlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:tag="LIST" />
+        android:background="@color/scitra_background"
+        android:elevation="10dp"
+        android:visibility="visible">
 
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_gravity="center"
+            android:gravity="center">
+
+            <!-- Logo -->
+            <ImageView
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:src="@mipmap/ic_launcher"
+                android:contentDescription="Scitra Logo" />
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="32dp" />
+
+            <!-- Progress Bar -->
+            <com.google.android.material.progressindicator.LinearProgressIndicator
+                android:id="@+id/loading_progress"
+                android:layout_width="140dp"
+                android:layout_height="wrap_content"
+                android:indeterminate="false"
+                android:max="100"
+                android:progress="0"
+                app:trackCornerRadius="4dp"
+                app:indicatorColor="@color/scitra_primary_container"
+                app:trackColor="#33003B71" />
+        </LinearLayout>
+    </FrameLayout>
+</FrameLayout>

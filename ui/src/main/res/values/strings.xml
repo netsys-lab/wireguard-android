@@ -66,7 +66,7 @@
     <string name="allow_remote_control_intents_summary_on">External apps may toggle tunnels (advanced)</string>
     <string name="allow_remote_control_intents_title">Allow remote control apps</string>
     <string name="allowed_ips">Allowed IPs</string>
-    <string name="app_name" translatable="false">WireGuard</string>
+    <string name="app_name" translatable="false">Scitra</string>
     <string name="bad_config_context">%1$s\'s %2$s</string>
     <string name="bad_config_context_top_level">%s</string>
     <string name="bad_config_error">%1$s in %2$s</string>
@@ -329,5 +329,19 @@
     <string name="debug_packet_log_filter_level">Levels</string>
     <string name="debug_packet_log_filter_component">Components</string>
     <string name="debug_packet_log_copy_trace">Copy packet trace</string>
+    <!-- Connection Status Hub -->
+    <string name="status_connected">CONNECTED</string>
+    <string name="status_disconnected">DISCONNECTED</string>
+    <string name="top_flows">TOP FLOWS</string>
+    <string name="see_all">See All  ›</string>
+    <string name="show_all_active_flows">Show all active flows</string>
+    <string name="edit_interface">Edit Interface</string>
+    <string name="path_information">Path Information</string>
+    <string name="active_flows">ACTIVE FLOWS</string>
+    <string name="real_time_monitoring">Real-time Monitoring</string>
+    <string name="confirm_path_selection">Confirm Path Selection</string>
+    <string name="path_selection_title">Path Selection</string>
+    <string name="optimizing_connection">Optimizing connection for %s traffic</string>
+    <string name="recommended">RECOMMENDED</string>
 </resources>
 
