@@ -1,9 +1,56 @@
 @file:Suppress("UnstableApiUsage")
 
+import java.util.Properties
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.gradle.api.tasks.bundling.Zip
 
 val pkg: String = providers.gradleProperty("wireguardPackageName").get()
+
+// --- SCION backend logging configuration ---
+// Loads committed defaults, then optional local overrides.
+val scionLogging = Properties()
+
+val defaultScionLoggingFile = rootProject.file("gradle/scion-logging.properties")
+if (defaultScionLoggingFile.exists()) {
+    defaultScionLoggingFile.inputStream().use { scionLogging.load(it) }
+}
+
+val localScionLoggingFile = rootProject.file("gradle/scion-logging.local.properties")
+if (localScionLoggingFile.exists()) {
+    val localOverrides = Properties()
+    localScionLoggingFile.inputStream().use { localOverrides.load(it) }
+    scionLogging.putAll(localOverrides)
+}
+
+fun escapeBuildConfigString(value: String): String {
+    return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+}
+
+fun scionLogLevelValue(): String {
+    val raw = scionLogging.getProperty("scionLogLevel", "info").trim().lowercase()
+    val validLevels = setOf("trace", "debug", "info", "warn", "warning", "error")
+    if (raw !in validLevels) {
+        logger.warn("SCION: invalid scionLogLevel '$raw', falling back to 'info'")
+        return "info"
+    }
+    return raw
+}
+
+fun scionLogComponentsValue(): String {
+    return scionLogging.getProperty("scionLogComponents", "").trim()
+}
+
+fun scionBoolValue(key: String): Boolean {
+    val raw = scionLogging.getProperty(key, "false").trim().lowercase()
+    return when (raw) {
+        "true" -> true
+        "false" -> false
+        else -> {
+            logger.warn("SCION: invalid $key='$raw', falling back to false")
+            false
+        }
+    }
+}
 
 plugins {
     alias(libs.plugins.android.library)
@@ -18,6 +65,9 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     namespace = "${pkg}.tunnel"
+    buildFeatures {
+        buildConfig = true
+    }
     defaultConfig {
         minSdk = 24
     }
@@ -45,6 +95,12 @@ android {
                     arguments("-DANDROID_PACKAGE_NAME=${pkg}")
                 }
             }
+            buildConfigField("String", "SCION_LOG_LEVEL", escapeBuildConfigString("info"))
+            buildConfigField("String", "SCION_LOG_COMPONENTS", escapeBuildConfigString(""))
+            buildConfigField("boolean", "SCION_LOG_FULL_TOPOLOGY", "false")
+            buildConfigField("boolean", "SCION_LOG_PACKET_BYTES", "false")
+            buildConfigField("boolean", "SCION_LOG_PATH_BYTES", "false")
+            buildConfigField("boolean", "SCION_LOG_INTERNAL_STRUCTS", "false")
         }
         debug {
             externalNativeBuild {
@@ -52,6 +108,12 @@ android {
                     arguments("-DANDROID_PACKAGE_NAME=${pkg}.debug")
                 }
             }
+            buildConfigField("String", "SCION_LOG_LEVEL", escapeBuildConfigString(scionLogLevelValue()))
+            buildConfigField("String", "SCION_LOG_COMPONENTS", escapeBuildConfigString(scionLogComponentsValue()))
+            buildConfigField("boolean", "SCION_LOG_FULL_TOPOLOGY", scionBoolValue("scionLogFullTopology").toString())
+            buildConfigField("boolean", "SCION_LOG_PACKET_BYTES", scionBoolValue("scionLogPacketBytes").toString())
+            buildConfigField("boolean", "SCION_LOG_PATH_BYTES", scionBoolValue("scionLogPathBytes").toString())
+            buildConfigField("boolean", "SCION_LOG_INTERNAL_STRUCTS", scionBoolValue("scionLogInternalStructs").toString())
         }
     }
     lint {

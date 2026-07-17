@@ -152,6 +152,11 @@ class LogViewerActivity : AppCompatActivity() {
                 true
             }
 
+            R.id.clear_log -> {
+                clearLog()
+                true
+            }
+
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -191,6 +196,18 @@ class LogViewerActivity : AppCompatActivity() {
             if (exception == null) Snackbar.LENGTH_SHORT else Snackbar.LENGTH_LONG
         )
             .show()
+    }
+
+    private fun clearLog() {
+        try {
+            Runtime.getRuntime().exec("logcat -c")
+        } catch (e: IOException) {
+            Log.e(TAG, Log.getStackTraceString(e))
+        }
+        logLines.clear()
+        rawLogLines.clear()
+        logAdapter.notifyDataSetChanged()
+        Snackbar.make(binding.root, getString(R.string.log_clear_title), Snackbar.LENGTH_SHORT).show()
     }
 
     private suspend fun streamingLog() = withContext(Dispatchers.IO) {

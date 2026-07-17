@@ -101,6 +101,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".activity.DebugPacketActivity"
+            android:exported="false"
+            android:label="@string/debug_packet_sender_title" />
+
         <provider
             android:name=".activity.LogViewerActivity$ExportedLogContentProvider"
             android:authorities="${applicationId}.exported-log"

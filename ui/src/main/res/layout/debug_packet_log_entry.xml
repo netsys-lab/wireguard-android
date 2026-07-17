@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright © 2017-2025 WireGuard LLC. All Rights Reserved.
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="?attr/selectableItemBackground"
+    android:paddingVertical="4dp"
+    android:paddingHorizontal="8dp"
+    android:minHeight="40dp">
+
+    <!-- Compact row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="top">
+
+        <TextView
+            android:id="@+id/log_time"
+            android:layout_width="74dp"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:textSize="11sp"
+            android:textColor="@color/scitra_on_surface_variant"
+            android:paddingEnd="8dp"
+            android:includeFontPadding="false"
+            tools:text="12:24:32.418" />
+
+        <TextView
+            android:id="@+id/log_component"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="46dp"
+            android:gravity="center"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="1dp"
+            android:layout_marginEnd="8dp"
+            android:textSize="9sp"
+            android:textStyle="bold"
+            android:textAllCaps="true"
+            android:textColor="@color/scitra_on_surface"
+            android:background="@drawable/log_component_badge_bg"
+            tools:text="PATH" />
+
+        <TextView
+            android:id="@+id/log_message"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="monospace"
+            android:textSize="12sp"
+            android:textColor="@color/scitra_on_surface"
+            android:lineSpacingExtra="2dp"
+            tools:text="refreshId=7 phase=connector.Paths event=complete elapsedMs=45 paths=2" />
+
+    </LinearLayout>
+
+    <!-- Detailed (expanded) section -->
+    <LinearLayout
+        android:id="@+id/log_detail"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="6dp"
+        android:layout_marginStart="74dp"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="4dp">
+
+            <TextView
+                android:id="@+id/log_level_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="46dp"
+                android:gravity="center"
+                android:paddingHorizontal="6dp"
+                android:paddingVertical="1dp"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:textAllCaps="true"
+                android:textColor="@color/scitra_on_surface"
+                android:background="@drawable/log_level_badge_bg"
+                tools:text="INFO" />
+
+            <TextView
+                android:id="@+id/log_tag"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:textSize="10sp"
+                android:singleLine="true"
+                android:ellipsize="middle"
+                android:textColor="@color/scitra_on_surface_variant"
+                tools:text="WireGuard/ScionDebugSender" />
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/log_raw"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:textSize="11sp"
+            android:textColor="@color/scitra_on_surface_variant"
+            android:background="@drawable/log_raw_bg"
+            android:padding="8dp"
+            android:lineSpacingExtra="2dp"
+            tools:text="2026/07/16 12:24:32 [SCION-PATH-TRA...]" />
+
+        <TextView
+            android:id="@+id/log_copy_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="10sp"
+            android:textColor="@color/scitra_on_surface_variant"
+            android:text="@string/debug_packet_log_long_press_hint" />
+
+    </LinearLayout>
+
+</LinearLayout>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright © 2017-2025 WireGuard LLC. All Rights Reserved.
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_save"
+        android:title="@string/debug_packet_log_save" />
+    <item
+        android:id="@+id/action_mode"
+        android:title="@string/debug_packet_log_detailed" />
+    <item
+        android:id="@+id/action_level"
+        android:title="@string/debug_packet_log_level_filter" />
+    <item
+        android:id="@+id/action_component"
+        android:title="@string/debug_packet_log_component_filter" />
+    <item
+        android:id="@+id/action_collapse"
+        android:title="@string/debug_packet_log_collapse" />
+</menu>

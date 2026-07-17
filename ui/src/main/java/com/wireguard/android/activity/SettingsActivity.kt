@@ -89,6 +89,10 @@ class SettingsActivity : AppCompatActivity() {
                 startActivity(Intent(requireContext(), LogViewerActivity::class.java))
                 true
             }
+            preferenceManager.findPreference<Preference>("debug_packet_sender")?.setOnPreferenceClickListener {
+                startActivity(Intent(requireContext(), DebugPacketActivity::class.java))
+                true
+            }
             val kernelModuleEnabler = preferenceManager.findPreference<Preference>("kernel_module_enabler")
             if (WgQuickBackend.hasKernelSupport()) {
                 lifecycleScope.launch {

@@ -21,6 +21,11 @@
         android:singleLineTitle="false"
         android:summary="@string/log_viewer_pref_summary"
         android:title="@string/log_viewer_pref_title" />
+    <Preference
+        android:key="debug_packet_sender"
+        android:singleLineTitle="false"
+        android:summary="@string/debug_packet_sender_summary"
+        android:title="@string/debug_packet_sender_title" />
     <CheckBoxPreference
         android:defaultValue="false"
         android:key="dark_theme"
