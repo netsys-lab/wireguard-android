@@ -129,6 +129,7 @@ data class FlowPathsResponseDto(
     val state: FlowPathsState,
     val paths: List<FlowPathDto> = emptyList(),
     val error: String? = null,
+    val policyName: String? = null,
 )
 
 fun parseFlowPathsResponse(json: String): FlowPathsResponseDto {
@@ -136,6 +137,7 @@ fun parseFlowPathsResponse(json: String): FlowPathsResponseDto {
     val flowId = obj.optLong("flowId", 0)
     val state = parseFlowPathsState(obj.optString("state", ""))
     val error = obj.optString("error", null)?.takeIf { it.isNotEmpty() }
+    val policyName = obj.optString("policyName", null)?.takeIf { it.isNotEmpty() }
     val pathsArray = obj.optJSONArray("paths") ?: JSONArray()
     val paths = (0 until pathsArray.length()).map { i ->
         val p = pathsArray.getJSONObject(i)
@@ -176,7 +178,7 @@ fun parseFlowPathsResponse(json: String): FlowPathsResponseDto {
             },
         )
     }
-    return FlowPathsResponseDto(flowId = flowId, state = state, paths = paths, error = error)
+    return FlowPathsResponseDto(flowId = flowId, state = state, paths = paths, error = error, policyName = policyName)
 }
 
 private fun parseFlowPathsState(state: String): FlowPathsState = when (state.lowercase()) {
