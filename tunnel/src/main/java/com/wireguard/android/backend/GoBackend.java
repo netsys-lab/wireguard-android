@@ -105,6 +105,7 @@ public final class GoBackend implements Backend {
     private static native String wgGetScionStatus(int handle);
     private static native String wgGetSCIONInfo(int handle);
     @Nullable private static native String wgGetFlows(int handle);
+    @Nullable private static native String wgGetFlowPaths(int handle, long flowId);
     private static native String wgInitScionWithBootstrapRetry(
         int tunnelHandle,
         String configDir,
@@ -155,6 +156,14 @@ public final class GoBackend implements Backend {
         if (tunnel != currentTunnel || currentTunnelHandle == -1)
             return "{\"flows\":[],\"error\":\"tunnel_not_running\"}";
         return wgGetFlows(currentTunnelHandle);
+    }
+    @Nullable
+    public String getFlowPaths(final Tunnel tunnel, final long flowId) {
+        if (tunnel != currentTunnel || currentTunnelHandle == -1)
+            return "{\"error\":\"tunnel_not_running\"}";
+        if (flowId < 0)
+            return "{\"error\":\"invalid_flow_id\"}";
+        return wgGetFlowPaths(currentTunnelHandle, flowId);
     }
     private String initScionWithBootstrapRetry(
             final int tunnelHandle,

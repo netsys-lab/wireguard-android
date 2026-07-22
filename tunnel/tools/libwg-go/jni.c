@@ -33,6 +33,7 @@ extern char *wgInitScionWithBootstrapRetry(
 extern char *wgGetScionStatus(int handle);
 extern char *wgGetSCIONInfo(int handle);
 extern char *wgGetFlows(int handle);
+extern char *wgGetFlowPaths(int handle, long long flowId);
 extern void wgSetCoreLogLevel(int level);
 
 JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgInitScionWithBootstrapRetry(
@@ -188,6 +189,16 @@ JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgGetSCIO
 JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgGetFlows(JNIEnv *env, jclass c, jint handle)
 {
 	char *result = wgGetFlows(handle);
+	if (!result)
+		return NULL;
+	jstring ret = (*env)->NewStringUTF(env, result);
+	free(result);
+	return ret;
+}
+
+JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgGetFlowPaths(JNIEnv *env, jclass c, jint handle, jlong flowId)
+{
+	char *result = wgGetFlowPaths(handle, (long long)flowId);
 	if (!result)
 		return NULL;
 	jstring ret = (*env)->NewStringUTF(env, result);

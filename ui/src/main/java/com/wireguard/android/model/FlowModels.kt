@@ -94,6 +94,99 @@ private fun parseEgressKind(obj: JSONObject): String {
     return "unknown"
 }
 
+data class FlowPathDto(
+    val fingerprint: String,
+    val display: String,
+    val current: Boolean,
+    val nextHop: String? = null,
+    val expiry: String? = null,
+    val mtu: Int? = null,
+    val interfaces: List<String>? = null,
+    val latencyMs: List<Double>? = null,
+    val bandwidth: List<Long>? = null,
+    val geo: List<GeoDto>? = null,
+    val linkType: List<String>? = null,
+    val internalHops: List<Int>? = null,
+    val notes: List<String>? = null,
+)
+
+data class GeoDto(
+    val latitude: Double,
+    val longitude: Double,
+    val address: String? = null,
+)
+
+enum class FlowPathsState {
+    READY,
+    PENDING,
+    EMPTY,
+    ERROR,
+    UNKNOWN,
+}
+
+data class FlowPathsResponseDto(
+    val flowId: Long,
+    val state: FlowPathsState,
+    val paths: List<FlowPathDto> = emptyList(),
+    val error: String? = null,
+)
+
+fun parseFlowPathsResponse(json: String): FlowPathsResponseDto {
+    val obj = JSONObject(json)
+    val flowId = obj.optLong("flowId", 0)
+    val state = parseFlowPathsState(obj.optString("state", ""))
+    val error = obj.optString("error", null)?.takeIf { it.isNotEmpty() }
+    val pathsArray = obj.optJSONArray("paths") ?: JSONArray()
+    val paths = (0 until pathsArray.length()).map { i ->
+        val p = pathsArray.getJSONObject(i)
+        FlowPathDto(
+            fingerprint = p.optString("fingerprint", ""),
+            display = p.optString("display", ""),
+            current = p.optBoolean("current", false),
+            nextHop = p.optString("nextHop", null)?.takeIf { it.isNotEmpty() },
+            expiry = p.optString("expiry", null)?.takeIf { it.isNotEmpty() },
+            mtu = if (p.has("mtu") && !p.isNull("mtu")) p.optInt("mtu", 0) else null,
+            interfaces = p.optJSONArray("interfaces")?.let { arr ->
+                (0 until arr.length()).map { arr.getString(it) }
+            },
+            latencyMs = p.optJSONArray("latencyMs")?.let { arr ->
+                (0 until arr.length()).map { arr.getDouble(it) }
+            },
+            bandwidth = p.optJSONArray("bandwidth")?.let { arr ->
+                (0 until arr.length()).map { arr.getLong(it) }
+            },
+            geo = p.optJSONArray("geo")?.let { arr ->
+                (0 until arr.length()).map { j ->
+                    val g = arr.getJSONObject(j)
+                    GeoDto(
+                        latitude = g.optDouble("latitude", 0.0),
+                        longitude = g.optDouble("longitude", 0.0),
+                        address = g.optString("address", null)?.takeIf { it.isNotEmpty() },
+                    )
+                }
+            },
+            linkType = p.optJSONArray("linkType")?.let { arr ->
+                (0 until arr.length()).map { arr.getString(it) }
+            },
+            internalHops = p.optJSONArray("internalHops")?.let { arr ->
+                (0 until arr.length()).map { arr.getInt(it) }
+            },
+            notes = p.optJSONArray("notes")?.let { arr ->
+                (0 until arr.length()).map { arr.getString(it) }
+            },
+        )
+    }
+    return FlowPathsResponseDto(flowId = flowId, state = state, paths = paths, error = error)
+}
+
+private fun parseFlowPathsState(state: String): FlowPathsState = when (state.lowercase()) {
+    "ready" -> FlowPathsState.READY
+    "pending" -> FlowPathsState.PENDING
+    "empty" -> FlowPathsState.EMPTY
+    "error" -> FlowPathsState.ERROR
+    else -> FlowPathsState.UNKNOWN
+}
+
 fun parseSCIONInfo(json: String): SCIONInfoDto {
     val obj = JSONObject(json)
     return SCIONInfoDto(
