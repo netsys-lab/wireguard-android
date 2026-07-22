@@ -220,6 +220,60 @@
                 </LinearLayout>
 
                 <!-- ═══════════════════════════════════════ -->
+                <!-- SCION INFO SECTION -->
+                <!-- ═══════════════════════════════════════ -->
+                <LinearLayout
+                    android:id="@+id/scion_info_section"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/scion_local_ia"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/scitra_on_surface"
+                        android:textSize="12sp"
+                        tools:text="1-ff00:0:110" />
+
+                    <TextView
+                        android:id="@+id/scion_bind_addr"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textColor="@color/scitra_on_surface_variant"
+                        android:textSize="11sp"
+                        tools:text="10.0.0.2:30041-30050" />
+
+                    <TextView
+                        android:id="@+id/scion_br_addr"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textColor="@color/scitra_on_surface_variant"
+                        android:textSize="11sp"
+                        tools:text="BR: 192.168.1.1:30042" />
+
+                    <TextView
+                        android:id="@+id/scion_flow_totals"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textColor="@color/scitra_primary"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        tools:text="TX 1.2M · RX 0.8M" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginVertical="12dp"
+                    android:background="@color/scitra_outline"
+                    android:alpha="0.3" />
+
+                <!-- ═══════════════════════════════════════ -->
                 <!-- TOP FLOWS SECTION -->
                 <!-- ═══════════════════════════════════════ -->
                 <LinearLayout

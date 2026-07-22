@@ -27,12 +27,16 @@ import com.wireguard.android.databinding.TunnelDetailPeerBinding
 import com.wireguard.android.model.FlowDto
 import com.wireguard.android.model.FlowEgressKind
 import com.wireguard.android.model.ObservableTunnel
+import com.wireguard.android.model.SCIONInfoDto
+import com.wireguard.android.model.parseSCIONInfo
 import com.wireguard.android.util.FlowRepository
 import com.wireguard.android.util.QuantityFormatter
 import com.wireguard.config.Config
 import com.wireguard.config.Interface
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 /**
@@ -57,6 +61,11 @@ class TunnelDetailFragment : BaseFragment() {
     private var lastFlowCount: Int = 0
     private var showAllFlows: Boolean = false
     private var lastAllFlows: List<FlowDto> = emptyList()
+    private var flowSnapshotCache: MutableMap<Long, FlowDto> = mutableMapOf()
+    private var lastFlowPollTime: Long = 0L
+
+    // SCION info
+    private var lastSCIONInfo: SCIONInfoDto? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -84,6 +93,7 @@ class TunnelDetailFragment : BaseFragment() {
             while (timerActive) {
                 updateStats()
                 updateTimer()
+                updateSCIONInfo()
                 updateFlows()
                 delay(1000)
             }
@@ -113,6 +123,8 @@ class TunnelDetailFragment : BaseFragment() {
         lastStatsTimeMillis = 0L
         lastFlowCount = 0
         lastAllFlows = emptyList()
+        flowSnapshotCache.clear()
+        lastFlowPollTime = 0L
         showAllFlows = false
         lifecycleScope.launch { updateStats() }
     }
@@ -312,6 +324,11 @@ class TunnelDetailFragment : BaseFragment() {
             }
             lastAllFlows = flows
             renderFilteredFlows(flows)
+            // Update snapshot cache for rate computation
+            for (f in flows) {
+                flowSnapshotCache[f.id] = f
+            }
+            lastFlowPollTime = System.currentTimeMillis()
         } catch (_: Exception) {
             showFlowEmptyState(binding, R.string.no_active_flows)
             lastFlowCount = -1
@@ -338,8 +355,23 @@ class TunnelDetailFragment : BaseFragment() {
             return
         }
 
+        val now = System.currentTimeMillis()
+        val dt = if (lastFlowPollTime > 0) (now - lastFlowPollTime) / 1000.0 else 1.0
+
         for (flow in filtered) {
-            container.addView(createFlowRowView(flow))
+            val prev = flowSnapshotCache[flow.id]
+            val rates: FlowRates
+            if (dt > 0 && prev != null) {
+                rates = FlowRates(
+                    txBytesPerSec = clampDelta(flow.txBytes, prev.txBytes) / dt,
+                    rxBytesPerSec = clampDelta(flow.rxBytes, prev.rxBytes) / dt,
+                    txPktsPerSec = clampDelta(flow.txPackets, prev.txPackets) / dt,
+                    rxPktsPerSec = clampDelta(flow.rxPackets, prev.rxPackets) / dt,
+                )
+            } else {
+                rates = FlowRates(0.0, 0.0, 0.0, 0.0)
+            }
+            container.addView(createFlowRowView(flow, rates))
         }
         lastFlowCount = filtered.size
     }
@@ -378,7 +410,7 @@ class TunnelDetailFragment : BaseFragment() {
         }
     }
 
-    private fun createFlowRowView(flow: FlowDto): View {
+    private fun createFlowRowView(flow: FlowDto, rates: FlowRates): View {
         val ctx = requireContext()
         val row = LinearLayout(ctx)
         row.layoutParams = LinearLayout.LayoutParams(
@@ -390,6 +422,108 @@ class TunnelDetailFragment : BaseFragment() {
         row.setPadding(12, 8, 12, 8)
         row.setBackgroundResource(R.drawable.scitra_flow_item_bg)
 
+        if (flow.egressKindEnum == FlowEgressKind.SCION) {
+            buildSCIONRow(row, ctx, flow, rates)
+        } else {
+            buildIPRow(row, ctx, flow)
+        }
+
+        return row
+    }
+
+    private fun buildSCIONRow(row: LinearLayout, ctx: android.content.Context, flow: FlowDto, rates: FlowRates) {
+        // SCION badge
+        val badge = TextView(ctx).apply {
+            text = "SCION"
+            textSize = 8f
+            setTextColor(ContextCompat.getColor(ctx, R.color.status_green))
+            setBackgroundResource(R.drawable.scitra_status_badge_bg)
+            includeFontPadding = false
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { marginEnd = 4 }
+        }
+        row.addView(badge)
+
+        // Protocol label (no IP version)
+        val protoView = TextView(ctx).apply {
+            text = formatProtocolShort(flow.protocol)
+            setTextColor(ContextCompat.getColor(ctx, R.color.scitra_primary))
+            textSize = 10f
+            setTypeface(null, Typeface.BOLD)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { marginEnd = 6 }
+        }
+        row.addView(protoView)
+
+        // Destination: dstIA if available, otherwise endpointB
+        val dstLabel = if (!flow.dstIA.isNullOrEmpty()) flow.dstIA else formatEndpoint(flow.endpointB)
+        val epView = TextView(ctx).apply {
+            text = dstLabel
+            setTextColor(ContextCompat.getColor(ctx, R.color.scitra_on_surface))
+            textSize = 10f
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        row.addView(epView)
+
+        // TX rate
+        val txText = "TX ${formatBitRate(rates.txBytesPerSec)}·${formatPktRate(rates.txPktsPerSec)}"
+        val txView = TextView(ctx).apply {
+            text = txText
+            setTextColor(ContextCompat.getColor(ctx, R.color.scitra_on_surface_variant))
+            textSize = 10f
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { marginStart = 6; marginEnd = 4 }
+        }
+        row.addView(txView)
+
+        // RX rate
+        val rxText = "RX ${formatBitRate(rates.rxBytesPerSec)}·${formatPktRate(rates.rxPktsPerSec)}"
+        val rxView = TextView(ctx).apply {
+            text = rxText
+            setTextColor(ContextCompat.getColor(ctx, R.color.scitra_on_surface_variant))
+            textSize = 10f
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { marginEnd = 6 }
+        }
+        row.addView(rxView)
+
+        // State badge
+        val stateLabel = if (flow.txBytes > 0 && flow.rxBytes > 0) "ESTABLISHED" else "INITIAL"
+        val stateView = TextView(ctx).apply {
+            text = stateLabel
+            setTextColor(ContextCompat.getColor(ctx, R.color.status_green))
+            textSize = 10f
+            setTypeface(null, Typeface.BOLD)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+        row.addView(stateView)
+
+        // Clickable
+        row.isClickable = true
+        row.isFocusable = true
+        row.setOnClickListener { onFlowItemClicked(flow) }
+
+        // Accessibility
+        val desc = "SCION ${formatProtocolShort(flow.protocol)}, destination $dstLabel, $stateLabel, TX ${formatBitRate(rates.txBytesPerSec)} ${formatPktRate(rates.txPktsPerSec)}, RX ${formatBitRate(rates.rxBytesPerSec)} ${formatPktRate(rates.rxPktsPerSec)}. Selectable"
+        row.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        row.contentDescription = desc
+    }
+
+    private fun buildIPRow(row: LinearLayout, ctx: android.content.Context, flow: FlowDto) {
+        // Protocol + IP version
         val proto = "${formatProtocolShort(flow.protocol)}·${formatIPVersionShort(flow.ipVersion)}"
         val protoView = TextView(ctx).apply {
             text = proto
@@ -399,27 +533,11 @@ class TunnelDetailFragment : BaseFragment() {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            )
+            ).apply { marginEnd = 6 }
         }
         row.addView(protoView)
 
-        if (flow.egressKindEnum == FlowEgressKind.SCION) {
-            val badge = TextView(ctx).apply {
-                text = "SCION"
-                textSize = 8f
-                setTextColor(ContextCompat.getColor(ctx, R.color.status_green))
-                setBackgroundResource(R.drawable.scitra_status_badge_bg)
-                includeFontPadding = false
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply { marginEnd = 4 }
-            }
-            row.addView(badge)
-        }
-
-        addGap(row, ctx, 6)
-
+        // Endpoints
         val endpoints = "${formatEndpoint(flow.endpointA)}${ctx.getString(R.string.flow_endpoint_arrow)}${formatEndpoint(flow.endpointB)}"
         val epView = TextView(ctx).apply {
             text = endpoints
@@ -431,6 +549,7 @@ class TunnelDetailFragment : BaseFragment() {
         }
         row.addView(epView)
 
+        // Status
         addGap(row, ctx, 6)
 
         val statusView = TextView(ctx).apply {
@@ -441,12 +560,11 @@ class TunnelDetailFragment : BaseFragment() {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            )
+            ).apply { marginEnd = 6 }
         }
         row.addView(statusView)
 
-        addGap(row, ctx, 6)
-
+        // TX cumulative
         val txView = TextView(ctx).apply {
             text = "TX ${formatBytesCompact(flow.txBytes)}·${flow.txPackets}"
             setTextColor(ContextCompat.getColor(ctx, R.color.scitra_on_surface_variant))
@@ -454,12 +572,11 @@ class TunnelDetailFragment : BaseFragment() {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            )
+            ).apply { marginEnd = 4 }
         }
         row.addView(txView)
 
-        addGap(row, ctx, 4)
-
+        // RX cumulative
         val rxView = TextView(ctx).apply {
             text = "RX ${formatBytesCompact(flow.rxBytes)}·${flow.rxPackets}"
             setTextColor(ContextCompat.getColor(ctx, R.color.scitra_on_surface_variant))
@@ -471,20 +588,11 @@ class TunnelDetailFragment : BaseFragment() {
         }
         row.addView(rxView)
 
-        // Click behavior: only SCION flows are clickable
-        if (flow.egressKindEnum == FlowEgressKind.SCION) {
-            row.isClickable = true
-            row.isFocusable = true
-            row.setOnClickListener { onFlowItemClicked(flow) }
-        }
-
         // Accessibility
         val epShort = formatEndpoint(flow.endpointA).take(30) + " → " + formatEndpoint(flow.endpointB).take(30)
         val desc = "${formatProtocolShort(flow.protocol)} ${formatIPVersionShort(flow.ipVersion)}, $epShort, ${flow.status}, TX ${flow.txPackets} packets ${flow.txBytes} bytes, RX ${flow.rxPackets} packets ${flow.rxBytes} bytes"
         row.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
-        row.contentDescription = if (flow.egressKindEnum == FlowEgressKind.SCION) "$desc. Selectable" else desc
-
-        return row
+        row.contentDescription = desc
     }
 
     private fun addGap(parent: LinearLayout, ctx: android.content.Context, widthDp: Int) {
@@ -519,6 +627,80 @@ class TunnelDetailFragment : BaseFragment() {
             bytes < 1024L * 1024 * 1024 -> String.format(Locale.US, "%.1fM", bytes / (1024.0 * 1024.0))
             bytes < 1024L * 1024 * 1024 * 1024 -> String.format(Locale.US, "%.1fG", bytes / (1024.0 * 1024.0 * 1024.0))
             else -> String.format(Locale.US, "%.1fT", bytes / (1024.0 * 1024.0 * 1024.0 * 1024.0))
+        }
+    }
+
+    // ─── Flow Rate Helpers ────────────────────────────────
+
+    private data class FlowRates(
+        val txBytesPerSec: Double,
+        val rxBytesPerSec: Double,
+        val txPktsPerSec: Double,
+        val rxPktsPerSec: Double,
+    )
+
+    private fun clampDelta(current: Long, prev: Long): Double =
+        if (current >= prev) (current - prev).toDouble() else 0.0
+
+    private fun formatBitRate(bytesPerSecond: Double): String = when {
+        bytesPerSecond <= 0 -> "0bps"
+        bytesPerSecond < 125 -> String.format(Locale.US, "%.0f bps", bytesPerSecond * 8)
+        bytesPerSecond < 125_000 -> String.format(Locale.US, "%.0f Kbps", bytesPerSecond * 8 / 1000)
+        else -> String.format(Locale.US, "%.1f Mbps", bytesPerSecond * 8 / 1_000_000)
+    }
+
+    private fun formatPktRate(pktsPerSecond: Double): String = when {
+        pktsPerSecond <= 0 -> "0pps"
+        pktsPerSecond < 1000 -> String.format(Locale.US, "%.0fpps", pktsPerSecond)
+        else -> String.format(Locale.US, "%.1fkpps", pktsPerSecond / 1000)
+    }
+
+    // ─── SCION Info Polling ────────────────────────────────
+
+    private suspend fun updateSCIONInfo() {
+        val binding = binding ?: return
+        val tunnel = binding.tunnel ?: return
+        if (!isResumed) return
+        if (tunnel.state != Tunnel.State.UP) {
+            binding.scionInfoSection.visibility = View.GONE
+            return
+        }
+        if (binding.config?.`interface`?.tunnelMode?.isScion != true) {
+            binding.scionInfoSection.visibility = View.GONE
+            return
+        }
+
+        val backend = resolveBackend() ?: return
+        try {
+            val raw = withContext(Dispatchers.IO) { backend.getSCIONInfo() }
+            val info = parseSCIONInfo(raw)
+            lastSCIONInfo = info
+
+            binding.scionInfoSection.visibility = View.VISIBLE
+            binding.scionLocalIa.text = info.localIA
+
+            val bindParts = mutableListOf<String>()
+            info.localIPv4?.let { bindParts.add(it) }
+            info.localIPv6?.let { bindParts.add(it) }
+            info.portRange?.let { bindParts.add("ports $it") }
+            binding.scionBindAddr.text = bindParts.joinToString(" · ")
+
+            binding.scionBrAddr.text = if (!info.brAddr.isNullOrEmpty()) {
+                "BR ${info.brAddr}"
+            } else {
+                ""
+            }
+
+            // Compute flow totals from lastAllFlows
+            var totalTx = 0L
+            var totalRx = 0L
+            for (f in lastAllFlows) {
+                totalTx += f.txBytes
+                totalRx += f.rxBytes
+            }
+            binding.scionFlowTotals.text = "TX ${formatBytesCompact(totalTx)} · RX ${formatBytesCompact(totalRx)}"
+        } catch (_: Exception) {
+            binding.scionInfoSection.visibility = View.GONE
         }
     }
 
