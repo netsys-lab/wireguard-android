@@ -403,6 +403,21 @@ class TunnelDetailFragment : BaseFragment() {
         }
         row.addView(protoView)
 
+        if (flow.egressKindEnum == FlowEgressKind.SCION) {
+            val badge = TextView(ctx).apply {
+                text = "SCION"
+                textSize = 8f
+                setTextColor(ContextCompat.getColor(ctx, R.color.status_green))
+                setBackgroundResource(R.drawable.scitra_status_badge_bg)
+                includeFontPadding = false
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { marginEnd = 4 }
+            }
+            row.addView(badge)
+        }
+
         addGap(row, ctx, 6)
 
         val endpoints = "${formatEndpoint(flow.endpointA)}${ctx.getString(R.string.flow_endpoint_arrow)}${formatEndpoint(flow.endpointB)}"
