@@ -34,6 +34,7 @@ import (
 	"golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/flow"
 	"golang.zx2c4.com/wireguard/ipc"
+	"golang.zx2c4.com/wireguard/scionlog"
 	bootstrap "golang.zx2c4.com/wireguard/translator/bootstrap"
 	"golang.zx2c4.com/wireguard/tun"
 )
@@ -403,7 +404,7 @@ func wgInitScionWithBootstrapRetry(
 	}
 
 	// Parse log configuration from Android
-	logCfg := device.ParseSCIONLogConfig(logLevel, logComponents)
+	logCfg := scionlog.ParseConfig(logLevel, logComponents)
 
 	scionConfig := device.ScionDeviceConfig{
 		Enabled:       true,
@@ -450,6 +451,24 @@ func wgGetScionStatus(tunnelHandle int32) *C.char {
 		return C.CString("{}")
 	}
 	json, err := handle.device.SCIONPathSnapshotJSON()
+	if err != nil {
+		return C.CString("{}")
+	}
+	return C.CString(json)
+}
+
+//export wgGetSCIONInfo
+/*
+Returns a JSON snapshot of the local SCION identity:
+localIA, local IPv4/IPv6 addresses, border router address, and dispatch port range.
+Polled by the frontend every ~1s for the tunnel overview top section.
+*/
+func wgGetSCIONInfo(tunnelHandle int32) *C.char {
+	handle, ok := tunnelHandles[tunnelHandle]
+	if !ok {
+		return C.CString("{}")
+	}
+	json, err := handle.device.SCIONInfoJSON()
 	if err != nil {
 		return C.CString("{}")
 	}

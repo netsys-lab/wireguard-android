@@ -103,6 +103,7 @@ public final class GoBackend implements Backend {
     private static native String wgScionBootstrap(String configDir, String bootstrapURL);
     private static native String wgInitScion(int handle, String configDir, String interfaceName);
     private static native String wgGetScionStatus(int handle);
+    private static native String wgGetSCIONInfo(int handle);
     @Nullable private static native String wgGetFlows(int handle);
     private static native String wgInitScionWithBootstrapRetry(
         int tunnelHandle,
@@ -143,6 +144,11 @@ public final class GoBackend implements Backend {
         if (currentTunnelHandle == -1)
             return "{}";
         return wgGetScionStatus(currentTunnelHandle);
+    }
+    public String getSCIONInfo() {
+        if (currentTunnelHandle == -1)
+            return "{}";
+        return wgGetSCIONInfo(currentTunnelHandle);
     }
     @Nullable
     public String getFlows(final Tunnel tunnel) {

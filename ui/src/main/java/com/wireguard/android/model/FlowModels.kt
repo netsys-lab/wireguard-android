@@ -32,11 +32,21 @@ data class FlowDto(
     val rxPackets: Long,
     val rxBytes: Long,
     val egressKind: String = "unknown",
+    val srcIA: String? = null,
+    val dstIA: String? = null,
     val createdAt: String? = null,
     val lastSeen: String? = null,
 ) {
     val egressKindEnum: FlowEgressKind get() = egressKind.toFlowEgressKind()
 }
+
+data class SCIONInfoDto(
+    val localIA: String = "",
+    val localIPv4: String? = null,
+    val localIPv6: String? = null,
+    val brAddr: String? = null,
+    val portRange: String? = null,
+)
 
 data class FlowListResponseDto(
     val flows: List<FlowDto> = emptyList(),
@@ -63,6 +73,8 @@ fun parseFlowListResponse(json: String): FlowListResponseDto {
             rxPackets = f.optLong("rxPackets", 0),
             rxBytes = f.optLong("rxBytes", 0),
             egressKind = egressKind,
+            srcIA = f.optString("srcIA", null)?.takeIf { it.isNotEmpty() },
+            dstIA = f.optString("dstIA", null)?.takeIf { it.isNotEmpty() },
             createdAt = f.optString("createdAt", null),
             lastSeen = f.optString("lastSeen", null),
         )
@@ -80,6 +92,17 @@ private fun parseEgressKind(obj: JSONObject): String {
         return "scion"
     }
     return "unknown"
+}
+
+fun parseSCIONInfo(json: String): SCIONInfoDto {
+    val obj = JSONObject(json)
+    return SCIONInfoDto(
+        localIA = obj.optString("localIA", ""),
+        localIPv4 = obj.optString("localIPv4", null)?.takeIf { it.isNotEmpty() },
+        localIPv6 = obj.optString("localIPv6", null)?.takeIf { it.isNotEmpty() },
+        brAddr = obj.optString("brAddr", null)?.takeIf { it.isNotEmpty() },
+        portRange = obj.optString("portRange", null)?.takeIf { it.isNotEmpty() },
+    )
 }
 
 private fun parseEndpoint(obj: JSONObject): FlowEndpointDto {
