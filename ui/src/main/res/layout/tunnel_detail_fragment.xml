@@ -115,14 +115,45 @@
                         android:layout_height="0dp"
                         android:layout_weight="1" />
 
-                    <!-- SCION/IP toggle switch -->
-                    <com.wireguard.android.widget.ToggleSwitch
-                        android:id="@+id/scion_ip_toggle"
+                    <!-- SCION/IP mode selector -->
+                    <LinearLayout
+                        android:id="@+id/mode_selector"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        app:checked="@{config != null &amp;&amp; config.interface.scionEnabled}"
-                        app:onBeforeCheckedChanged="@{fragment::toggleScionMode}" />
+                        android:layout_height="32dp"
+                        android:background="@drawable/scitra_toggle_bg"
+                        android:orientation="horizontal"
+                        android:padding="2dp">
 
+                        <TextView
+                            android:id="@+id/tab_scion"
+                            android:layout_width="wrap_content"
+                            android:layout_height="match_parent"
+                            android:paddingHorizontal="12dp"
+                            android:gravity="center"
+                            android:text="SCION"
+                            android:textColor="@{config != null &amp;&amp; config.interface.scionEnabled ? @color/scitra_on_primary : @color/scitra_on_surface_variant}"
+                            android:textSize="11sp"
+                            android:textStyle="bold"
+                            android:background="@{config != null &amp;&amp; config.interface.scionEnabled ? @drawable/scitra_tab_selected_bg : null}"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:onClick="@{() -> fragment.setScionMode(true)}" />
+
+                        <TextView
+                            android:id="@+id/tab_ip"
+                            android:layout_width="wrap_content"
+                            android:layout_height="match_parent"
+                            android:paddingHorizontal="12dp"
+                            android:gravity="center"
+                            android:text="IP"
+                            android:textColor="@{config != null &amp;&amp; !config.interface.scionEnabled ? @color/scitra_on_primary : @color/scitra_on_surface_variant}"
+                            android:textSize="11sp"
+                            android:textStyle="bold"
+                            android:background="@{config != null &amp;&amp; !config.interface.scionEnabled ? @drawable/scitra_tab_selected_bg : null}"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:onClick="@{() -> fragment.setScionMode(false)}" />
+                    </LinearLayout>
                 </LinearLayout>
 
                 <!-- ═══════════════════════════════════════ -->
