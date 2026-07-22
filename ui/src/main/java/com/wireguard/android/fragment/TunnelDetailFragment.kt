@@ -170,9 +170,20 @@ class TunnelDetailFragment : BaseFragment() {
 
     fun onFlowItemClicked(flow: FlowDto) {
         if (flow.egressKindEnum != FlowEgressKind.SCION) return
-        val label = "Flow #${flow.id}"
-        val sheet = PathSelectionBottomSheet.newInstance(label)
-        sheet.show(childFragmentManager, "path_selection")
+        val tunnel = binding?.tunnel ?: return
+        val sheet = PathSelectionBottomSheet.newInstance(flow.id).apply {
+            this.tunnel = tunnel
+        }
+        lifecycleScope.launch {
+            try {
+                val backend = com.wireguard.android.Application.getBackend() as? GoBackend ?: return@launch
+                val repo = flowRepository ?: FlowRepository(backend).also { flowRepository = it }
+                sheet.flowRepository = repo
+            } catch (_: Exception) {
+                return@launch
+            }
+            sheet.show(childFragmentManager, "path_selection")
+        }
     }
 
     fun onToggleFlowFilter(view: View) {

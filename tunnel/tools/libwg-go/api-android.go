@@ -501,4 +501,26 @@ func wgGetFlows(tunnelHandle int32) *C.char {
 	return C.CString(string(raw))
 }
 
+//export wgGetFlowPaths
+/*
+Returns cached SCION paths and metadata for a specific logical flow.
+The response includes all available paths with the current path marked,
+latency/bandwidth/geo metadata per hop, and state (ready/pending/empty/error).
+*/
+func wgGetFlowPaths(tunnelHandle int32, flowID int64) *C.char {
+	handle, ok := tunnelHandles[tunnelHandle]
+	if !ok {
+		return C.CString(`{"error":"device_not_found"}`)
+	}
+	if flowID < 0 {
+		return C.CString(`{"error":"invalid_flow_id"}`)
+	}
+	result := handle.device.SCIONPathsForFlow(flow.ID(flowID))
+	raw, err := json.Marshal(result)
+	if err != nil {
+		return C.CString(`{"error":"serialization_failed"}`)
+	}
+	return C.CString(string(raw))
+}
+
 func main() {}

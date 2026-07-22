@@ -351,5 +351,10 @@
     <string name="no_active_scion_flows">No active SCION flows</string>
     <string name="tunnel_not_running">Tunnel is not running</string>
     <string name="flow_endpoint_arrow"> → </string>
+    <string name="path_count">Paths available: %d</string>
+    <string name="path_loading">Loading paths…</string>
+    <string name="path_empty">No paths available for this destination</string>
+    <string name="path_error">Could not load paths</string>
+    <string name="retry">Retry</string>
 </resources>
 
