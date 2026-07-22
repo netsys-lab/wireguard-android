@@ -343,5 +343,13 @@
     <string name="path_selection_title">Path Selection</string>
     <string name="optimizing_connection">Optimizing connection for %s traffic</string>
     <string name="recommended">RECOMMENDED</string>
+
+    <!-- Flow List -->
+    <string name="filter_show_all">Show all</string>
+    <string name="filter_show_scion">Show SCION</string>
+    <string name="no_active_flows">No active flows</string>
+    <string name="no_active_scion_flows">No active SCION flows</string>
+    <string name="tunnel_not_running">Tunnel is not running</string>
+    <string name="flow_endpoint_arrow"> → </string>
 </resources>
 

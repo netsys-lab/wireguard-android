@@ -54,6 +54,9 @@ public final class GoBackend implements Backend {
     private static final boolean SCION_LOG_PACKET_BYTES = BuildConfig.SCION_LOG_PACKET_BYTES;
     private static final boolean SCION_LOG_PATH_BYTES = BuildConfig.SCION_LOG_PATH_BYTES;
     private static final boolean SCION_LOG_INTERNAL_STRUCTS = BuildConfig.SCION_LOG_INTERNAL_STRUCTS;
+
+    // Core WireGuard daemon log level. Values: "verbose", "error", "silent".
+    private static final String WIREGUARD_CORE_LOG_LEVEL = BuildConfig.WIREGUARD_CORE_LOG_LEVEL;
     @Nullable private static AlwaysOnCallback alwaysOnCallback;
     private static CompletableFuture<VpnService> vpnService = new CompletableFuture<>();
     private final Context context;
@@ -91,6 +94,8 @@ public final class GoBackend implements Backend {
 
     private static native int wgTurnOn(String ifName, int tunFd, String settings);
 
+    private static native void wgSetCoreLogLevel(int level);
+
     private static native String wgVersion();
 
     @Nullable private static native String wgScionTestBridge(String inputPath);
@@ -98,6 +103,7 @@ public final class GoBackend implements Backend {
     private static native String wgScionBootstrap(String configDir, String bootstrapURL);
     private static native String wgInitScion(int handle, String configDir, String interfaceName);
     private static native String wgGetScionStatus(int handle);
+    @Nullable private static native String wgGetFlows(int handle);
     private static native String wgInitScionWithBootstrapRetry(
         int tunnelHandle,
         String configDir,
@@ -137,6 +143,12 @@ public final class GoBackend implements Backend {
         if (currentTunnelHandle == -1)
             return "{}";
         return wgGetScionStatus(currentTunnelHandle);
+    }
+    @Nullable
+    public String getFlows(final Tunnel tunnel) {
+        if (tunnel != currentTunnel || currentTunnelHandle == -1)
+            return "{\"flows\":[],\"error\":\"tunnel_not_running\"}";
+        return wgGetFlows(currentTunnelHandle);
     }
     private String initScionWithBootstrapRetry(
             final int tunnelHandle,
@@ -430,7 +442,8 @@ public final class GoBackend implements Backend {
             try (final ParcelFileDescriptor tun = builder.establish()) {
                 if (tun == null)
                     throw new BackendException(Reason.TUN_CREATION_ERROR);
-                Log.d(TAG, "Go backend " + wgVersion());
+                Log.d(TAG, "Go backend " + wgVersion() + " coreLogLevel=" + WIREGUARD_CORE_LOG_LEVEL);
+                wgSetCoreLogLevel(parseCoreLogLevel(WIREGUARD_CORE_LOG_LEVEL));
                 currentTunnelHandle = wgTurnOn(tunnel.getName(), tun.detachFd(), goConfig);
             }
             if (currentTunnelHandle < 0)
@@ -525,6 +538,16 @@ public final class GoBackend implements Backend {
         }
 
         tunnel.onStateChange(state);
+    }
+
+    /**
+     * Maps a core log level string to the integer constant expected by wgSetCoreLogLevel.
+     * 0=verbose, 1=error, 2=silent.
+     */
+    private static int parseCoreLogLevel(final String level) {
+        if ("error".equals(level)) return 1;
+        if ("silent".equals(level)) return 2;
+        return 0; // verbose (default)
     }
 
     /**

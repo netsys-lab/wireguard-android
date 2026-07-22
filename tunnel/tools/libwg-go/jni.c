@@ -31,6 +31,8 @@ extern char *wgInitScionWithBootstrapRetry(
         int logInternalStructs
 );
 extern char *wgGetScionStatus(int handle);
+extern char *wgGetFlows(int handle);
+extern void wgSetCoreLogLevel(int level);
 
 JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgInitScionWithBootstrapRetry(
         JNIEnv *env,
@@ -172,6 +174,16 @@ JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgGetScio
     return ret;
 }
 
+JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgGetFlows(JNIEnv *env, jclass c, jint handle)
+{
+    char *result = wgGetFlows(handle);
+    if (!result)
+        return NULL;
+    jstring ret = (*env)->NewStringUTF(env, result);
+    free(result);
+    return ret;
+}
+
 JNIEXPORT jint JNICALL Java_com_wireguard_android_backend_GoBackend_wgTurnOn(JNIEnv *env, jclass c, jstring ifname, jint tun_fd, jstring settings)
 {
 	const char *ifname_str = (*env)->GetStringUTFChars(env, ifname, 0);
@@ -225,6 +237,11 @@ JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgVersion
 	ret = (*env)->NewStringUTF(env, version);
 	free(version);
 	return ret;
+}
+
+JNIEXPORT void JNICALL Java_com_wireguard_android_backend_GoBackend_wgSetCoreLogLevel(JNIEnv *env, jclass c, jint level)
+{
+	wgSetCoreLogLevel(level);
 }
 
 extern char *wgScionTestBridge(struct go_string inputPath);

@@ -12,6 +12,7 @@ import "C"
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
@@ -24,12 +25,14 @@ import (
 	"runtime/debug"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unsafe"
 
 	"golang.org/x/sys/unix"
 	"golang.zx2c4.com/wireguard/conn"
 	"golang.zx2c4.com/wireguard/device"
+	"golang.zx2c4.com/wireguard/flow"
 	"golang.zx2c4.com/wireguard/ipc"
 	bootstrap "golang.zx2c4.com/wireguard/translator/bootstrap"
 	"golang.zx2c4.com/wireguard/tun"
@@ -48,6 +51,15 @@ func getLogTag() *C.char {
 		logTag = C.CString("WireGuard/GoBackend")
 	})
 	return logTag
+}
+
+// Core WireGuard log level, set from Java via wgSetCoreLogLevel before wgTurnOn.
+// 0 = verbose (default), 1 = error only, 2 = silent.
+var wireguardCoreLogLevel atomic.Int32
+
+//export wgSetCoreLogLevel
+func wgSetCoreLogLevel(level C.int) {
+	wireguardCoreLogLevel.Store(int32(level))
 }
 
 // defaultLogFunc writes a single null-terminated record to __android_log_write.
@@ -123,9 +135,27 @@ func wgTurnOn(interfaceName string, tunFd int32, settings string) int32 {
 	settings = strings.Clone(settings)
 
 	tag := C.CString("WireGuard/GoBackend/" + interfaceName)
+	androidDebug := AndroidLogger{level: C.ANDROID_LOG_DEBUG, tag: tag}.Printf
+	androidError := AndroidLogger{level: C.ANDROID_LOG_ERROR, tag: tag}.Printf
+
+	var verbosef func(format string, args ...any)
+	var errorf func(format string, args ...any)
+
+	switch wireguardCoreLogLevel.Load() {
+	case 2: // silent
+		verbosef = device.DiscardLogf
+		errorf = device.DiscardLogf
+	case 1: // error only
+		verbosef = device.DiscardLogf
+		errorf = androidError
+	default: // verbose (0)
+		verbosef = androidDebug
+		errorf = androidError
+	}
+
 	logger := &device.Logger{
-		Verbosef: AndroidLogger{level: C.ANDROID_LOG_DEBUG, tag: tag}.Printf,
-		Errorf:   AndroidLogger{level: C.ANDROID_LOG_ERROR, tag: tag}.Printf,
+		Verbosef: verbosef,
+		Errorf:   errorf,
 	}
 
 	tun, name, err := tun.CreateUnmonitoredTUNFromFD(int(tunFd))
@@ -424,6 +454,32 @@ func wgGetScionStatus(tunnelHandle int32) *C.char {
 		return C.CString("{}")
 	}
 	return C.CString(json)
+}
+
+//export wgGetFlows
+/*
+Returns a JSON snapshot of all active network flows tracked by the device.
+Each flow contains src/dst endpoints, protocol, IP version, traffic counters,
+and timestamps. Returns an error field if the device handle is invalid.
+*/
+func wgGetFlows(tunnelHandle int32) *C.char {
+	handle, ok := tunnelHandles[tunnelHandle]
+	if !ok {
+		resp, _ := json.Marshal(flow.FlowListResponse{Error: "device_not_found"})
+		return C.CString(string(resp))
+	}
+	snapshots := handle.device.FlowSnapshots()
+	dtos := make([]flow.FlowDTO, len(snapshots))
+	for i, s := range snapshots {
+		dtos[i] = flow.MapSnapshotToDTO(s)
+	}
+	resp := flow.FlowListResponse{Flows: dtos}
+	raw, err := json.Marshal(resp)
+	if err != nil {
+		resp := flow.FlowListResponse{Error: "serialization_failed"}
+		raw, _ = json.Marshal(resp)
+	}
+	return C.CString(string(raw))
 }
 
 func main() {}

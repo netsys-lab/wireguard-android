@@ -4,24 +4,30 @@
  */
 package com.wireguard.android.fragment
 
-import android.content.pm.PackageManager
+import android.graphics.Typeface
 import android.os.Bundle
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.FragmentTransaction
-import androidx.fragment.app.commit
 import androidx.lifecycle.lifecycleScope
 import com.wireguard.android.R
+import com.wireguard.android.backend.GoBackend
 import com.wireguard.android.backend.Tunnel
 import com.wireguard.android.widget.ToggleSwitch
+import com.wireguard.android.fragment.PathSelectionBottomSheet
 import com.wireguard.android.databinding.TunnelDetailFragmentBinding
 import com.wireguard.android.databinding.TunnelDetailPeerBinding
+import com.wireguard.android.model.FlowDto
+import com.wireguard.android.model.FlowEgressKind
 import com.wireguard.android.model.ObservableTunnel
+import com.wireguard.android.util.FlowRepository
 import com.wireguard.android.util.QuantityFormatter
 import com.wireguard.config.Config
 import com.wireguard.config.Interface
@@ -31,7 +37,7 @@ import java.util.Locale
 
 /**
  * Fragment that shows the connection status hub for a specific tunnel.
- * Displays connection state, uptime timer, speed stats, and mock flow data.
+ * Displays connection state, uptime timer, speed stats, and tracked network flows.
  */
 class TunnelDetailFragment : BaseFragment() {
     private var binding: TunnelDetailFragmentBinding? = null
@@ -46,6 +52,12 @@ class TunnelDetailFragment : BaseFragment() {
     private var lastTxBytes: Long = 0L
     private var lastStatsTimeMillis: Long = 0L
 
+    // Flow tracking
+    private var flowRepository: FlowRepository? = null
+    private var lastFlowCount: Int = 0
+    private var showAllFlows: Boolean = false
+    private var lastAllFlows: List<FlowDto> = emptyList()
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -58,7 +70,6 @@ class TunnelDetailFragment : BaseFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        loadMockFlowIcons()
     }
 
     override fun onDestroyView() {
@@ -73,6 +84,7 @@ class TunnelDetailFragment : BaseFragment() {
             while (timerActive) {
                 updateStats()
                 updateTimer()
+                updateFlows()
                 delay(1000)
             }
         }
@@ -93,12 +105,15 @@ class TunnelDetailFragment : BaseFragment() {
                 }
             }
         }
-        // Reset timer and speed on tunnel change
+        // Reset timer, speed, and flows on tunnel change
         lastState = Tunnel.State.TOGGLE
         connectedSinceMillis = 0L
         lastRxBytes = 0L
         lastTxBytes = 0L
         lastStatsTimeMillis = 0L
+        lastFlowCount = 0
+        lastAllFlows = emptyList()
+        showAllFlows = false
         lifecycleScope.launch { updateStats() }
     }
 
@@ -141,62 +156,16 @@ class TunnelDetailFragment : BaseFragment() {
         Toast.makeText(context, "Path Information coming soon", Toast.LENGTH_SHORT).show()
     }
 
-    fun onFlowItemClicked(view: View) {
-        // Show Path Selection bottom sheet
-        val flowName = when (view.id) {
-            R.id.flow_item_1 -> "Google Chrome"
-            R.id.flow_item_2 -> "Slack"
-            R.id.flow_item_3 -> "System Update"
-            else -> "Unknown"
-        }
-        val sheet = PathSelectionBottomSheet.newInstance(flowName)
+    fun onFlowItemClicked(flow: FlowDto) {
+        if (flow.egressKindEnum != FlowEgressKind.SCION) return
+        val label = "Flow #${flow.id}"
+        val sheet = PathSelectionBottomSheet.newInstance(label)
         sheet.show(childFragmentManager, "path_selection")
     }
 
-    // ─── Mock Flow Icons ────────────────────────────────────
-
-    private fun loadMockFlowIcons() {
-        val binding = binding ?: return
-        val pm = context?.packageManager ?: return
-
-        // Try to load real app icons for 3 popular apps
-        val appIconPairs = listOf(
-            Triple("com.android.chrome", binding.flowIcon1, binding.flowName1),
-            Triple("com.slack", binding.flowIcon2, binding.flowName2),
-            Triple("com.google.android.gms", binding.flowIcon3, binding.flowName3)
-        )
-
-        // Get installed apps to pick icons from
-        val installedApps = try {
-            pm.getInstalledApplications(PackageManager.GET_META_DATA)
-                .filter { pm.getLaunchIntentForApp(it.packageName) != null }
-                .take(10)
-        } catch (_: Exception) {
-            emptyList()
-        }
-
-        for ((index, triple) in appIconPairs.withIndex()) {
-            val (packageName, iconView, nameView) = triple
-            try {
-                val icon = pm.getApplicationIcon(packageName)
-                iconView.setImageDrawable(icon)
-            } catch (_: PackageManager.NameNotFoundException) {
-                // Try to use an installed app instead
-                if (index < installedApps.size) {
-                    try {
-                        val appInfo = installedApps[index]
-                        iconView.setImageDrawable(pm.getApplicationIcon(appInfo))
-                        nameView.text = pm.getApplicationLabel(appInfo).toString()
-                    } catch (_: Exception) {
-                        // Keep default globe icon
-                    }
-                }
-            }
-        }
-    }
-
-    private fun PackageManager.getLaunchIntentForApp(packageName: String): android.content.Intent? {
-        return getLaunchIntentForPackage(packageName)
+    fun onToggleFlowFilter(view: View) {
+        showAllFlows = !showAllFlows
+        renderFilteredFlows(lastAllFlows)
     }
 
     // ─── Tunnel State ───────────────────────────────────────
@@ -304,6 +273,237 @@ class TunnelDetailFragment : BaseFragment() {
             bytesPerSecond < 1024 -> String.format(Locale.US, "%.1f B/s", bytesPerSecond)
             bytesPerSecond < 1024 * 1024 -> String.format(Locale.US, "%.1f KB/s", bytesPerSecond / 1024)
             else -> String.format(Locale.US, "%.1f MB/s", bytesPerSecond / (1024 * 1024))
+        }
+    }
+
+    // ─── Flow Polling ──────────────────────────────────────
+
+    private suspend fun updateFlows() {
+        val binding = binding ?: return
+        val tunnel = binding.tunnel ?: return
+        if (!isResumed) return
+        if (tunnel.state != Tunnel.State.UP) {
+            if (lastFlowCount != -1) {
+                updateFilterButton(binding)
+                showFlowEmptyState(binding, R.string.tunnel_not_running)
+                lastFlowCount = -1
+            }
+            return
+        }
+
+        val backend = resolveBackend()
+        if (backend == null) {
+            if (lastFlowCount != -1) {
+                updateFilterButton(binding)
+                showFlowEmptyState(binding, R.string.tunnel_not_running)
+                lastFlowCount = -1
+            }
+            return
+        }
+        val repo = flowRepository ?: FlowRepository(backend).also { flowRepository = it }
+
+        try {
+            val result = repo.getFlows(tunnel)
+            val flows = result.getOrNull()
+            if (flows == null) {
+                showFlowEmptyState(binding, R.string.no_active_flows)
+                lastFlowCount = -1
+                return
+            }
+            lastAllFlows = flows
+            renderFilteredFlows(flows)
+        } catch (_: Exception) {
+            showFlowEmptyState(binding, R.string.no_active_flows)
+            lastFlowCount = -1
+        }
+    }
+
+    private fun renderFilteredFlows(flows: List<FlowDto>) {
+        val binding = binding ?: return
+        if (binding.flowsContainer == null) return
+        updateFilterButton(binding)
+
+        val filtered = if (showAllFlows) flows else flows.filter { it.egressKindEnum == FlowEgressKind.SCION }
+        val container = binding.flowsContainer
+        container.removeAllViews()
+
+        if (filtered.isEmpty()) {
+            val msgRes = when {
+                flows.isEmpty() -> R.string.no_active_flows
+                !showAllFlows -> R.string.no_active_scion_flows
+                else -> R.string.no_active_flows
+            }
+            showFlowEmptyState(binding, msgRes)
+            lastFlowCount = -1
+            return
+        }
+
+        for (flow in filtered) {
+            container.addView(createFlowRowView(flow))
+        }
+        lastFlowCount = filtered.size
+    }
+
+    private fun updateFilterButton(binding: TunnelDetailFragmentBinding) {
+        binding.flowFilterText.text = if (showAllFlows) {
+            context?.getString(R.string.filter_show_scion)
+        } else {
+            context?.getString(R.string.filter_show_all)
+        }
+    }
+
+    private fun showFlowEmptyState(binding: TunnelDetailFragmentBinding, msgResId: Int) {
+        binding.flowsContainer.removeAllViews()
+        val context = binding.flowsContainer.context
+        val msg = context.getString(msgResId)
+        val tv = TextView(context).apply {
+            text = msg
+            setTextColor(ContextCompat.getColor(context, R.color.scitra_on_surface_variant))
+            textSize = 13f
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = 8; bottomMargin = 8 }
+        }
+        binding.flowsContainer.addView(tv)
+    }
+
+    private suspend fun resolveBackend(): GoBackend? {
+        return try {
+            val backend = com.wireguard.android.Application.getBackend()
+            backend as? GoBackend
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun createFlowRowView(flow: FlowDto): View {
+        val ctx = requireContext()
+        val row = LinearLayout(ctx)
+        row.layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { bottomMargin = 6 }
+        row.orientation = LinearLayout.HORIZONTAL
+        row.gravity = Gravity.CENTER_VERTICAL
+        row.setPadding(12, 8, 12, 8)
+        row.setBackgroundResource(R.drawable.scitra_flow_item_bg)
+
+        val proto = "${formatProtocolShort(flow.protocol)}·${formatIPVersionShort(flow.ipVersion)}"
+        val protoView = TextView(ctx).apply {
+            text = proto
+            setTextColor(ContextCompat.getColor(ctx, R.color.scitra_primary))
+            textSize = 10f
+            setTypeface(null, Typeface.BOLD)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+        row.addView(protoView)
+
+        addGap(row, ctx, 6)
+
+        val endpoints = "${formatEndpoint(flow.endpointA)}${ctx.getString(R.string.flow_endpoint_arrow)}${formatEndpoint(flow.endpointB)}"
+        val epView = TextView(ctx).apply {
+            text = endpoints
+            setTextColor(ContextCompat.getColor(ctx, R.color.scitra_on_surface))
+            textSize = 10f
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        row.addView(epView)
+
+        addGap(row, ctx, 6)
+
+        val statusView = TextView(ctx).apply {
+            text = flow.status.uppercase()
+            setTextColor(ContextCompat.getColor(ctx, R.color.status_green))
+            textSize = 10f
+            setTypeface(null, Typeface.BOLD)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+        row.addView(statusView)
+
+        addGap(row, ctx, 6)
+
+        val txView = TextView(ctx).apply {
+            text = "TX ${formatBytesCompact(flow.txBytes)}·${flow.txPackets}"
+            setTextColor(ContextCompat.getColor(ctx, R.color.scitra_on_surface_variant))
+            textSize = 10f
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+        row.addView(txView)
+
+        addGap(row, ctx, 4)
+
+        val rxView = TextView(ctx).apply {
+            text = "RX ${formatBytesCompact(flow.rxBytes)}·${flow.rxPackets}"
+            setTextColor(ContextCompat.getColor(ctx, R.color.scitra_on_surface_variant))
+            textSize = 10f
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+        row.addView(rxView)
+
+        // Click behavior: only SCION flows are clickable
+        if (flow.egressKindEnum == FlowEgressKind.SCION) {
+            row.isClickable = true
+            row.isFocusable = true
+            row.setOnClickListener { onFlowItemClicked(flow) }
+        }
+
+        // Accessibility
+        val epShort = formatEndpoint(flow.endpointA).take(30) + " → " + formatEndpoint(flow.endpointB).take(30)
+        val desc = "${formatProtocolShort(flow.protocol)} ${formatIPVersionShort(flow.ipVersion)}, $epShort, ${flow.status}, TX ${flow.txPackets} packets ${flow.txBytes} bytes, RX ${flow.rxPackets} packets ${flow.rxBytes} bytes"
+        row.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        row.contentDescription = if (flow.egressKindEnum == FlowEgressKind.SCION) "$desc. Selectable" else desc
+
+        return row
+    }
+
+    private fun addGap(parent: LinearLayout, ctx: android.content.Context, widthDp: Int) {
+        val gap = View(ctx)
+        gap.layoutParams = LinearLayout.LayoutParams(
+            (widthDp * ctx.resources.displayMetrics.density).toInt(),
+            0
+        )
+        parent.addView(gap)
+    }
+
+    // ─── Flow Formatting Helpers ────────────────────────────
+
+    private fun formatProtocolShort(protocol: Int): String = when (protocol) {
+        6 -> "TCP"
+        17 -> "UDP"
+        else -> "P$protocol"
+    }
+
+    private fun formatIPVersionShort(version: Int): String = "v$version"
+
+    private fun formatEndpoint(endpoint: com.wireguard.android.model.FlowEndpointDto): String {
+        val addr = endpoint.address
+        return if (addr.contains(":")) "[$addr]:${endpoint.port}" else "$addr:${endpoint.port}"
+    }
+
+    private fun formatBytesCompact(bytes: Long): String {
+        return when {
+            bytes < 0 -> "0B"
+            bytes < 1024 -> "${bytes}B"
+            bytes < 1024 * 1024 -> String.format(Locale.US, "%.1fK", bytes / 1024.0)
+            bytes < 1024L * 1024 * 1024 -> String.format(Locale.US, "%.1fM", bytes / (1024.0 * 1024.0))
+            bytes < 1024L * 1024 * 1024 * 1024 -> String.format(Locale.US, "%.1fG", bytes / (1024.0 * 1024.0 * 1024.0))
+            else -> String.format(Locale.US, "%.1fT", bytes / (1024.0 * 1024.0 * 1024.0 * 1024.0))
         }
     }
 
