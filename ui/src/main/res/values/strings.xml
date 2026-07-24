@@ -356,5 +356,15 @@
     <string name="path_empty">No paths available for this destination</string>
     <string name="path_error">Could not load paths</string>
     <string name="retry">Retry</string>
+
+    <!-- Flow Row Column Headers -->
+    <string name="flow_header_remote">REMOTE</string>
+    <string name="flow_header_tx">TX</string>
+    <string name="flow_header_rx">RX</string>
+
+    <!-- Flow Status Accessibility -->
+    <string name="flow_status_description">Status %s</string>
+    <string name="flow_scion_badge_label">SCION</string>
+    <string name="flow_row_content_description">%1$s flow to %2$s, status %3$s, transmit %4$s, receive %5$s</string>
 </resources>
 

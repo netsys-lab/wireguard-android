@@ -36,8 +36,34 @@ data class FlowDto(
     val dstIA: String? = null,
     val createdAt: String? = null,
     val lastSeen: String? = null,
+    val localIP: String? = null,
+    val localPort: Int? = null,
+    val remoteIP: String? = null,
+    val remotePort: Int? = null,
+    val scionDstIP: String? = null,
 ) {
     val egressKindEnum: FlowEgressKind get() = egressKind.toFlowEgressKind()
+
+    val displayDestination: String?
+        get() = when {
+            egressKindEnum == FlowEgressKind.SCION && !dstIA.isNullOrEmpty() -> dstIA
+            egressKindEnum == FlowEgressKind.SCION && scionDstIP != null -> scionDstIP
+            egressKindEnum == FlowEgressKind.IP && remoteIP != null -> formatHostPort(remoteIP, remotePort)
+            egressKindEnum == FlowEgressKind.SCION -> null
+            else -> null
+        }
+
+    val displaySecondaryDestination: String?
+        get() = when {
+            egressKindEnum == FlowEgressKind.SCION && !dstIA.isNullOrEmpty() && scionDstIP != null ->
+                scionDstIP
+            else -> null
+        }
+
+    val isSCION: Boolean get() = egressKindEnum == FlowEgressKind.SCION
+
+    private fun formatHostPort(host: String, port: Int?): String =
+        if (port != null) "$host:$port" else host
 }
 
 data class SCIONInfoDto(
@@ -77,6 +103,11 @@ fun parseFlowListResponse(json: String): FlowListResponseDto {
             dstIA = f.optString("dstIA", null)?.takeIf { it.isNotEmpty() },
             createdAt = f.optString("createdAt", null),
             lastSeen = f.optString("lastSeen", null),
+            localIP = f.optString("localIP", null)?.takeIf { it.isNotEmpty() },
+            localPort = if (f.has("localPort") && !f.isNull("localPort")) f.optInt("localPort", 0) else null,
+            remoteIP = f.optString("remoteIP", null)?.takeIf { it.isNotEmpty() },
+            remotePort = if (f.has("remotePort") && !f.isNull("remotePort")) f.optInt("remotePort", 0) else null,
+            scionDstIP = f.optString("scionDstIP", null)?.takeIf { it.isNotEmpty() },
         )
     }
     val err = if (errorVal != null && errorVal.isNotEmpty()) errorVal else null

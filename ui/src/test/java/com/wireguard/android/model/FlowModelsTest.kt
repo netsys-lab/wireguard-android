@@ -161,6 +161,122 @@ class FlowModelsTest {
     }
 
     @Test
+    fun `parses localIP localPort remoteIP remotePort scionDstIP`() {
+        val json = """{
+            "flows": [{
+                "id": 5,
+                "ipVersion": 4,
+                "protocol": 17,
+                "endpointA": {"address": "10.0.0.2", "port": 49152},
+                "endpointB": {"address": "10.0.0.3", "port": 443},
+                "status": "active",
+                "egressKind": "scion",
+                "txPackets": 1,
+                "txBytes": 100,
+                "rxPackets": 2,
+                "rxBytes": 200,
+                "localIP": "10.0.0.2",
+                "localPort": 49152,
+                "remoteIP": "10.0.0.3",
+                "remotePort": 443,
+                "scionDstIP": "192.168.1.1"
+            }]
+        }"""
+        val response = parseFlowListResponse(json)
+        assertEquals(1, response.flows.size)
+        val flow = response.flows[0]
+        assertEquals("10.0.0.2", flow.localIP)
+        assertEquals(49152, flow.localPort)
+        assertEquals("10.0.0.3", flow.remoteIP)
+        assertEquals(443, flow.remotePort)
+        assertEquals("192.168.1.1", flow.scionDstIP)
+    }
+
+    @Test
+    fun `displayDestination returns dstIA for SCION flow`() {
+        val flow = FlowDto(
+            id = 1, ipVersion = 6, protocol = 17,
+            endpointA = FlowEndpointDto("fd42::1", 49152),
+            endpointB = FlowEndpointDto("fc04::2", 443),
+            status = "active", txPackets = 0, txBytes = 0, rxPackets = 0, rxBytes = 0,
+            egressKind = "scion", dstIA = "1-ff00:0:111", scionDstIP = "192.168.1.1",
+        )
+        assertEquals("1-ff00:0:111", flow.displayDestination)
+    }
+
+    @Test
+    fun `displayDestination uses remoteIP remotePort for IP flow`() {
+        val flow = FlowDto(
+            id = 1, ipVersion = 4, protocol = 6,
+            endpointA = FlowEndpointDto("10.0.0.2", 49152),
+            endpointB = FlowEndpointDto("10.0.0.3", 443),
+            status = "active", txPackets = 0, txBytes = 0, rxPackets = 0, rxBytes = 0,
+            egressKind = "ip", remoteIP = "10.0.0.3", remotePort = 443,
+        )
+        assertEquals("10.0.0.3:443", flow.displayDestination)
+    }
+
+    @Test
+    fun `displayDestination null for IP flow when no remoteIP`() {
+        val flow = FlowDto(
+            id = 1, ipVersion = 4, protocol = 6,
+            endpointA = FlowEndpointDto("10.0.0.2", 49152),
+            endpointB = FlowEndpointDto("10.0.0.3", 443),
+            status = "active", txPackets = 0, txBytes = 0, rxPackets = 0, rxBytes = 0,
+            egressKind = "ip", remoteIP = null,
+        )
+        assertNull(flow.displayDestination)
+    }
+
+    @Test
+    fun `displayDestination falls back to scionDstIP for SCION when no dstIA`() {
+        val flow = FlowDto(
+            id = 1, ipVersion = 6, protocol = 17,
+            endpointA = FlowEndpointDto("fd42::1", 49152),
+            endpointB = FlowEndpointDto("fc04::2", 443),
+            status = "active", txPackets = 0, txBytes = 0, rxPackets = 0, rxBytes = 0,
+            egressKind = "scion", dstIA = null, scionDstIP = "192.168.1.1",
+        )
+        assertEquals("192.168.1.1", flow.displayDestination)
+    }
+
+    @Test
+    fun `displayDestination null for SCION when no dstIA and no scionDstIP`() {
+        val flow = FlowDto(
+            id = 1, ipVersion = 6, protocol = 17,
+            endpointA = FlowEndpointDto("fd42::1", 49152),
+            endpointB = FlowEndpointDto("fc04::2", 443),
+            status = "active", txPackets = 0, txBytes = 0, rxPackets = 0, rxBytes = 0,
+            egressKind = "scion", dstIA = null, scionDstIP = null,
+        )
+        assertNull(flow.displayDestination)
+    }
+
+    @Test
+    fun `displaySecondaryDestination returns scionDstIP when dstIA present`() {
+        val flow = FlowDto(
+            id = 1, ipVersion = 6, protocol = 17,
+            endpointA = FlowEndpointDto("fd42::1", 49152),
+            endpointB = FlowEndpointDto("fc04::2", 443),
+            status = "active", txPackets = 0, txBytes = 0, rxPackets = 0, rxBytes = 0,
+            egressKind = "scion", dstIA = "1-ff00:0:111", scionDstIP = "192.168.1.1",
+        )
+        assertEquals("192.168.1.1", flow.displaySecondaryDestination)
+    }
+
+    @Test
+    fun `displaySecondaryDestination null when no scionDstIP`() {
+        val flow = FlowDto(
+            id = 1, ipVersion = 6, protocol = 17,
+            endpointA = FlowEndpointDto("fd42::1", 49152),
+            endpointB = FlowEndpointDto("fc04::2", 443),
+            status = "active", txPackets = 0, txBytes = 0, rxPackets = 0, rxBytes = 0,
+            egressKind = "scion", dstIA = "1-ff00:0:111", scionDstIP = null,
+        )
+        assertNull(flow.displaySecondaryDestination)
+    }
+
+    @Test
     fun `IPv4 endpoint formatting`() {
         val ep = FlowEndpointDto(address = "10.0.2.16", port = 50568)
         val formatted = if (ep.address.contains(":")) "[${ep.address}]:${ep.port}" else "${ep.address}:${ep.port}"
