@@ -2,8 +2,24 @@
 
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.util.Properties
 
 val pkg: String = providers.gradleProperty("wireguardPackageName").get()
+
+fun scionProp(key: String, default: String = "false"): String {
+    val props = Properties()
+    val defaultFile = rootProject.file("gradle/scion-logging.properties")
+    if (defaultFile.exists()) {
+        defaultFile.inputStream().use { props.load(it) }
+    }
+    val localFile = rootProject.file("gradle/scion-logging.local.properties")
+    if (localFile.exists()) {
+        val localOverrides = Properties()
+        localFile.inputStream().use { localOverrides.load(it) }
+        props.putAll(localOverrides)
+    }
+    return props.getProperty(key, default)
+}
 
 plugins {
     alias(libs.plugins.android.application)
@@ -37,6 +53,8 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles("proguard-android-optimize.txt")
+            buildConfigField("boolean", "FLOW_CAPTURE_ENABLED", "false")
+            buildConfigField("boolean", "FLOW_FAKE_PROVIDER_ENABLED", "false")
             packaging {
                 resources {
                     excludes += "DebugProbesKt.bin"
@@ -48,11 +66,16 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+            buildConfigField("boolean", "FLOW_CAPTURE_ENABLED", scionProp("flow.capture.enabled"))
+            buildConfigField("boolean", "FLOW_FAKE_PROVIDER_ENABLED", scionProp("flow.fake.provider.enabled"))
         }
         create("googleplay") {
             initWith(getByName("release"))
             matchingFallbacks += "release"
         }
+    }
+    sourceSets {
+        getByName("test").resources.srcDirs(rootProject.file("fixtures"))
     }
     androidResources {
         generateLocaleConfig = true

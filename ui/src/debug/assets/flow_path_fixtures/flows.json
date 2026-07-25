@@ -1,0 +1,57 @@
+{
+  "flows": [
+    {
+      "id": 1842,
+      "ipVersion": 6,
+      "protocol": 17,
+      "endpointA": {
+        "address": "10.0.0.2",
+        "port": 52914
+      },
+      "endpointB": {
+        "address": "10.0.0.5",
+        "port": 443
+      },
+      "status": "ACTIVE",
+      "txPackets": 38000,
+      "txBytes": 30480000,
+      "rxPackets": 4000,
+      "rxBytes": 2275000,
+      "egressKind": "scion",
+      "srcIA": "1-ff00:0:110",
+      "dstIA": "1-ff00:0:111",
+      "localIP": "10.0.0.2",
+      "localPort": 52914,
+      "remoteIP": "10.0.0.5",
+      "remotePort": 443,
+      "scionDstIP": "10.0.0.5",
+      "createdAt": "2026-07-24T10:00:00Z",
+      "lastSeen": "2026-07-24T10:30:00Z"
+    },
+    {
+      "id": 1843,
+      "ipVersion": 4,
+      "protocol": 6,
+      "endpointA": {
+        "address": "10.0.0.2",
+        "port": 36001
+      },
+      "endpointB": {
+        "address": "93.184.216.34",
+        "port": 80
+      },
+      "status": "ACTIVE",
+      "txPackets": 1200,
+      "txBytes": 950000,
+      "rxPackets": 850,
+      "rxBytes": 1800000,
+      "egressKind": "ip",
+      "localIP": "10.0.0.2",
+      "localPort": 36001,
+      "remoteIP": "93.184.216.34",
+      "remotePort": 80,
+      "createdAt": "2026-07-24T09:55:00Z",
+      "lastSeen": "2026-07-24T10:30:00Z"
+    }
+  ]
+}
