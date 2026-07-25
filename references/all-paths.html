@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Select Path</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="phone-shell">
+    <header class="app-bar">
+      <a class="icon-button" href="path-override.html" aria-label="Back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/><path d="M9 12h10"/></svg>
+      </a>
+      <h1>Select Path</h1>
+      <button class="icon-button" aria-label="Help" onclick="showToast('Select one path and confirm the per-flow override.')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.8 9a2.4 2.4 0 1 1 4.1 1.7c-1 .8-1.9 1.2-1.9 2.5"/><path d="M12 17h.01"/></svg>
+      </button>
+    </header>
+
+    <main class="screen-content">
+      <div class="context-card">
+        <div class="context-row"><span>Destination</span><strong>1-ff00:0:111 · 10.0.0.5:443</strong></div>
+        <div class="context-row"><span>Automatic policy</span><strong>Lowest Latency</strong></div>
+        <div class="context-row"><span>Override state</span><strong>Not active</strong></div>
+      </div>
+
+      <section>
+        <div class="list-header">
+          <div>
+            <div class="list-title">Available paths</div>
+            <div class="list-count">6 unique effective paths</div>
+          </div>
+          <label>
+            <span class="section-heading" style="display:block;margin:0 0 5px;">Sort</span>
+            <select class="sort-select" aria-label="Sort paths">
+              <option>Current first</option>
+              <option>Lowest latency</option>
+              <option>Highest bandwidth</option>
+              <option>Shortest</option>
+              <option>Highest MTU</option>
+              <option>Longest lifetime</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="path-list" style="margin-top:14px;">
+          <article class="path-card selectable selected" data-select-path data-path-label="Path via 1-ff00:0:120">
+            <div class="path-card-top"><div class="path-select"></div><div class="path-main"><div class="badges"><span class="badge current">Current</span><span class="badge latency">Lowest latency</span><span class="badge shortest">Shortest</span></div><div class="path-route">1-ff00:0:110 → 1-ff00:0:120 → 1-ff00:0:111</div></div></div>
+            <div class="path-stats"><div class="path-stat"><div class="path-stat-label">Latency</div><div class="path-stat-value">12 ms</div></div><div class="path-stat"><div class="path-stat-label">Bandwidth</div><div class="path-stat-value">10 Gbit/s</div></div><div class="path-stat"><div class="path-stat-label">Links</div><div class="path-stat-value">2</div></div><div class="path-stat"><div class="path-stat-label">MTU</div><div class="path-stat-value">1472</div></div></div>
+            <div class="path-card-footer"><span class="expiry">Expires in 18 min</span><a class="details-link" href="path-details.html">Details →</a></div>
+          </article>
+
+          <article class="path-card selectable" data-select-path data-path-label="High-bandwidth path via 1-ff00:0:130">
+            <div class="path-card-top"><div class="path-select"></div><div class="path-main"><div class="badges"><span class="badge bandwidth">Highest bandwidth</span></div><div class="path-route">1-ff00:0:110 → 1-ff00:0:130 → 1-ff00:0:111</div></div></div>
+            <div class="path-stats"><div class="path-stat"><div class="path-stat-label">Latency</div><div class="path-stat-value">24 ms</div></div><div class="path-stat"><div class="path-stat-label">Bandwidth</div><div class="path-stat-value">40 Gbit/s</div></div><div class="path-stat"><div class="path-stat-label">Links</div><div class="path-stat-value">2</div></div><div class="path-stat"><div class="path-stat-label">MTU</div><div class="path-stat-value">1500</div></div></div>
+            <div class="path-card-footer"><span class="expiry">Expires in 11 min</span><a class="details-link" href="path-details.html">Details →</a></div>
+          </article>
+
+          <article class="path-card selectable" data-select-path data-path-label="Path via 1-ff00:0:140 and 1-ff00:0:150">
+            <div class="path-card-top"><div class="path-select"></div><div class="path-main"><div class="badges"><span class="badge neutral">Highest MTU</span></div><div class="path-route">1-ff00:0:110 → 1-ff00:0:140 → 1-ff00:0:150 → 1-ff00:0:111</div></div></div>
+            <div class="path-stats"><div class="path-stat"><div class="path-stat-label">Latency</div><div class="path-stat-value">31 ms</div></div><div class="path-stat"><div class="path-stat-label">Bandwidth</div><div class="path-stat-value">20 Gbit/s</div></div><div class="path-stat"><div class="path-stat-label">Links</div><div class="path-stat-value">3</div></div><div class="path-stat"><div class="path-stat-label">MTU</div><div class="path-stat-value">9000</div></div></div>
+            <div class="path-card-footer"><span class="expiry">Expires in 25 min</span><a class="details-link" href="path-details.html">Details →</a></div>
+          </article>
+
+          <article class="path-card selectable" data-select-path data-path-label="Path via 1-ff00:0:160">
+            <div class="path-card-top"><div class="path-select"></div><div class="path-main"><div class="badges"></div><div class="path-route">1-ff00:0:110 → 1-ff00:0:160 → 1-ff00:0:111</div></div></div>
+            <div class="path-stats"><div class="path-stat"><div class="path-stat-label">Latency</div><div class="path-stat-value">19 ms</div></div><div class="path-stat"><div class="path-stat-label">Bandwidth</div><div class="path-stat-value">8 Gbit/s</div></div><div class="path-stat"><div class="path-stat-label">Links</div><div class="path-stat-value">2</div></div><div class="path-stat"><div class="path-stat-label">MTU</div><div class="path-stat-value">1472</div></div></div>
+            <div class="path-card-footer"><span class="expiry">Expires in 9 min</span><a class="details-link" href="path-details.html">Details →</a></div>
+          </article>
+
+          <article class="path-card selectable" data-select-path data-path-label="Path with incomplete latency metadata">
+            <div class="path-card-top"><div class="path-select"></div><div class="path-main"><div class="badges"></div><div class="path-route">1-ff00:0:110 → 1-ff00:0:170 → 1-ff00:0:180 → 1-ff00:0:111</div></div></div>
+            <div class="path-stats"><div class="path-stat"><div class="path-stat-label">Latency</div><div class="path-stat-value">Unavailable</div></div><div class="path-stat"><div class="path-stat-label">Bandwidth</div><div class="path-stat-value">15 Gbit/s</div></div><div class="path-stat"><div class="path-stat-label">Links</div><div class="path-stat-value">3</div></div><div class="path-stat"><div class="path-stat-label">MTU</div><div class="path-stat-value">1500</div></div></div>
+            <div class="path-card-footer"><span class="expiry">Expires in 14 min</span><a class="details-link" href="path-details.html">Details →</a></div>
+          </article>
+
+          <article class="path-card selectable" data-select-path data-path-label="Long-lived path via 1-ff00:0:190">
+            <div class="path-card-top"><div class="path-select"></div><div class="path-main"><div class="badges"><span class="badge neutral">Longest lifetime</span></div><div class="path-route">1-ff00:0:110 → 1-ff00:0:190 → 1-ff00:0:111</div></div></div>
+            <div class="path-stats"><div class="path-stat"><div class="path-stat-label">Latency</div><div class="path-stat-value">28 ms</div></div><div class="path-stat"><div class="path-stat-label">Bandwidth</div><div class="path-stat-value">6 Gbit/s</div></div><div class="path-stat"><div class="path-stat-label">Links</div><div class="path-stat-value">2</div></div><div class="path-stat"><div class="path-stat-label">MTU</div><div class="path-stat-value">1472</div></div></div>
+            <div class="path-card-footer"><span class="expiry">Expires in 42 min</span><a class="details-link" href="path-details.html">Details →</a></div>
+          </article>
+        </div>
+      </section>
+
+      <div class="sticky-action"><button class="button primary full" data-apply-path data-path-label="Path via 1-ff00:0:120">Use Selected Path</button></div>
+    </main>
+  </div>
+  <div class="toast" data-toast></div>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Override Path</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="phone-shell" aria-hidden="true">
+    <header class="app-bar"><span class="icon-button">←</span><h1>Flow Details</h1><span class="icon-button">•••</span></header>
+    <main class="screen-content" style="filter:saturate(.75);">
+      <div class="card"><div class="section-heading">Flow information</div><div style="font-weight:850;">SCION flow #1842</div><div style="color:var(--muted);margin-top:4px;font-size:13px;">1-ff00:0:111 · 10.0.0.5:443</div></div>
+      <div class="card"><div class="section-heading">Current path</div><div style="font-weight:850;">1-ff00:0:110 → 1-ff00:0:120 → 1-ff00:0:111</div></div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop">
+    <section class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="override-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-header-copy">
+          <h1 class="sheet-title" id="override-title">Override Path</h1>
+          <p class="sheet-subtitle">Choose a specific path for this flow. The selected path temporarily replaces automatic policy selection.</p>
+        </div>
+        <button class="icon-button" data-close aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12"/><path d="M18 6 6 18"/></svg>
+        </button>
+      </div>
+
+      <div class="sheet-content">
+        <div class="context-card">
+          <div class="context-row"><span>Destination</span><strong>1-ff00:0:111 · 10.0.0.5:443</strong></div>
+          <div class="context-row"><span>Automatic policy</span><strong>Lowest Latency</strong></div>
+        </div>
+
+        <div>
+          <h2 class="section-heading">Quick selection</h2>
+          <div class="path-list">
+            <article class="path-card selectable selected" data-select-path data-path-label="Path via 1-ff00:0:120">
+              <div class="path-card-top">
+                <div class="path-select" aria-hidden="true"></div>
+                <div class="path-main">
+                  <div class="badges"><span class="badge current">Current</span><span class="badge latency">Lowest latency</span><span class="badge shortest">Shortest</span></div>
+                  <div class="path-route">1-ff00:0:110 → 1-ff00:0:120 → 1-ff00:0:111</div>
+                </div>
+              </div>
+              <div class="path-stats">
+                <div class="path-stat"><div class="path-stat-label">Latency</div><div class="path-stat-value">12 ms</div></div>
+                <div class="path-stat"><div class="path-stat-label">Bandwidth</div><div class="path-stat-value">10 Gbit/s</div></div>
+                <div class="path-stat"><div class="path-stat-label">Links</div><div class="path-stat-value">2</div></div>
+                <div class="path-stat"><div class="path-stat-label">MTU</div><div class="path-stat-value">1472</div></div>
+              </div>
+              <div class="path-card-footer"><span class="expiry">Expires in 18 min</span><a class="details-link" href="path-details.html">Details →</a></div>
+            </article>
+
+            <article class="path-card selectable" data-select-path data-path-label="High-bandwidth path via 1-ff00:0:130">
+              <div class="path-card-top">
+                <div class="path-select" aria-hidden="true"></div>
+                <div class="path-main">
+                  <div class="badges"><span class="badge bandwidth">Highest bandwidth</span></div>
+                  <div class="path-route">1-ff00:0:110 → 1-ff00:0:130 → 1-ff00:0:111</div>
+                </div>
+              </div>
+              <div class="path-stats">
+                <div class="path-stat"><div class="path-stat-label">Latency</div><div class="path-stat-value">24 ms</div></div>
+                <div class="path-stat"><div class="path-stat-label">Bandwidth</div><div class="path-stat-value">40 Gbit/s</div></div>
+                <div class="path-stat"><div class="path-stat-label">Links</div><div class="path-stat-value">2</div></div>
+                <div class="path-stat"><div class="path-stat-label">MTU</div><div class="path-stat-value">1500</div></div>
+              </div>
+              <div class="path-card-footer"><span class="expiry">Expires in 11 min</span><a class="details-link" href="path-details.html">Details →</a></div>
+            </article>
+          </div>
+        </div>
+
+        <a class="button ghost full" href="all-paths.html">View all 6 paths →</a>
+      </div>
+
+      <div class="sheet-actions">
+        <button class="button primary full" data-apply-path data-path-label="Path via 1-ff00:0:120">Use Selected Path</button>
+        <button class="button secondary full" data-close>Cancel</button>
+      </div>
+    </section>
+  </div>
+  <div class="toast" data-toast></div>
+  <script src="app.js"></script>
+</body>
+</html>

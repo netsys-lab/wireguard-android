@@ -128,7 +128,7 @@ private fun parseEgressKind(obj: JSONObject): String {
 data class FlowPathDto(
     val fingerprint: String,
     val display: String,
-    val current: Boolean,
+    val current: Boolean = false,
     val nextHop: String? = null,
     val expiry: String? = null,
     val mtu: Int? = null,
@@ -139,6 +139,13 @@ data class FlowPathDto(
     val linkType: List<String>? = null,
     val internalHops: List<Int>? = null,
     val notes: List<String>? = null,
+    val latencyMicros: List<Long>? = null,
+    val bandwidthKbps: List<Long>? = null,
+    val totalLatencyMicros: Long? = null,
+    val latencyComplete: Boolean? = null,
+    val bottleneckKbps: Long? = null,
+    val bandwidthComplete: Boolean? = null,
+    val interAsLinks: Int = 0,
 )
 
 data class GeoDto(
@@ -161,6 +168,11 @@ data class FlowPathsResponseDto(
     val paths: List<FlowPathDto> = emptyList(),
     val error: String? = null,
     val policyName: String? = null,
+    val policyMode: String? = null,
+    val policyFallbackApplied: Boolean = false,
+    val overrideState: String? = null,
+    val overrideFingerprint: String? = null,
+    val effectiveFingerprint: String? = null,
 )
 
 fun parseFlowPathsResponse(json: String): FlowPathsResponseDto {
@@ -169,6 +181,11 @@ fun parseFlowPathsResponse(json: String): FlowPathsResponseDto {
     val state = parseFlowPathsState(obj.optString("state", ""))
     val error = obj.optString("error", null)?.takeIf { it.isNotEmpty() }
     val policyName = obj.optString("policyName", null)?.takeIf { it.isNotEmpty() }
+    val policyMode = obj.optString("policyMode", null)?.takeIf { it.isNotEmpty() }
+    val policyFallbackApplied = obj.optBoolean("policyFallbackApplied", false)
+    val overrideState = obj.optString("overrideState", null)?.takeIf { it.isNotEmpty() }
+    val overrideFingerprint = obj.optString("overrideFingerprint", null)?.takeIf { it.isNotEmpty() }
+    val effectiveFingerprint = obj.optString("effectiveFingerprint", null)?.takeIf { it.isNotEmpty() }
     val pathsArray = obj.optJSONArray("paths") ?: JSONArray()
     val paths = (0 until pathsArray.length()).map { i ->
         val p = pathsArray.getJSONObject(i)
@@ -188,6 +205,21 @@ fun parseFlowPathsResponse(json: String): FlowPathsResponseDto {
             bandwidth = p.optJSONArray("bandwidth")?.let { arr ->
                 (0 until arr.length()).map { arr.getLong(it) }
             },
+            latencyMicros = p.optJSONArray("latencyMicros")?.let { arr ->
+                (0 until arr.length()).map { arr.getLong(it) }
+            },
+            bandwidthKbps = p.optJSONArray("bandwidthKbps")?.let { arr ->
+                (0 until arr.length()).map { arr.getLong(it) }
+            },
+            totalLatencyMicros = if (p.has("totalLatencyMicros") && !p.isNull("totalLatencyMicros"))
+                p.optLong("totalLatencyMicros", 0) else null,
+            latencyComplete = if (p.has("latencyComplete") && !p.isNull("latencyComplete"))
+                p.optBoolean("latencyComplete", false) else null,
+            bottleneckKbps = if (p.has("bottleneckKbps") && !p.isNull("bottleneckKbps"))
+                p.optLong("bottleneckKbps", 0) else null,
+            bandwidthComplete = if (p.has("bandwidthComplete") && !p.isNull("bandwidthComplete"))
+                p.optBoolean("bandwidthComplete", false) else null,
+            interAsLinks = p.optInt("interAsLinks", 0),
             geo = p.optJSONArray("geo")?.let { arr ->
                 (0 until arr.length()).map { j ->
                     val g = arr.getJSONObject(j)
@@ -209,7 +241,13 @@ fun parseFlowPathsResponse(json: String): FlowPathsResponseDto {
             },
         )
     }
-    return FlowPathsResponseDto(flowId = flowId, state = state, paths = paths, error = error, policyName = policyName)
+    return FlowPathsResponseDto(
+        flowId = flowId, state = state, paths = paths, error = error,
+        policyName = policyName, policyMode = policyMode,
+        policyFallbackApplied = policyFallbackApplied,
+        overrideState = overrideState, overrideFingerprint = overrideFingerprint,
+        effectiveFingerprint = effectiveFingerprint,
+    )
 }
 
 private fun parseFlowPathsState(state: String): FlowPathsState = when (state.lowercase()) {

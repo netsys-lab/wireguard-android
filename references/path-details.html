@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Path Details</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="phone-shell">
+    <header class="app-bar">
+      <button class="icon-button" onclick="history.back()" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/><path d="M9 12h10"/></svg></button>
+      <h1>Path Details</h1>
+      <button class="icon-button" aria-label="Share" onclick="showToast('Share action is not implemented in this preview.')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="19" r="2"/><path d="m8 11 8-5"/><path d="m8 13 8 5"/></svg></button>
+    </header>
+
+    <main class="screen-content">
+      <section>
+        <div class="badges"><span class="badge current">Current</span><span class="badge latency">Lowest latency</span><span class="badge shortest">Shortest</span></div>
+        <div style="font-family:Manrope,Inter,sans-serif;font-size:19px;line-height:27px;font-weight:850;overflow-wrap:anywhere;">1-ff00:0:110 → 1-ff00:0:120 → 1-ff00:0:111</div>
+        <div style="color:var(--muted);font-size:13px;margin-top:5px;">Selected automatically by the “Lowest Latency” policy</div>
+      </section>
+
+      <section>
+        <h2 class="section-heading">Path summary</h2>
+        <div class="metric-grid">
+          <div class="metric-card"><div class="metric-label">Advertised latency</div><div class="metric-value">12 <span class="metric-unit">ms</span></div></div>
+          <div class="metric-card"><div class="metric-label">Bottleneck bandwidth</div><div class="metric-value">10 <span class="metric-unit">Gbit/s</span></div></div>
+          <div class="metric-card"><div class="metric-label">Inter-AS links</div><div class="metric-value">2</div></div>
+          <div class="metric-card"><div class="metric-label">Path MTU</div><div class="metric-value">1472</div></div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-heading">AS route</h2>
+        <div class="card route-stack">
+          <div class="route-node"><div class="route-node-marker"><span class="route-node-dot"></span><span class="route-node-line"></span></div><div class="route-node-copy"><div class="route-node-ia">1-ff00:0:110</div><div class="route-node-meta">Local AS · egress interface 12</div></div></div>
+          <div class="route-node"><div class="route-node-marker"><span class="route-node-dot"></span><span class="route-node-line"></span></div><div class="route-node-copy"><div class="route-node-ia">1-ff00:0:120</div><div class="route-node-meta">Intermediate AS · ingress 4 · egress 9</div></div></div>
+          <div class="route-node"><div class="route-node-marker"><span class="route-node-dot"></span><span class="route-node-line"></span></div><div class="route-node-copy"><div class="route-node-ia">1-ff00:0:111</div><div class="route-node-meta">Destination AS · ingress interface 7</div></div></div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-heading">Geographic route</h2>
+        <div class="card">
+          <div class="geo-list"><span class="geo-chip">Zurich</span><span class="geo-arrow">→</span><span class="geo-chip">Frankfurt</span><span class="geo-arrow">→</span><span class="geo-chip">London</span></div>
+          <div style="color:var(--muted);font-size:12px;line-height:18px;margin-top:12px;">Locations are listed only where geographic metadata is available. No map or inferred city names are required.</div>
+        </div>
+      </section>
+
+      <section>
+        <div class="fingerprint">
+          <div class="fingerprint-head"><span class="fingerprint-title">Full path fingerprint</span><button class="copy-button" data-copy-fingerprint aria-label="Copy fingerprint"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="10" height="10" rx="2"/><path d="M15 9V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/></svg></button></div>
+          <code data-fingerprint>7f9a2c4e1b8d5f3a0e6c9b4d2a1f8e5d3c0b7a9e2f4c1b8d5a0e6c9b4d2a1f8e</code>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-heading">Hop-by-hop metadata</h2>
+        <div class="path-list">
+          <article class="card hop-card">
+            <div class="hop-head"><span class="hop-number">01</span><span class="hop-title">1-ff00:0:110</span><span class="badge neutral">Direct</span></div>
+            <div class="hop-content"><div class="hop-grid"><div><div class="hop-label">Egress interface</div><div class="hop-value">12</div></div><div><div class="hop-label">Advertised latency</div><div class="hop-value">1.2 ms</div></div><div><div class="hop-label">Bandwidth</div><div class="hop-value">40 Gbit/s</div></div><div><div class="hop-label">Internal hops</div><div class="hop-value">1</div></div><div><div class="hop-label">Location</div><div class="hop-value">Zurich</div></div><div><div class="hop-label">Link type</div><div class="hop-value">Direct</div></div></div><div class="hop-note">Advertised path metadata from the SCION control plane. No congestion or health state is inferred.</div></div>
+          </article>
+
+          <article class="card hop-card">
+            <div class="hop-head"><span class="hop-number">02</span><span class="hop-title">1-ff00:0:120</span><span class="badge neutral">Transit</span></div>
+            <div class="hop-content"><div class="hop-grid"><div><div class="hop-label">Ingress / egress</div><div class="hop-value">4 → 9</div></div><div><div class="hop-label">Advertised latency</div><div class="hop-value">8.4 ms</div></div><div><div class="hop-label">Bandwidth</div><div class="hop-value">10 Gbit/s</div></div><div><div class="hop-label">Internal hops</div><div class="hop-value">2</div></div><div><div class="hop-label">Location</div><div class="hop-value">Frankfurt</div></div><div><div class="hop-label">Link type</div><div class="hop-value">Transit</div></div></div></div>
+          </article>
+
+          <article class="card hop-card">
+            <div class="hop-head"><span class="hop-number">03</span><span class="hop-title">1-ff00:0:111</span><span class="badge neutral">Destination</span></div>
+            <div class="hop-content"><div class="hop-grid"><div><div class="hop-label">Ingress interface</div><div class="hop-value">7</div></div><div><div class="hop-label">Advertised latency</div><div class="hop-value">2.4 ms</div></div><div><div class="hop-label">Bandwidth</div><div class="hop-value">100 Gbit/s</div></div><div><div class="hop-label">Path MTU</div><div class="hop-value">1472</div></div><div><div class="hop-label">Location</div><div class="hop-value">London</div></div><div><div class="hop-label">Expiry</div><div class="hop-value">In 18 min</div></div></div></div>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div class="toast" data-toast></div>
+  <script src="app.js"></script>
+</body>
+</html>
