@@ -10,17 +10,20 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import com.wireguard.android.R
+import com.wireguard.android.viewmodel.FlowPathViewModel
 import com.wireguard.android.model.HopDetailUiModel
-import com.wireguard.android.util.MockScenario
 import com.wireguard.android.model.PathBadge
 import com.wireguard.android.model.PathDetailsUiModel
 import com.wireguard.android.model.ObservableTunnel
-import com.wireguard.android.util.MockFlowPathDataSource
+import kotlinx.coroutines.launch
 
 class PathDetailsFragment : BaseFragment() {
 
     private var pathDetails: PathDetailsUiModel? = null
+    private var fingerprint: String? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -32,39 +35,36 @@ class PathDetailsFragment : BaseFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val args = arguments ?: return
-        val fingerprint = args.getString(ARG_FINGERPRINT) ?: return
-        val scenarioIndex = args.getInt(ARG_SCENARIO, 0)
-        val scenario = MockScenario.entries.getOrElse(scenarioIndex) { MockScenario.AUTO_SINGLE_PATH }
+        fingerprint = args.getString(ARG_FINGERPRINT) ?: return
 
         view.findViewById<View>(R.id.btn_back).setOnClickListener {
             activity?.onBackPressedDispatcher?.onBackPressed()
         }
 
-        val details = MockFlowPathDataSource.getPathDetails(fingerprint, scenario)
-        if (details == null) {
-            Toast.makeText(requireContext(), "Path details not found", Toast.LENGTH_SHORT).show()
-            activity?.onBackPressedDispatcher?.onBackPressed()
-            return
+        val vm = ViewModelProvider(requireActivity())[FlowPathViewModel::class.java]
+        lifecycleScope.launch {
+            vm.selectPathDetails(fingerprint!!)
+            vm.selectedPathDetails.collect { details ->
+                if (details != null) {
+                    pathDetails = details
+                    render(details)
+                }
+            }
         }
-        pathDetails = details
-        render(details)
     }
 
     private fun render(details: PathDetailsUiModel) {
         val view = view ?: return
 
-        // Badges
         val badgeRow = view.findViewById<LinearLayout>(R.id.pd_badge_row)
         badgeRow.removeAllViews()
         for (badge in details.badges) {
             badgeRow.addView(createBadgeChip(badge))
         }
 
-        // Route
         view.findViewById<TextView>(R.id.pd_full_route).text = details.fullRoute
         view.findViewById<TextView>(R.id.pd_selection_source).text = details.selectionSource
 
-        // Metrics
         view.findViewById<TextView>(R.id.pd_latency).text = formatLatency(details.latencyMs)
         val bwValue = view.findViewById<TextView>(R.id.pd_bandwidth)
         val bwUnit = view.findViewById<TextView>(R.id.pd_bandwidth_unit)
@@ -79,24 +79,20 @@ class PathDetailsFragment : BaseFragment() {
         view.findViewById<TextView>(R.id.pd_links).text = details.interAsLinks.toString()
         view.findViewById<TextView>(R.id.pd_mtu).text = details.mtu.toString()
 
-        // Geo summary
         view.findViewById<TextView>(R.id.pd_geo_summary).text =
             details.geoSummary.ifEmpty { getString(R.string.expires_unknown) }
 
-        // Fingerprint
         view.findViewById<TextView>(R.id.pd_fingerprint).text = details.fingerprint
         view.findViewById<View>(R.id.btn_copy_fingerprint).setOnClickListener {
             copyToClipboard(details.fingerprint)
         }
 
-        // AS route stack
         val asRouteContainer = view.findViewById<LinearLayout>(R.id.pd_as_route_container)
         asRouteContainer.removeAllViews()
         for (hop in details.hops) {
             asRouteContainer.addView(createAsRouteNode(asRouteContainer, hop))
         }
 
-        // Hop-by-hop details
         val hopList = view.findViewById<LinearLayout>(R.id.pd_hop_list)
         hopList.removeAllViews()
         for (hop in details.hops) {
@@ -158,7 +154,6 @@ class PathDetailsFragment : BaseFragment() {
         card.findViewById<TextView>(R.id.hop_role_badge).background =
             androidx.core.content.ContextCompat.getDrawable(requireContext(), R.drawable.scitra_status_badge_bg)
 
-        // Grid items
         val hopItems = mutableListOf<Pair<String, String>>()
 
         val role = hop.role
@@ -180,7 +175,6 @@ class PathDetailsFragment : BaseFragment() {
         if (hop.location != null) hopItems.add("Location" to hop.location)
         if (hop.linkType != null) hopItems.add("Link type" to hop.linkType)
 
-        // Fill grid
         val grid = card.findViewById<LinearLayout>(R.id.hop_grid)
         for ((label, value) in hopItems) {
             val row = LayoutInflater.from(requireContext())
@@ -198,7 +192,6 @@ class PathDetailsFragment : BaseFragment() {
             grid.addView(emptyRow)
         }
 
-        // Note
         val noteView = card.findViewById<TextView>(R.id.hop_note)
         if (hop.hopNumber == 1) {
             noteView.visibility = View.VISIBLE
@@ -231,19 +224,15 @@ class PathDetailsFragment : BaseFragment() {
         Toast.makeText(requireContext(), getString(R.string.copied_to_clipboard, "Fingerprint"), Toast.LENGTH_SHORT).show()
     }
 
-    override fun onSelectedTunnelChanged(oldTunnel: ObservableTunnel?, newTunnel: ObservableTunnel?) {
-        // No-op: Path details is mock-data driven, not tunnel-bound.
-    }
+    override fun onSelectedTunnelChanged(oldTunnel: ObservableTunnel?, newTunnel: ObservableTunnel?) {}
 
     companion object {
         private const val ARG_FINGERPRINT = "fingerprint"
-        private const val ARG_SCENARIO = "scenario_index"
 
-        fun newInstance(fingerprint: String, scenario: MockScenario): PathDetailsFragment {
+        fun newInstance(fingerprint: String): PathDetailsFragment {
             return PathDetailsFragment().apply {
                 arguments = Bundle().apply {
                     putString(ARG_FINGERPRINT, fingerprint)
-                    putInt(ARG_SCENARIO, scenario.ordinal)
                 }
             }
         }

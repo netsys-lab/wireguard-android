@@ -14,7 +14,7 @@ import com.wireguard.android.backend.Tunnel
 import com.wireguard.android.model.FlowPathDto
 import com.wireguard.android.model.FlowPathsResponseDto
 import com.wireguard.android.model.FlowPathsState
-import com.wireguard.android.util.FlowRepository
+import com.wireguard.android.util.RealFlowRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
 class PathSelectionBottomSheet : BottomSheetDialogFragment() {
 
     lateinit var tunnel: Tunnel
-    lateinit var flowRepository: FlowRepository
+    lateinit var flowRepository: RealFlowRepository
 
     private val scope = CoroutineScope(Dispatchers.Main + Job())
     private var retryCount = 0

@@ -7,16 +7,17 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.fragment.app.FragmentTransaction
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import com.wireguard.android.R
-import com.wireguard.android.util.MockScenario
-import com.wireguard.android.model.PathPreviewUiModel
 import com.wireguard.android.model.ObservableTunnel
-import com.wireguard.android.util.MockFlowPathDataSource
+import com.wireguard.android.model.PathPreviewUiModel
+import com.wireguard.android.viewmodel.FlowPathViewModel
 import com.wireguard.android.util.PathPreviewCardBinder
+import kotlinx.coroutines.launch
 
 class AllPathsFragment : BaseFragment() {
 
-    private var scenario: MockScenario = MockScenario.AUTO_SINGLE_PATH
     private var paths: List<PathPreviewUiModel> = emptyList()
     private var selectedFingerprint: String? = null
 
@@ -29,66 +30,46 @@ class AllPathsFragment : BaseFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val args = arguments ?: return
-        val scenarioIndex = args.getInt(ARG_SCENARIO, 0)
-        scenario = MockScenario.entries.getOrElse(scenarioIndex) { MockScenario.AUTO_SINGLE_PATH }
 
         view.findViewById<View>(R.id.btn_back).setOnClickListener {
             activity?.onBackPressedDispatcher?.onBackPressed()
         }
 
-        loadPaths()
-    }
-
-    private fun loadPaths() {
-        val view = view ?: return
-        paths = MockFlowPathDataSource.getPaths(scenario)
-
-        // Context
-        val details = MockFlowPathDataSource.getFlowDetails(scenario)
-        val overrideActive = MockFlowPathDataSource.mockOverrideFingerprint != null
-        view.findViewById<TextView>(R.id.ap_context_destination).text =
-            "${details.destinationIA} · ${details.destinationHost}"
-        view.findViewById<TextView>(R.id.ap_context_policy).text = details.policy.name
-        view.findViewById<TextView>(R.id.ap_context_override).text =
-            if (overrideActive) getString(R.string.per_flow_override_active)
-            else getString(R.string.not_active)
-
-        // Path count
-        view.findViewById<TextView>(R.id.ap_path_count).text =
-            getString(R.string.unique_effective_paths, paths.size)
-
-        // Render paths
-        val listContainer = view.findViewById<LinearLayout>(R.id.ap_path_list)
-        listContainer.removeAllViews()
-        for (path in paths) {
-            val isSelected = path.fingerprint == selectedFingerprint
-            val card = PathPreviewCardBinder.inflateSelectable(
-                listContainer,
-                path,
-                isSelected,
-                LayoutInflater.from(requireContext()),
-                requireContext(),
-                onItemClick = { onPathClick(it) },
-                onDetailsClick = { openPathDetails(it) },
-            )
-            listContainer.addView(card)
+        val vm = ViewModelProvider(requireActivity())[FlowPathViewModel::class.java]
+        lifecycleScope.launch {
+            vm.pathSection.collect { section ->
+                if (section is com.wireguard.android.model.PathSectionState.Ready) {
+                    paths = section.paths
+                    renderPaths()
+                    renderContext(section)
+                }
+            }
         }
 
-        // Confirm button
+        renderPaths()
         updateConfirmButton()
         view.findViewById<View>(R.id.btn_use_selected_path).setOnClickListener {
             applyOverride()
         }
     }
 
-    private fun onPathClick(path: PathPreviewUiModel) {
-        selectedFingerprint = if (selectedFingerprint == path.fingerprint) null else path.fingerprint
-        renderSelection()
-        updateConfirmButton()
+    private fun renderContext(section: com.wireguard.android.model.PathSectionState.Ready) {
+        val view = view ?: return
+        val ctx = ViewModelProvider(requireActivity())[FlowPathViewModel::class.java].flowContext.value
+        val destination = if (ctx is com.wireguard.android.model.FlowContextState.Ready) {
+            "${ctx.destinationIA ?: ""} · ${ctx.remoteEndpoint}"
+        } else ""
+        view.findViewById<TextView>(R.id.ap_context_destination).text = destination
+        view.findViewById<TextView>(R.id.ap_context_policy).text = section.policyName ?: section.policyState.name
+        view.findViewById<TextView>(R.id.ap_context_override).text =
+            if (section.overrideState != com.wireguard.android.model.OverrideState.INACTIVE)
+                getString(R.string.per_flow_override_active)
+            else getString(R.string.not_active)
+        view.findViewById<TextView>(R.id.ap_path_count).text =
+            getString(R.string.unique_effective_paths, paths.size)
     }
 
-    private fun renderSelection() {
+    private fun renderPaths() {
         val view = view ?: return
         val listContainer = view.findViewById<LinearLayout>(R.id.ap_path_list)
         listContainer.removeAllViews()
@@ -105,6 +86,12 @@ class AllPathsFragment : BaseFragment() {
             )
             listContainer.addView(card)
         }
+    }
+
+    private fun onPathClick(path: PathPreviewUiModel) {
+        selectedFingerprint = if (selectedFingerprint == path.fingerprint) null else path.fingerprint
+        renderPaths()
+        updateConfirmButton()
     }
 
     private fun updateConfirmButton() {
@@ -115,13 +102,12 @@ class AllPathsFragment : BaseFragment() {
 
     private fun applyOverride() {
         val fingerprint = selectedFingerprint ?: return
-        // Mock: apply override locally, no JNI call
-        MockFlowPathDataSource.applyOverride(fingerprint)
+        ViewModelProvider(requireActivity())[FlowPathViewModel::class.java].applyOverride(fingerprint)
         activity?.onBackPressedDispatcher?.onBackPressed()
     }
 
     private fun openPathDetails(path: PathPreviewUiModel) {
-        val fragment = PathDetailsFragment.newInstance(path.fingerprint, scenario)
+        val fragment = PathDetailsFragment.newInstance(path.fingerprint)
         parentFragmentManager.beginTransaction()
             .replace(getContainerId(), fragment)
             .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
@@ -137,19 +123,11 @@ class AllPathsFragment : BaseFragment() {
         }
     }
 
-    override fun onSelectedTunnelChanged(oldTunnel: ObservableTunnel?, newTunnel: ObservableTunnel?) {
-        // No-op: All paths view is mock-data driven, not tunnel-bound.
-    }
+    override fun onSelectedTunnelChanged(oldTunnel: ObservableTunnel?, newTunnel: ObservableTunnel?) {}
 
     companion object {
-        private const val ARG_SCENARIO = "scenario_index"
-
-        fun newInstance(scenario: MockScenario): AllPathsFragment {
-            return AllPathsFragment().apply {
-                arguments = Bundle().apply {
-                    putInt(ARG_SCENARIO, scenario.ordinal)
-                }
-            }
+        fun newInstance(): AllPathsFragment {
+            return AllPathsFragment()
         }
     }
 }

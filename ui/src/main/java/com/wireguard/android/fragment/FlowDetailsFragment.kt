@@ -8,20 +8,23 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.fragment.app.FragmentTransaction
 import com.wireguard.android.R
-import com.wireguard.android.model.FlowDetailsScreenState
-import com.wireguard.android.model.FlowDetailsUiModel
-import com.wireguard.android.util.MockScenario
-import com.wireguard.android.model.PathBadge
-import com.wireguard.android.model.PathPolicyState
-import com.wireguard.android.model.PathPreviewUiModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import com.wireguard.android.model.FlowContextState
 import com.wireguard.android.model.ObservableTunnel
-import com.wireguard.android.util.MockFlowPathDataSource
+import com.wireguard.android.model.PathPreviewUiModel
+import com.wireguard.android.model.PathSectionState
+import com.wireguard.android.model.PolicyState
 import com.wireguard.android.util.PathPreviewCardBinder
+import com.wireguard.android.util.createFlowPathRepositoryProvider
+import com.wireguard.android.viewmodel.FlowPathViewModel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class FlowDetailsFragment : BaseFragment() {
 
-    private var flowDetails: FlowDetailsUiModel? = null
-    private var selectedFingerprint: String? = null
+    var viewModel: FlowPathViewModel? = null
+        private set
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -32,128 +35,151 @@ class FlowDetailsFragment : BaseFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val scenarioIndex = arguments?.getInt(ARG_SCENARIO, 0) ?: 0
-        val scenario = MockScenario.entries.getOrElse(scenarioIndex) { MockScenario.AUTO_SINGLE_PATH }
 
         view.findViewById<View>(R.id.btn_back).setOnClickListener {
             activity?.onBackPressedDispatcher?.onBackPressed()
         }
 
-        loadFlowDetails(scenario)
+        val tunnel = selectedTunnel
+        val flowId = arguments?.getLong(ARG_FLOW_ID, -1L) ?: -1L
+        if (tunnel == null || flowId < 0) {
+            showState("error")
+            return
+        }
+
+        val (flowRepo, flowPathRepo) = runBlocking {
+            val provider = createFlowPathRepositoryProvider(requireContext())
+            Pair(provider.createFlowRepository(tunnel), provider.createFlowPathRepository(tunnel))
+        }
+        val factory = FlowPathViewModel.Factory(
+            flowRepository = flowRepo,
+            flowPathRepository = flowPathRepo,
+            tunnel = tunnel,
+            flowId = flowId,
+            flowSnapshot = null,
+        )
+        viewModel = ViewModelProvider(requireActivity(), factory).get(FlowPathViewModel::class.java)
+
+        observeViewModel()
     }
 
-    private fun loadFlowDetails(scenario: MockScenario) {
-        val details = MockFlowPathDataSource.getFlowDetails(scenario)
-        flowDetails = details
-        render(details)
-    }
-
-    private fun render(details: FlowDetailsUiModel) {
-        val view = view ?: return
-        val loadingView = view.findViewById<View>(R.id.flow_loading_view)
-        val errorView = view.findViewById<View>(R.id.flow_error_view)
-        val emptyView = view.findViewById<View>(R.id.flow_empty_view)
-        val contentView = view.findViewById<View>(R.id.flow_content_view)
-
-        loadingView.visibility = View.GONE
-        errorView.visibility = View.GONE
-        emptyView.visibility = View.GONE
-        contentView.visibility = View.GONE
-
-        when (details.screenState) {
-            FlowDetailsScreenState.LOADING -> loadingView.visibility = View.VISIBLE
-            FlowDetailsScreenState.ERROR -> errorView.visibility = View.VISIBLE
-            FlowDetailsScreenState.NO_PATHS -> emptyView.visibility = View.VISIBLE
-            FlowDetailsScreenState.ACTIVE -> {
-                contentView.visibility = View.VISIBLE
-                renderContent(details)
+    private fun observeViewModel() {
+        val vm = viewModel ?: return
+        lifecycleScope.launch {
+            vm.flowContext.collect { ctx ->
+                when (ctx) {
+                    is FlowContextState.Loading -> showState("loading")
+                    is FlowContextState.Error -> showState("error")
+                    is FlowContextState.Ready -> renderFlowContext(ctx)
+                }
+            }
+        }
+        lifecycleScope.launch {
+            vm.pathSection.collect { section ->
+                when (section) {
+                    is PathSectionState.Loading -> showState("loading")
+                    is PathSectionState.Pending -> showState("loading")
+                    is PathSectionState.Empty -> showState("no_paths")
+                    is PathSectionState.Error -> showState("error")
+                    is PathSectionState.Ready -> renderPathSection(section)
+                }
             }
         }
     }
 
-    private fun renderContent(details: FlowDetailsUiModel) {
-        val view = view ?: return
+    private fun showState(state: String) {
+        val v = view ?: return
+        v.findViewById<View>(R.id.flow_loading_view)?.visibility =
+            if (state == "loading") View.VISIBLE else View.GONE
+        v.findViewById<View>(R.id.flow_error_view)?.visibility =
+            if (state == "error") View.VISIBLE else View.GONE
+        v.findViewById<View>(R.id.flow_empty_view)?.visibility =
+            if (state == "no_paths") View.VISIBLE else View.GONE
+        v.findViewById<View>(R.id.flow_content_view)?.visibility =
+            if (state == "active") View.VISIBLE else View.GONE
+    }
 
-        // Flow info
-        view.findViewById<TextView>(R.id.flow_title).text =
-            getString(R.string.scion_flow_label, details.flowId)
-        view.findViewById<TextView>(R.id.flow_status_badge).text =
+    private fun renderFlowContext(ctx: FlowContextState.Ready) {
+        val v = view ?: return
+        showState("active")
+        v.findViewById<TextView>(R.id.flow_title).text =
+            getString(R.string.scion_flow_label, ctx.flowId)
+        v.findViewById<TextView>(R.id.flow_status_badge).text =
             getString(R.string.flow_state_active)
-        view.findViewById<TextView>(R.id.flow_tx_rate).text = details.txBitRate
-        view.findViewById<TextView>(R.id.flow_tx_packets).text = details.txPacketRate
-        view.findViewById<TextView>(R.id.flow_rx_rate).text = details.rxBitRate
-        view.findViewById<TextView>(R.id.flow_rx_packets).text = details.rxPacketRate
-        view.findViewById<TextView>(R.id.flow_protocol).text = details.protocol
-        view.findViewById<TextView>(R.id.flow_local_endpoint).text = details.localEndpoint
-        view.findViewById<TextView>(R.id.flow_dst_ia).text = details.destinationIA
-        view.findViewById<TextView>(R.id.flow_dst_host).text = details.destinationHost
-        view.findViewById<TextView>(R.id.flow_last_activity).text = getString(R.string.latest_handshake_ago, "Just now")
+        v.findViewById<TextView>(R.id.flow_tx_rate).text = formatBitRate(ctx.txRateBitsPerSec)
+        v.findViewById<TextView>(R.id.flow_tx_packets).text = formatPacketRate(ctx.txRatePacketsPerSec)
+        v.findViewById<TextView>(R.id.flow_tx_total).text = getString(R.string.flow_traffic_total,
+            formatBytes(ctx.txBytes), ctx.txPackets)
+        v.findViewById<TextView>(R.id.flow_rx_rate).text = formatBitRate(ctx.rxRateBitsPerSec)
+        v.findViewById<TextView>(R.id.flow_rx_packets).text = formatPacketRate(ctx.rxRatePacketsPerSec)
+        v.findViewById<TextView>(R.id.flow_rx_total).text = getString(R.string.flow_traffic_total,
+            formatBytes(ctx.rxBytes), ctx.rxPackets)
+        v.findViewById<TextView>(R.id.flow_protocol).text = ctx.protocol
+        v.findViewById<TextView>(R.id.flow_local_endpoint).text = ctx.localEndpoint
+        v.findViewById<TextView>(R.id.flow_dst_ia).text = ctx.destinationIA ?: ""
+        v.findViewById<TextView>(R.id.flow_dst_host).text = ctx.remoteEndpoint
+        v.findViewById<TextView>(R.id.flow_last_activity).text =
+            getString(R.string.latest_handshake_ago, "Just now")
+    }
 
-        // Policy
-        view.findViewById<TextView>(R.id.policy_name).text = details.policy.name
-        view.findViewById<TextView>(R.id.policy_description).text = details.policy.description
+    private fun renderPathSection(section: PathSectionState.Ready) {
+        val v = view ?: return
+        showState("active")
 
-        val policyBadge = view.findViewById<TextView>(R.id.policy_state_badge)
-        val restoreBtn = view.findViewById<TextView>(R.id.btn_restore_automatic)
-        when (details.policy.state) {
-            PathPolicyState.AUTOMATIC -> {
+        v.findViewById<TextView>(R.id.policy_name).text = section.policyName ?: section.policyState.name
+        v.findViewById<TextView>(R.id.policy_description).text = policyDescription(section)
+
+        val policyBadge = v.findViewById<TextView>(R.id.policy_state_badge)
+        val restoreBtn = v.findViewById<TextView>(R.id.btn_restore_automatic)
+        when (section.policyState) {
+            PolicyState.NONE, PolicyState.UNKNOWN -> {
+                policyBadge.visibility = View.GONE
+                restoreBtn.visibility = View.GONE
+            }
+            PolicyState.DEFAULT, PolicyState.CONFIGURED -> {
                 policyBadge.text = getString(R.string.recommended)
                 policyBadge.visibility = View.VISIBLE
                 restoreBtn.visibility = View.GONE
             }
-            PathPolicyState.NAMED_POLICY -> {
-                policyBadge.text = getString(R.string.flow_state_active)
-                policyBadge.visibility = View.VISIBLE
-                restoreBtn.visibility = View.GONE
-            }
-            PathPolicyState.OVERRIDE_ACTIVE -> {
-                policyBadge.text = getString(R.string.per_flow_override_active)
-                policyBadge.visibility = View.VISIBLE
-                restoreBtn.visibility = View.VISIBLE
-            }
-            PathPolicyState.FALLBACK -> {
+            PolicyState.FALLBACK -> {
                 policyBadge.text = getString(R.string.policy_fallback_notice)
                 policyBadge.visibility = View.VISIBLE
                 restoreBtn.visibility = View.GONE
             }
-            PathPolicyState.NONE -> {
-                policyBadge.visibility = View.GONE
-                restoreBtn.visibility = View.GONE
-            }
         }
 
-        // Paths available count
-        view.findViewById<TextView>(R.id.paths_available_count).text =
-            getString(R.string.paths_available, details.availablePathCount)
+        when (section.overrideState) {
+            com.wireguard.android.model.OverrideState.ACTIVE -> {
+                policyBadge.text = getString(R.string.per_flow_override_active)
+                policyBadge.visibility = View.VISIBLE
+                restoreBtn.visibility = View.VISIBLE
+            }
+            com.wireguard.android.model.OverrideState.STALE -> {
+                policyBadge.text = "Override unavailable"
+                policyBadge.visibility = View.VISIBLE
+                restoreBtn.visibility = View.VISIBLE
+            }
+            else -> {}
+        }
 
-        // Current path
-        val pathContainer = view.findViewById<LinearLayout>(R.id.current_path_container)
+        v.findViewById<TextView>(R.id.paths_available_count).text =
+            getString(R.string.paths_available, section.paths.size)
+
+        val pathContainer = v.findViewById<LinearLayout>(R.id.current_path_container)
         pathContainer.removeAllViews()
-        if (details.currentPath != null) {
-            val scenario = getScenario()
+        if (section.effectivePath != null) {
             val cardView = PathPreviewCardBinder.inflateDisplay(
                 pathContainer,
-                details.currentPath,
+                section.effectivePath,
                 LayoutInflater.from(requireContext()),
                 requireContext(),
-                onDetailsClick = { openPathDetails(it, scenario) },
+                onDetailsClick = { openPathDetails(it) },
             )
             pathContainer.addView(cardView)
         }
 
-        // Override path button
-        view.findViewById<View>(R.id.btn_override_path).setOnClickListener {
-            val scenario = getScenario()
-            val fragment = PathOverrideFragment().apply {
-                arguments = Bundle().apply {
-                    putInt("scenario_index", scenario.ordinal)
-                }
-                setOnOverrideApplied { updatedDetails, selectedFp ->
-                    flowDetails = updatedDetails
-                    selectedFingerprint = selectedFp
-                    render(updatedDetails)
-                }
-            }
+        v.findViewById<View>(R.id.btn_override_path).setOnClickListener {
+            val fragment = PathOverrideFragment()
             parentFragmentManager.beginTransaction()
                 .replace(getContainerId(), fragment)
                 .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
@@ -161,38 +187,26 @@ class FlowDetailsFragment : BaseFragment() {
                 .commit()
         }
 
-        // Configure policy button
-        view.findViewById<View>(R.id.btn_configure_policy).setOnClickListener {
-            // Delegate to the existing PathPolicyDialogFragment
-            val dialog = PathPolicyDialogFragment()
+        v.findViewById<View>(R.id.btn_configure_policy).setOnClickListener {
+            val dialog = com.wireguard.android.fragment.PathPolicyDialogFragment()
             dialog.show(childFragmentManager, "path_policy")
         }
 
-        // Restore automatic selection
         restoreBtn.setOnClickListener {
-            val updated = MockFlowPathDataSource.restoreAutomatic()
-            selectedFingerprint = null
-            flowDetails = updated
-            render(updated)
+            viewModel?.restoreOverrideFlow()
         }
 
-        // Override notice visibility
-        view.findViewById<View>(R.id.override_notice).visibility =
-            if (details.overrideActive) View.VISIBLE else View.GONE
+        v.findViewById<View>(R.id.override_notice).visibility =
+            if (section.overrideState != com.wireguard.android.model.OverrideState.INACTIVE) View.VISIBLE else View.GONE
     }
 
-    private fun openPathDetails(path: PathPreviewUiModel, scenario: MockScenario) {
-        val fragment = PathDetailsFragment.newInstance(path.fingerprint, scenario)
+    private fun openPathDetails(path: PathPreviewUiModel) {
+        val fragment = PathDetailsFragment.newInstance(path.fingerprint)
         parentFragmentManager.beginTransaction()
             .replace(getContainerId(), fragment)
             .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
             .addToBackStack(null)
             .commit()
-    }
-
-    private fun getScenario(): MockScenario {
-        val index = arguments?.getInt(ARG_SCENARIO, 0) ?: 0
-        return MockScenario.entries.getOrElse(index) { MockScenario.AUTO_SINGLE_PATH }
     }
 
     private fun getContainerId(): Int {
@@ -203,17 +217,44 @@ class FlowDetailsFragment : BaseFragment() {
         }
     }
 
-    override fun onSelectedTunnelChanged(oldTunnel: ObservableTunnel?, newTunnel: ObservableTunnel?) {
-        // No-op: Flow details are mock-data driven, not tunnel-bound.
+    override fun onSelectedTunnelChanged(oldTunnel: ObservableTunnel?, newTunnel: ObservableTunnel?) {}
+
+    private fun formatBitRate(bps: Long): String = when {
+        bps >= 1_000_000_000 -> "${bps / 1_000_000_000}.${(bps % 1_000_000_000) / 100_000_000} Gbit/s"
+        bps >= 1_000_000 -> "${bps / 1_000_000}.${(bps % 1_000_000) / 100_000} Mbit/s"
+        bps >= 1_000 -> "${bps / 1_000} Kbit/s"
+        else -> "$bps bit/s"
+    }
+
+    private fun formatPacketRate(pps: Long): String = "$pps pkt/s"
+
+    private fun formatBytes(bytes: Long): String = when {
+        bytes >= 1_073_741_824 -> "%.1f GB".format(bytes / 1_073_741_824.0)
+        bytes >= 1_048_576 -> "%.1f MB".format(bytes / 1_048_576.0)
+        bytes >= 1_024 -> "%.1f KB".format(bytes / 1_024.0)
+        else -> "$bytes B"
+    }
+
+    private fun policyDescription(section: PathSectionState.Ready): String = when (section.overrideState) {
+        com.wireguard.android.model.OverrideState.ACTIVE ->
+            "Per-flow override active. The configured automatic policy remains available and can be restored at any time."
+        com.wireguard.android.model.OverrideState.STALE ->
+            "Override path is no longer available. Using automatic fallback."
+        else -> when (section.policyState) {
+            PolicyState.FALLBACK -> "Policy engine is in fallback mode. Some automatic selection features may be unavailable."
+            PolicyState.CONFIGURED -> "Using the configured policy to automatically select the best path for this flow."
+            PolicyState.DEFAULT -> "Automatically choosing the best path. No per-flow override is active."
+            else -> ""
+        }
     }
 
     companion object {
-        private const val ARG_SCENARIO = "scenario_index"
+        const val ARG_FLOW_ID = "flow_id"
 
-        fun newInstance(scenarioIndex: Int = 0): FlowDetailsFragment {
+        fun newInstance(flowId: Long): FlowDetailsFragment {
             return FlowDetailsFragment().apply {
                 arguments = Bundle().apply {
-                    putInt(ARG_SCENARIO, scenarioIndex)
+                    putLong(ARG_FLOW_ID, flowId)
                 }
             }
         }

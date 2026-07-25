@@ -427,6 +427,7 @@
     <string name="intra_as_path">Direct intra-AS path</string>
     <string name="latency_unavailable">Unavailable</string>
     <string name="bandwidth_unavailable">Unavailable</string>
+    <string name="flow_traffic_total">Total: %1$s / %2$d pkt</string>
 
     <!-- Badge Labels -->
     <string name="badge_current">Current</string>

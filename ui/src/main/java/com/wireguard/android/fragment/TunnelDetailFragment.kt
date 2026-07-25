@@ -30,6 +30,7 @@ import com.wireguard.android.model.SCIONInfoDto
 import com.wireguard.android.model.parseSCIONInfo
 import com.wireguard.android.util.FlowRateCalculator
 import com.wireguard.android.util.FlowRepository
+import com.wireguard.android.util.RealFlowRepository
 import com.wireguard.android.util.FlowRowBinder
 import com.wireguard.android.util.FlowRowData
 import com.wireguard.android.util.FlowSortFilter
@@ -59,7 +60,7 @@ class TunnelDetailFragment : BaseFragment() {
     private var lastStatsTimeMillis: Long = 0L
 
     // Flow tracking
-    private var flowRepository: FlowRepository? = null
+    private var flowRepository: RealFlowRepository? = null
     private var lastFlowCount: Int = 0
     private var showAllFlows: Boolean = false
     private var lastAllFlows: List<FlowDto> = emptyList()
@@ -180,6 +181,7 @@ class TunnelDetailFragment : BaseFragment() {
 
     fun onFlowItemClicked(flow: FlowDto) {
         if (flow.egressKindEnum != FlowEgressKind.SCION) return
+        val tunnel = binding?.tunnel ?: return
         val parentFm = parentFragmentManager
         val containerId = if (parentFm.findFragmentById(R.id.detail_container) != null) {
             R.id.detail_container
@@ -187,7 +189,7 @@ class TunnelDetailFragment : BaseFragment() {
             R.id.list_detail_container
         }
         parentFm.beginTransaction()
-            .replace(containerId, FlowDetailsFragment.newInstance())
+            .replace(containerId, FlowDetailsFragment.newInstance(flow.id))
             .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
             .addToBackStack(null)
             .commit()
@@ -330,7 +332,7 @@ class TunnelDetailFragment : BaseFragment() {
             }
             return
         }
-        val repo = flowRepository ?: FlowRepository(backend).also { flowRepository = it }
+        val repo = flowRepository ?: RealFlowRepository(backend).also { flowRepository = it }
 
         try {
             val result = repo.getFlows(tunnel)
