@@ -105,7 +105,7 @@ class PathDetailsFragment : BaseFragment() {
             .inflate(R.layout.badge_chip, null) as TextView
         chip.text = getString(badge.labelResId)
         chip.setTextColor(androidx.core.content.ContextCompat.getColor(requireContext(), R.color.scitra_on_primary))
-        chip.background = androidx.core.content.ContextCompat.getDrawable(requireContext(), R.drawable.scitra_status_badge_bg)
+        chip.background = androidx.core.content.ContextCompat.getDrawable(requireContext(), R.drawable.scitra_badge_chip_bg)
         chip.layoutParams = ViewGroup.MarginLayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -152,7 +152,7 @@ class PathDetailsFragment : BaseFragment() {
             androidx.core.content.ContextCompat.getColor(requireContext(), R.color.scitra_on_primary)
         )
         card.findViewById<TextView>(R.id.hop_role_badge).background =
-            androidx.core.content.ContextCompat.getDrawable(requireContext(), R.drawable.scitra_status_badge_bg)
+            androidx.core.content.ContextCompat.getDrawable(requireContext(), R.drawable.scitra_badge_chip_bg)
 
         val hopItems = mutableListOf<Pair<String, String>>()
 

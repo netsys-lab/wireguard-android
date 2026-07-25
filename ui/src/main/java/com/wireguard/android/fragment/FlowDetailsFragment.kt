@@ -59,6 +59,7 @@ class FlowDetailsFragment : BaseFragment() {
             flowSnapshot = null,
         )
         viewModel = ViewModelProvider(requireActivity(), factory).get(FlowPathViewModel::class.java)
+        viewModel!!.reinit(tunnel, flowId)
 
         observeViewModel()
     }

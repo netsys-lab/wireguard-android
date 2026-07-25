@@ -141,7 +141,7 @@ object PathPreviewCardBinder {
         val chip = LayoutInflater.from(context).inflate(R.layout.badge_chip, null) as TextView
         chip.text = context.getString(badge.labelResId)
         chip.setTextColor(ContextCompat.getColor(context, R.color.scitra_on_primary))
-        chip.background = ContextCompat.getDrawable(context, R.drawable.scitra_status_badge_bg)
+        chip.background = ContextCompat.getDrawable(context, R.drawable.scitra_badge_chip_bg)
         return chip
     }
 

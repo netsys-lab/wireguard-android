@@ -28,7 +28,9 @@ class PathOverrideFragment : BaseFragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?,
     ): View? {
-        return inflater.inflate(R.layout.path_override_fragment, container, false)
+        val v = inflater.inflate(R.layout.path_override_fragment, container, false)
+        v.findViewById<View>(R.id.btn_back).setOnClickListener { navigateBack() }
+        return v
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -55,7 +57,6 @@ class PathOverrideFragment : BaseFragment() {
         view.findViewById<View>(R.id.btn_use_selected_path).setOnClickListener {
             applyOverride()
         }
-        view.findViewById<View>(R.id.btn_close).setOnClickListener { navigateBack() }
         view.findViewById<View>(R.id.btn_cancel_override).setOnClickListener { navigateBack() }
     }
 

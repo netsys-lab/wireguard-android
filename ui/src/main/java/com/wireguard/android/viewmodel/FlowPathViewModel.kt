@@ -26,10 +26,13 @@ import kotlinx.coroutines.launch
 class FlowPathViewModel(
     private val flowRepository: FlowRepository,
     private val flowPathRepository: FlowPathRepository,
-    private val tunnel: Tunnel,
-    private val flowId: Long,
+    tunnel: Tunnel,
+    flowId: Long,
     private val flowSnapshot: FlowDto?,
 ) : ViewModel() {
+
+    private var _tunnel: Tunnel = tunnel
+    private var _flowId: Long = flowId
 
     private var previousFlowDto: FlowDto? = null
     private var previousPollTime: Long = 0L
@@ -52,6 +55,24 @@ class FlowPathViewModel(
     private var contextPollJob: Job? = null
     private var pathPollJob: Job? = null
 
+    fun reinit(tunnel: Tunnel, flowId: Long) {
+        if (_tunnel == tunnel && _flowId == flowId) return
+        _tunnel = tunnel
+        _flowId = flowId
+        previousFlowDto = null
+        previousPollTime = 0L
+        flowContextLoaded = false
+        pathsLoaded = false
+        lastDomainState = null
+        contextPollJob?.cancel()
+        pathPollJob?.cancel()
+        _flowContext.value = FlowContextState.Loading
+        _pathSection.value = PathSectionState.Loading
+        loadFlowContext()
+        loadPaths()
+        startPolling()
+    }
+
     init {
         if (flowSnapshot == null) {
             loadFlowContext()
@@ -63,7 +84,7 @@ class FlowPathViewModel(
     fun loadFlowContext() {
         viewModelScope.launch {
             if (!flowContextLoaded) _flowContext.value = FlowContextState.Loading
-            flowRepository.getFlowById(tunnel, flowId).onSuccess { flow ->
+            flowRepository.getFlowById(_tunnel, _flowId).onSuccess { flow ->
                 val now = System.currentTimeMillis()
                 val prev = previousFlowDto
                 val prevTime = previousPollTime
@@ -91,7 +112,7 @@ class FlowPathViewModel(
     fun loadPaths() {
         viewModelScope.launch {
             if (!pathsLoaded) _pathSection.value = PathSectionState.Loading
-            flowPathRepository.getFlowPathState(tunnel, flowId).onSuccess { state ->
+            flowPathRepository.getFlowPathState(_tunnel, _flowId).onSuccess { state ->
                 lastDomainState = state
                 val effectiveDomain = state.effectiveFingerprint?.let { fp ->
                     state.paths.find { it.fingerprint == fp }
@@ -145,7 +166,7 @@ class FlowPathViewModel(
 
     fun applyOverride(fingerprint: String) {
         viewModelScope.launch {
-            flowPathRepository.setOverride(tunnel, flowId, fingerprint).onSuccess {
+            flowPathRepository.setOverride(_tunnel, _flowId, fingerprint).onSuccess {
                 loadPaths()
             }
         }
@@ -153,7 +174,7 @@ class FlowPathViewModel(
 
     fun restoreOverrideFlow() {
         viewModelScope.launch {
-            flowPathRepository.clearOverride(tunnel, flowId).onSuccess {
+            flowPathRepository.clearOverride(_tunnel, _flowId).onSuccess {
                 loadPaths()
             }
         }

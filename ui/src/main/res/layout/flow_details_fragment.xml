@@ -564,7 +564,7 @@
                     android:textColor="@color/scitra_on_primary"
                     android:textSize="15sp"
                     android:textStyle="bold"
-                    android:background="@drawable/scitra_edit_btn_bg"
+                    android:background="@drawable/scitra_error_btn_bg"
                     android:clickable="true"
                     android:focusable="true"
                     android:paddingHorizontal="24dp" />
