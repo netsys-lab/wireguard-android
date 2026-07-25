@@ -106,6 +106,8 @@ public final class GoBackend implements Backend {
     private static native String wgGetSCIONInfo(int handle);
     @Nullable private static native String wgGetFlows(int handle);
     @Nullable private static native String wgGetFlowPaths(int handle, long flowId);
+    @Nullable private static native String wgSetFlowPathOverride(int handle, long flowId, String fingerprint);
+    @Nullable private static native String wgClearFlowPathOverride(int handle, long flowId);
     private static native String wgInitScionWithBootstrapRetry(
         int tunnelHandle,
         String configDir,
@@ -164,6 +166,24 @@ public final class GoBackend implements Backend {
         if (flowId < 0)
             return "{\"error\":\"invalid_flow_id\"}";
         return wgGetFlowPaths(currentTunnelHandle, flowId);
+    }
+    @Nullable
+    public String setFlowPathOverride(final Tunnel tunnel, final long flowId, final String fingerprint) {
+        if (tunnel != currentTunnel || currentTunnelHandle == -1)
+            return "{\"error\":\"tunnel_not_running\"}";
+        if (flowId < 0)
+            return "{\"error\":\"invalid_flow_id\"}";
+        if (fingerprint == null || fingerprint.isEmpty())
+            return "{\"error\":\"empty_fingerprint\"}";
+        return wgSetFlowPathOverride(currentTunnelHandle, flowId, fingerprint);
+    }
+    @Nullable
+    public String clearFlowPathOverride(final Tunnel tunnel, final long flowId) {
+        if (tunnel != currentTunnel || currentTunnelHandle == -1)
+            return "{\"error\":\"tunnel_not_running\"}";
+        if (flowId < 0)
+            return "{\"error\":\"invalid_flow_id\"}";
+        return wgClearFlowPathOverride(currentTunnelHandle, flowId);
     }
     private String initScionWithBootstrapRetry(
             final int tunnelHandle,

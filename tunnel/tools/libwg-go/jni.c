@@ -34,6 +34,8 @@ extern char *wgGetScionStatus(int handle);
 extern char *wgGetSCIONInfo(int handle);
 extern char *wgGetFlows(int handle);
 extern char *wgGetFlowPaths(int handle, long long flowId);
+extern char *wgSetFlowPathOverride(int handle, long long flowId, struct go_string fingerprint);
+extern char *wgClearFlowPathOverride(int handle, long long flowId);
 extern void wgSetCoreLogLevel(int level);
 
 JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgInitScionWithBootstrapRetry(
@@ -199,6 +201,32 @@ JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgGetFlow
 JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgGetFlowPaths(JNIEnv *env, jclass c, jint handle, jlong flowId)
 {
 	char *result = wgGetFlowPaths(handle, (long long)flowId);
+	if (!result)
+		return NULL;
+	jstring ret = (*env)->NewStringUTF(env, result);
+	free(result);
+	return ret;
+}
+
+JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgSetFlowPathOverride(JNIEnv *env, jclass c, jint handle, jlong flowId, jstring fingerprint)
+{
+	const char *fingerprint_str = (*env)->GetStringUTFChars(env, fingerprint, 0);
+	size_t fingerprint_len = (*env)->GetStringUTFLength(env, fingerprint);
+	char *result = wgSetFlowPathOverride(handle, (long long)flowId, (struct go_string){
+		.str = fingerprint_str,
+		.n = fingerprint_len
+	});
+	(*env)->ReleaseStringUTFChars(env, fingerprint, fingerprint_str);
+	if (!result)
+		return NULL;
+	jstring ret = (*env)->NewStringUTF(env, result);
+	free(result);
+	return ret;
+}
+
+JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgClearFlowPathOverride(JNIEnv *env, jclass c, jint handle, jlong flowId)
+{
+	char *result = wgClearFlowPathOverride(handle, (long long)flowId);
 	if (!result)
 		return NULL;
 	jstring ret = (*env)->NewStringUTF(env, result);

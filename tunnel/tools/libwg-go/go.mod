@@ -53,4 +53,4 @@ require (
 	zgo.at/zcache/v2 v2.1.0 // indirect
 )
 
-replace golang.zx2c4.com/wireguard => github.com/netsys-lab/wireguard-go v0.0.0-20260722163259-42eaaebd6349
+replace golang.zx2c4.com/wireguard => ../../../../wireguard-go

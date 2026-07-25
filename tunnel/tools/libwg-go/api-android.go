@@ -523,4 +523,44 @@ func wgGetFlowPaths(tunnelHandle int32, flowID int64) *C.char {
 	return C.CString(string(raw))
 }
 
+//export wgSetFlowPathOverride
+/*
+Sets a manual path override for the given flow. The override fingerprint
+must match one of the flow's currently available paths for the override
+to take effect immediately. Returns an empty string on success or a JSON
+error object on failure.
+*/
+func wgSetFlowPathOverride(tunnelHandle int32, flowID int64, fingerprint string) *C.char {
+	handle, ok := tunnelHandles[tunnelHandle]
+	if !ok {
+		return C.CString(`{"error":"device_not_found"}`)
+	}
+	if flowID < 0 {
+		return C.CString(`{"error":"invalid_flow_id"}`)
+	}
+	err := handle.device.SetFlowPathOverride(flow.ID(flowID), fingerprint)
+	if err != nil {
+		return C.CString(`{"error":"` + err.Error() + `"}`)
+	}
+	return C.CString("")
+}
+
+//export wgClearFlowPathOverride
+/*
+Clears any manual path override for the given flow. After clearing, the
+automatic policy selection (or default first-valid strategy) will take
+effect. Returns an empty string on success or a JSON error object on failure.
+*/
+func wgClearFlowPathOverride(tunnelHandle int32, flowID int64) *C.char {
+	handle, ok := tunnelHandles[tunnelHandle]
+	if !ok {
+		return C.CString(`{"error":"device_not_found"}`)
+	}
+	if flowID < 0 {
+		return C.CString(`{"error":"invalid_flow_id"}`)
+	}
+	handle.device.ClearFlowPathOverride(flow.ID(flowID))
+	return C.CString("")
+}
+
 func main() {}
