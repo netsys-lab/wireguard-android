@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/scitra_flow_item_bg"
+    android:padding="16dp"
+    android:layout_marginBottom="8dp">
+
+    <!-- Top row: selection indicator + badges -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- Selection radio indicator (visible only in selectable mode) -->
+        <ImageView
+            android:id="@+id/pc_selection_indicator"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginEnd="8dp"
+            android:src="@drawable/ic_radio_unchecked"
+            android:visibility="gone"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no" />
+
+        <!-- Badges row (populated programmatically) -->
+        <LinearLayout
+            android:id="@+id/pc_badge_row"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal" />
+    </LinearLayout>
+
+    <!-- AS Route -->
+    <TextView
+        android:id="@+id/pc_route"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textColor="@color/scitra_on_surface"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:maxLines="2"
+        android:ellipsize="end"
+        tools:text="1-ff00:0:110 → 1-ff00:0:120 → 1-ff00:0:111" />
+
+    <!-- Route visual (compact) -->
+    <LinearLayout
+        android:id="@+id/pc_route_visual"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:visibility="gone">
+
+        <View
+            android:id="@+id/pc_route_dot_start"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:background="@drawable/scitra_path_node_bg" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="2dp"
+            android:layout_weight="1"
+            android:background="@drawable/scitra_path_line"
+            android:layout_marginHorizontal="4dp" />
+
+        <TextView
+            android:id="@+id/pc_route_mid_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="10sp"
+            android:textColor="@color/scitra_on_surface_variant"
+            android:paddingHorizontal="4dp" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="2dp"
+            android:layout_weight="1"
+            android:background="@drawable/scitra_path_line"
+            android:layout_marginHorizontal="4dp" />
+
+        <View
+            android:id="@+id/pc_route_dot_end"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:background="@drawable/scitra_path_node_bg" />
+    </LinearLayout>
+
+    <!-- Metrics grid: 2x2 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/pc_metric_latency_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/advertised_latency"
+                android:textColor="@color/scitra_on_surface_variant"
+                android:textSize="10sp" />
+
+            <TextView
+                android:id="@+id/pc_metric_latency_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/scitra_on_surface"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                tools:text="12 ms" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/pc_metric_bandwidth_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/bottleneck_bandwidth"
+                android:textColor="@color/scitra_on_surface_variant"
+                android:textSize="10sp" />
+
+            <TextView
+                android:id="@+id/pc_metric_bandwidth_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/scitra_on_surface"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                tools:text="10 Gbit/s" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/pc_metric_links_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/inter_as_links"
+                android:textColor="@color/scitra_on_surface_variant"
+                android:textSize="10sp" />
+
+            <TextView
+                android:id="@+id/pc_metric_links_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/scitra_on_surface"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                tools:text="2" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/pc_metric_mtu_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/path_mtu"
+                android:textColor="@color/scitra_on_surface_variant"
+                android:textSize="10sp" />
+
+            <TextView
+                android:id="@+id/pc_metric_mtu_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/scitra_on_surface"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                tools:text="1472" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Footer: expiry + details -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/pc_expiry"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@color/scitra_on_surface_variant"
+            android:textSize="11sp"
+            tools:text="Expires in 18 min" />
+
+        <TextView
+            android:id="@+id/pc_details_action"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/scitra_primary_container"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="4dp"
+            tools:text="Details →" />
+    </LinearLayout>
+
+</LinearLayout>

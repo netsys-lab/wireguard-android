@@ -1,0 +1,569 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/scitra_background">
+
+    <!-- Toolbar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="16dp">
+
+        <ImageView
+            android:id="@+id/btn_back"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="8dp"
+            android:src="@drawable/ic_arrow_back"
+            android:tint="@color/scitra_primary"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/cancel" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/flow_details_title"
+            android:textColor="@color/scitra_on_surface"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:gravity="center" />
+
+        <View
+            android:layout_width="40dp"
+            android:layout_height="40dp" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:paddingBottom="80dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="20dp"
+            android:paddingBottom="16dp">
+
+            <!-- ═══ Loading State ═══ -->
+            <LinearLayout
+                android:id="@+id/flow_loading_view"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:paddingVertical="48dp"
+                android:visibility="gone">
+
+                <ProgressBar
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginEnd="12dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/flow_state_loading"
+                    android:textColor="@color/scitra_on_surface_variant"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <!-- ═══ Error State ═══ -->
+            <LinearLayout
+                android:id="@+id/flow_error_view"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:paddingVertical="48dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/error_loading_paths"
+                    android:textColor="@color/scitra_error"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <!-- ═══ Empty State ═══ -->
+            <LinearLayout
+                android:id="@+id/flow_empty_view"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:paddingVertical="48dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/path_empty"
+                    android:textColor="@color/scitra_on_surface_variant"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <!-- ═══ Content ═══ -->
+            <LinearLayout
+                android:id="@+id/flow_content_view"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <!-- ═══════════════════════════════════════ -->
+                <!-- FLOW INFORMATION SECTION -->
+                <!-- ═══════════════════════════════════════ -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/flow_information"
+                    android:textColor="@color/scitra_on_surface"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.1"
+                    android:layout_marginBottom="8dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="@drawable/scitra_card_bg"
+                    android:padding="16dp">
+
+                    <!-- Flow title + status row -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:id="@+id/flow_title"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textColor="@color/scitra_on_surface"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            tools:text="SCION flow #1842" />
+
+                        <TextView
+                            android:id="@+id/flow_status_badge"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/scitra_status_badge_bg"
+                            android:textColor="@color/scitra_on_primary"
+                            android:textSize="9sp"
+                            android:textStyle="bold"
+                            android:paddingHorizontal="8dp"
+                            android:paddingVertical="3dp"
+                            tools:text="Active" />
+                    </LinearLayout>
+
+                    <!-- Traffic rates -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="12dp">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:padding="8dp"
+                            android:background="@drawable/scitra_section_card_bg">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/transmit"
+                                android:textColor="@color/scitra_on_surface_variant"
+                                android:textSize="10sp" />
+
+                            <TextView
+                                android:id="@+id/flow_tx_rate"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/scitra_on_surface"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:layout_marginTop="2dp"
+                                tools:text="243.9 kbit/s" />
+
+                            <TextView
+                                android:id="@+id/flow_tx_packets"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/scitra_on_surface_variant"
+                                android:textSize="11sp"
+                                tools:text="38 pkt/s" />
+                        </LinearLayout>
+
+                        <View android:layout_width="8dp" android:layout_height="1dp" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:padding="8dp"
+                            android:background="@drawable/scitra_section_card_bg">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/receive"
+                                android:textColor="@color/scitra_on_surface_variant"
+                                android:textSize="10sp" />
+
+                            <TextView
+                                android:id="@+id/flow_rx_rate"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/scitra_on_surface"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:layout_marginTop="2dp"
+                                tools:text="18.2 kbit/s" />
+
+                            <TextView
+                                android:id="@+id/flow_rx_packets"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/scitra_on_surface_variant"
+                                android:textSize="11sp"
+                                tools:text="4 pkt/s" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Detail list -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="12dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:paddingVertical="4dp">
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/network_label"
+                                android:textColor="@color/scitra_on_surface_variant"
+                                android:textSize="12sp" />
+                            <TextView
+                                android:id="@+id/flow_network"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="SCION"
+                                android:textColor="@color/scitra_on_surface"
+                                android:textSize="12sp"
+                                android:textAlignment="textEnd" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:paddingVertical="4dp">
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/protocol_label"
+                                android:textColor="@color/scitra_on_surface_variant"
+                                android:textSize="12sp" />
+                            <TextView
+                                android:id="@+id/flow_protocol"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:textColor="@color/scitra_on_surface"
+                                android:textSize="12sp"
+                                android:textAlignment="textEnd"
+                                tools:text="UDP" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:paddingVertical="4dp">
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/local_endpoint"
+                                android:textColor="@color/scitra_on_surface_variant"
+                                android:textSize="12sp" />
+                            <TextView
+                                android:id="@+id/flow_local_endpoint"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:textColor="@color/scitra_on_surface"
+                                android:textSize="12sp"
+                                android:textAlignment="textEnd"
+                                tools:text="10.0.0.2:52914" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:paddingVertical="4dp">
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/destination_ia"
+                                android:textColor="@color/scitra_on_surface_variant"
+                                android:textSize="12sp" />
+                            <TextView
+                                android:id="@+id/flow_dst_ia"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:textColor="@color/scitra_on_surface"
+                                android:textSize="12sp"
+                                android:textAlignment="textEnd"
+                                tools:text="1-ff00:0:111" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:paddingVertical="4dp">
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/destination_host"
+                                android:textColor="@color/scitra_on_surface_variant"
+                                android:textSize="12sp" />
+                            <TextView
+                                android:id="@+id/flow_dst_host"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:textColor="@color/scitra_on_surface"
+                                android:textSize="12sp"
+                                android:textAlignment="textEnd"
+                                tools:text="10.0.0.5:443" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:paddingVertical="4dp">
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/latest_handshake"
+                                android:textColor="@color/scitra_on_surface_variant"
+                                android:textSize="12sp" />
+                            <TextView
+                                android:id="@+id/flow_last_activity"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:textColor="@color/scitra_on_surface"
+                                android:textSize="12sp"
+                                android:textAlignment="textEnd"
+                                tools:text="Just now" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginVertical="16dp"
+                    android:background="@color/scitra_outline"
+                    android:alpha="0.3" />
+
+                <!-- ═══════════════════════════════════════ -->
+                <!-- PATH SELECTION SECTION -->
+                <!-- ═══════════════════════════════════════ -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/path_selection_section"
+                    android:textColor="@color/scitra_on_surface"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.1"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- Policy state card -->
+                <LinearLayout
+                    android:id="@+id/policy_card"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="@drawable/scitra_card_bg"
+                    android:padding="16dp"
+                    android:layout_marginBottom="12dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <TextView
+                                android:id="@+id/policy_name"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:textColor="@color/scitra_on_surface"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                tools:text="Lowest Latency" />
+
+                            <TextView
+                                android:id="@+id/policy_state_badge"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:paddingHorizontal="6dp"
+                                android:paddingVertical="2dp"
+                                android:textSize="9sp"
+                                android:textStyle="bold"
+                                android:background="@drawable/scitra_status_badge_bg"
+                                tools:text="Policy applied" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/policy_description"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:textColor="@color/scitra_on_surface_variant"
+                            android:textSize="12sp"
+                            tools:text="Automatically chooses the path with the lowest latency." />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/btn_configure_policy"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="@string/configure_path_policy"
+                        android:textColor="@color/scitra_primary_container"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:paddingHorizontal="4dp"
+                        android:paddingVertical="4dp" />
+
+                    <TextView
+                        android:id="@+id/btn_restore_automatic"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/restore_automatic_selection"
+                        android:textColor="@color/scitra_primary_container"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:paddingHorizontal="4dp"
+                        android:paddingVertical="4dp"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+                <!-- ═══════════════════════════════════════ -->
+                <!-- CURRENT PATH SECTION -->
+                <!-- ═══════════════════════════════════════ -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/current_path"
+                        android:textColor="@color/scitra_on_surface"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/paths_available_count"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/scitra_on_surface_variant"
+                        android:textSize="12sp"
+                        tools:text="6 paths available" />
+                </LinearLayout>
+
+                <!-- Current path card (populated programmatically) -->
+                <LinearLayout
+                    android:id="@+id/current_path_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+
+                <!-- Override path button -->
+                <TextView
+                    android:id="@+id/btn_override_path"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="12dp"
+                    android:gravity="center"
+                    android:text="@string/override_path"
+                    android:textColor="@color/scitra_on_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:background="@drawable/scitra_edit_btn_bg"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:paddingHorizontal="24dp" />
+
+                <!-- Notice -->
+                <TextView
+                    android:id="@+id/override_notice"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/override_notice"
+                    android:textColor="@color/scitra_on_surface_variant"
+                    android:textSize="11sp"
+                    android:alpha="0.7"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

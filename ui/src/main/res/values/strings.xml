@@ -366,5 +366,88 @@
     <string name="flow_status_description">Status %s</string>
     <string name="flow_scion_badge_label">SCION</string>
     <string name="flow_row_content_description">%1$s flow to %2$s, status %3$s, transmit %4$s, receive %5$s</string>
+
+    <!-- Flow Details Screen -->
+    <string name="flow_details_title">Flow Details</string>
+    <string name="flow_information">Flow information</string>
+    <string name="path_selection_section">Path selection</string>
+    <string name="scion_flow_label">SCION flow #%d</string>
+    <string name="network_label">Network</string>
+    <string name="protocol_label">Protocol</string>
+    <string name="local_endpoint">Local endpoint</string>
+    <string name="destination_ia">Destination IA</string>
+    <string name="destination_host">Destination host</string>
+    <string name="transmit">Transmit</string>
+    <string name="receive">Receive</string>
+    <string name="current_path">Current path</string>
+    <string name="paths_available">%d paths available</string>
+    <string name="flow_state_active">Active</string>
+    <string name="flow_state_loading">Loading paths…</string>
+    <string name="flow_state_no_paths">No paths</string>
+    <string name="flow_state_error">Error</string>
+
+    <!-- Path Policy -->
+    <string name="configure_path_policy">Configure Path Policy</string>
+    <string name="override_path">Override Path</string>
+    <string name="restore_automatic_selection">Restore Automatic Selection</string>
+    <string name="per_flow_override_active">Per-flow override active</string>
+    <string name="policy_fallback_notice">Policy engine is in fallback mode</string>
+    <string name="error_loading_paths">Could not load paths</string>
+    <string name="override_notice">Overriding a path affects only this flow. The configured automatic policy remains available and can be restored at any time.</string>
+
+    <!-- Override Path Bottom Sheet -->
+    <string name="destination">Destination</string>
+    <string name="override_path_title">Override Path</string>
+    <string name="override_path_subtitle">Choose a specific path for this flow. The selected path temporarily replaces automatic policy selection.</string>
+    <string name="automatic_policy">Automatic policy</string>
+    <string name="quick_selection">Quick selection</string>
+    <string name="view_all_n_paths">View all %d paths →</string>
+    <string name="use_selected_path">Use Selected Path</string>
+
+    <!-- All Paths / Select Path -->
+    <string name="select_path_title">Select Path</string>
+    <string name="available_paths">Available paths</string>
+    <string name="unique_effective_paths">%d unique effective paths</string>
+    <string name="override_state">Override state</string>
+    <string name="not_active">Not active</string>
+
+    <!-- Path Details -->
+    <string name="path_details_title">Path Details</string>
+    <string name="advertised_latency">Advertised latency</string>
+    <string name="bottleneck_bandwidth">Bottleneck bandwidth</string>
+    <string name="inter_as_links">Inter-AS links</string>
+    <string name="path_mtu">Path MTU</string>
+    <string name="full_path_fingerprint">Full path fingerprint</string>
+    <string name="copy_fingerprint">Copy fingerprint</string>
+    <string name="as_route">AS route</string>
+    <string name="geographic_route">Geographic route</string>
+    <string name="hop_by_hop">Hop-by-hop metadata</string>
+    <string name="expires_in">Expires in %d min</string>
+    <string name="expires_unknown">Expiry unknown</string>
+    <string name="intra_as_path">Direct intra-AS path</string>
+    <string name="latency_unavailable">Unavailable</string>
+    <string name="bandwidth_unavailable">Unavailable</string>
+
+    <!-- Badge Labels -->
+    <string name="badge_current">Current</string>
+    <string name="badge_lowest_latency">Lowest latency</string>
+    <string name="badge_highest_bandwidth">Highest bandwidth</string>
+    <string name="badge_shortest_path">Shortest</string>
+    <string name="badge_override">Override</string>
+    <string name="badge_intra_as">Intra-AS</string>
+
+    <!-- Plurals -->
+    <plurals name="n_paths">
+        <item quantity="one">%d path</item>
+        <item quantity="other">%d paths</item>
+    </plurals>
+    <plurals name="n_intermediate_ases">
+        <item quantity="one">%d intermediate AS</item>
+        <item quantity="other">%d intermediate ASes</item>
+    </plurals>
+    <plurals name="n_links">
+        <item quantity="one">%d link</item>
+        <item quantity="other">%d links</item>
+    </plurals>
 </resources>
 
