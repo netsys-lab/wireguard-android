@@ -220,7 +220,7 @@
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
                         android:layout_marginTop="12dp"
-                        android:visibility="@{tunnel.state == State.UP ? View.VISIBLE : View.GONE}">
+                    android:visibility="visible">
 
                         <!-- Download speed -->
                         <TextView
@@ -251,6 +251,60 @@
                 </LinearLayout>
 
                 <!-- ═══════════════════════════════════════ -->
+                <!-- SCION INFO SECTION -->
+                <!-- ═══════════════════════════════════════ -->
+                <LinearLayout
+                    android:id="@+id/scion_info_section"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/scion_local_ia"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/scitra_on_surface"
+                        android:textSize="12sp"
+                        tools:text="1-ff00:0:110" />
+
+                    <TextView
+                        android:id="@+id/scion_bind_addr"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textColor="@color/scitra_on_surface_variant"
+                        android:textSize="11sp"
+                        tools:text="10.0.0.2:30041-30050" />
+
+                    <TextView
+                        android:id="@+id/scion_br_addr"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textColor="@color/scitra_on_surface_variant"
+                        android:textSize="11sp"
+                        tools:text="BR: 192.168.1.1:30042" />
+
+                    <TextView
+                        android:id="@+id/scion_flow_totals"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textColor="@color/scitra_primary"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        tools:text="TX 1.2M · RX 0.8M" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginVertical="12dp"
+                    android:background="@color/scitra_outline"
+                    android:alpha="0.3" />
+
+                <!-- ═══════════════════════════════════════ -->
                 <!-- TOP FLOWS SECTION -->
                 <!-- ═══════════════════════════════════════ -->
                 <LinearLayout
@@ -258,9 +312,9 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:visibility="@{tunnel.state == State.UP ? View.VISIBLE : View.GONE}">
+                    android:visibility="visible">
 
-                    <!-- Header row -->
+                    <!-- Header row with filter toggle -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -279,229 +333,24 @@
                             android:letterSpacing="0.1" />
 
                         <TextView
+                            android:id="@+id/flow_filter_text"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/see_all"
+                            android:text="@string/filter_show_all"
                             android:textColor="@color/scitra_primary_container"
                             android:textSize="12sp"
                             android:clickable="true"
                             android:focusable="true"
                             android:background="?android:attr/selectableItemBackgroundBorderless"
-                            android:onClick="@{fragment::onSeeAllFlows}" />
+                            android:onClick="@{fragment::onToggleFlowFilter}" />
                     </LinearLayout>
 
-                    <!-- Flow Item 1 -->
+                    <!-- Dynamic flow items populated by TunnelDetailFragment -->
                     <LinearLayout
-                        android:id="@+id/flow_item_1"
+                        android:id="@+id/flows_container"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:background="@drawable/scitra_flow_item_bg"
-                        android:padding="14dp"
-                        android:layout_marginBottom="8dp"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:onClick="@{fragment::onFlowItemClicked}">
-
-                        <ImageView
-                            android:id="@+id/flow_icon_1"
-                            android:layout_width="36dp"
-                            android:layout_height="36dp"
-                            android:src="@drawable/ic_globe"
-                            android:layout_marginEnd="12dp"
-                            android:contentDescription="App icon" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:id="@+id/flow_name_1"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Google Chrome"
-                                android:textColor="@color/scitra_on_surface"
-                                android:textSize="14sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:id="@+id/flow_ip_1"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="142.250.184.206"
-                                android:textColor="@color/scitra_on_surface_variant"
-                                android:textSize="11sp" />
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:gravity="end">
-
-                            <TextView
-                                android:id="@+id/flow_upload_1"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="↑ 12.4 KB/s"
-                                android:textColor="@color/scitra_primary_container"
-                                android:textSize="11sp" />
-
-                            <TextView
-                                android:id="@+id/flow_download_1"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="↓ 452.1 KB/s"
-                                android:textColor="@color/scitra_primary"
-                                android:textSize="11sp"
-                                android:textStyle="bold" />
-                        </LinearLayout>
-                    </LinearLayout>
-
-                    <!-- Flow Item 2 -->
-                    <LinearLayout
-                        android:id="@+id/flow_item_2"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:background="@drawable/scitra_flow_item_bg"
-                        android:padding="14dp"
-                        android:layout_marginBottom="8dp"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:onClick="@{fragment::onFlowItemClicked}">
-
-                        <ImageView
-                            android:id="@+id/flow_icon_2"
-                            android:layout_width="36dp"
-                            android:layout_height="36dp"
-                            android:src="@drawable/ic_globe"
-                            android:layout_marginEnd="12dp"
-                            android:contentDescription="App icon" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:id="@+id/flow_name_2"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Slack"
-                                android:textColor="@color/scitra_on_surface"
-                                android:textSize="14sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:id="@+id/flow_ip_2"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="34.225.100.155"
-                                android:textColor="@color/scitra_on_surface_variant"
-                                android:textSize="11sp" />
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:gravity="end">
-
-                            <TextView
-                                android:id="@+id/flow_upload_2"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="↑ 2.1 KB/s"
-                                android:textColor="@color/scitra_primary_container"
-                                android:textSize="11sp" />
-
-                            <TextView
-                                android:id="@+id/flow_download_2"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="↓ 5.8 KB/s"
-                                android:textColor="@color/scitra_primary"
-                                android:textSize="11sp"
-                                android:textStyle="bold" />
-                        </LinearLayout>
-                    </LinearLayout>
-
-                    <!-- Flow Item 3 -->
-                    <LinearLayout
-                        android:id="@+id/flow_item_3"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:background="@drawable/scitra_flow_item_bg"
-                        android:padding="14dp"
-                        android:layout_marginBottom="8dp"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:onClick="@{fragment::onFlowItemClicked}">
-
-                        <ImageView
-                            android:id="@+id/flow_icon_3"
-                            android:layout_width="36dp"
-                            android:layout_height="36dp"
-                            android:src="@drawable/ic_globe"
-                            android:layout_marginEnd="12dp"
-                            android:contentDescription="App icon" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:id="@+id/flow_name_3"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="System Update"
-                                android:textColor="@color/scitra_on_surface"
-                                android:textSize="14sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:id="@+id/flow_ip_3"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="17.248.145.74"
-                                android:textColor="@color/scitra_on_surface_variant"
-                                android:textSize="11sp" />
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:gravity="end">
-
-                            <TextView
-                                android:id="@+id/flow_upload_3"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="↑ 1.2 MB/s"
-                                android:textColor="@color/scitra_primary_container"
-                                android:textSize="11sp" />
-
-                            <TextView
-                                android:id="@+id/flow_download_3"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="↓ 24.8 MB/s"
-                                android:textColor="@color/scitra_primary"
-                                android:textSize="11sp"
-                                android:textStyle="bold" />
-                        </LinearLayout>
-                    </LinearLayout>
+                        android:orientation="vertical" />
 
                     <!-- Show all active flows link -->
                     <TextView

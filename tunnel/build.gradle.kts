@@ -52,6 +52,16 @@ fun scionBoolValue(key: String): Boolean {
     }
 }
 
+fun wireguardCoreLogLevelValue(): String {
+    val raw = scionLogging.getProperty("wireguardCoreLogLevel", "verbose").trim().lowercase()
+    val valid = setOf("verbose", "error", "silent")
+    if (raw !in valid) {
+        logger.warn("WireGuard: invalid wireguardCoreLogLevel '$raw', falling back to 'verbose'")
+        return "verbose"
+    }
+    return raw
+}
+
 plugins {
     alias(libs.plugins.android.library)
     `maven-publish`
@@ -101,6 +111,7 @@ android {
             buildConfigField("boolean", "SCION_LOG_PACKET_BYTES", "false")
             buildConfigField("boolean", "SCION_LOG_PATH_BYTES", "false")
             buildConfigField("boolean", "SCION_LOG_INTERNAL_STRUCTS", "false")
+            buildConfigField("String", "WIREGUARD_CORE_LOG_LEVEL", escapeBuildConfigString("verbose"))
         }
         debug {
             externalNativeBuild {
@@ -114,6 +125,7 @@ android {
             buildConfigField("boolean", "SCION_LOG_PACKET_BYTES", scionBoolValue("scionLogPacketBytes").toString())
             buildConfigField("boolean", "SCION_LOG_PATH_BYTES", scionBoolValue("scionLogPathBytes").toString())
             buildConfigField("boolean", "SCION_LOG_INTERNAL_STRUCTS", scionBoolValue("scionLogInternalStructs").toString())
+            buildConfigField("String", "WIREGUARD_CORE_LOG_LEVEL", escapeBuildConfigString(wireguardCoreLogLevelValue()))
         }
     }
     lint {
