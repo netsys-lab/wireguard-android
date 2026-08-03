@@ -497,15 +497,13 @@ class TunnelDetailFragment : BaseFragment() {
 
     // ─── SCION Toggle ───────────────────────────────────────
 
-    fun toggleScionMode(view: View, checked: Boolean) {
-        val toggleSwitch = view as? ToggleSwitch ?: return
+    fun setScionMode(scion: Boolean) {
         val tunnel = binding?.tunnel ?: return
-        toggleSwitch.isEnabled = false
+        val newMode = if (scion) "SCION" else "IP"
         lifecycleScope.launch {
             try {
                 val currentConfig = tunnel.getConfigAsync()
-                val currentMode = currentConfig.`interface`.tunnelMode
-                val newMode = if (currentMode.isScion) "IP" else "SCION"
+                if (currentConfig.`interface`.tunnelMode.name == newMode) return@launch
 
                 val newInterfaceBuilder = Interface.Builder()
                     .addAddresses(currentConfig.`interface`.addresses)
@@ -528,13 +526,14 @@ class TunnelDetailFragment : BaseFragment() {
 
                 tunnel.setConfigAsync(newConfig)
                 binding?.config = newConfig
-                toggleSwitch.setCheckedInternal(checked)
-                val label = if (newMode == "SCION") "SCION" else "IP"
-                Toast.makeText(context, "Switched to $label mode", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Switched to $newMode mode", Toast.LENGTH_SHORT).show()
             } catch (e: Throwable) {
-                toggleSwitch.setCheckedInternal(!checked)
                 Toast.makeText(context, "Error switching mode: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
+    }
+
+    fun toggleScionMode(view: View, checked: Boolean) {
+        setScionMode(checked)
     }
 }
