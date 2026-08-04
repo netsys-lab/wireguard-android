@@ -19,12 +19,17 @@ import com.wireguard.android.util.PathPreviewCardBinder
 import com.wireguard.android.util.createFlowPathRepositoryProvider
 import com.wireguard.android.viewmodel.FlowPathViewModel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 class FlowDetailsFragment : BaseFragment() {
 
     var viewModel: FlowPathViewModel? = null
         private set
+
+    // State caching to avoid redundant re-renders
+    private var currentVisibleState: String? = null
+    private var lastRenderedFingerprint: String? = null
+    private var lastRenderedPolicyName: String? = null
+    private var lastRenderedOverrideState: com.wireguard.android.model.OverrideState? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -47,21 +52,26 @@ class FlowDetailsFragment : BaseFragment() {
             return
         }
 
-        val (flowRepo, flowPathRepo) = runBlocking {
-            val provider = createFlowPathRepositoryProvider(requireContext())
-            Pair(provider.createFlowRepository(tunnel), provider.createFlowPathRepository(tunnel))
+        // Avoid runBlocking on main thread — use coroutine suspension instead
+        lifecycleScope.launch {
+            try {
+                val provider = createFlowPathRepositoryProvider(requireContext())
+                val flowRepo = provider.createFlowRepository(tunnel)
+                val flowPathRepo = provider.createFlowPathRepository(tunnel)
+                val factory = FlowPathViewModel.Factory(
+                    flowRepository = flowRepo,
+                    flowPathRepository = flowPathRepo,
+                    tunnel = tunnel,
+                    flowId = flowId,
+                    flowSnapshot = null,
+                )
+                viewModel = ViewModelProvider(requireActivity(), factory).get(FlowPathViewModel::class.java)
+                viewModel!!.reinit(tunnel, flowId)
+                observeViewModel()
+            } catch (e: Exception) {
+                showState("error")
+            }
         }
-        val factory = FlowPathViewModel.Factory(
-            flowRepository = flowRepo,
-            flowPathRepository = flowPathRepo,
-            tunnel = tunnel,
-            flowId = flowId,
-            flowSnapshot = null,
-        )
-        viewModel = ViewModelProvider(requireActivity(), factory).get(FlowPathViewModel::class.java)
-        viewModel!!.reinit(tunnel, flowId)
-
-        observeViewModel()
     }
 
     private fun observeViewModel() {
@@ -89,6 +99,8 @@ class FlowDetailsFragment : BaseFragment() {
     }
 
     private fun showState(state: String) {
+        if (state == currentVisibleState) return
+        currentVisibleState = state
         val v = view ?: return
         v.findViewById<View>(R.id.flow_loading_view)?.visibility =
             if (state == "loading") View.VISIBLE else View.GONE
@@ -127,6 +139,7 @@ class FlowDetailsFragment : BaseFragment() {
         val v = view ?: return
         showState("active")
 
+        // Update lightweight text fields (no layout rebuild)
         v.findViewById<TextView>(R.id.policy_name).text = section.policyName ?: section.policyState.name
         v.findViewById<TextView>(R.id.policy_description).text = policyDescription(section)
 
@@ -166,17 +179,31 @@ class FlowDetailsFragment : BaseFragment() {
         v.findViewById<TextView>(R.id.paths_available_count).text =
             getString(R.string.paths_available, section.paths.size)
 
-        val pathContainer = v.findViewById<LinearLayout>(R.id.current_path_container)
-        pathContainer.removeAllViews()
-        if (section.effectivePath != null) {
-            val cardView = PathPreviewCardBinder.inflateDisplay(
-                pathContainer,
-                section.effectivePath,
-                LayoutInflater.from(requireContext()),
-                requireContext(),
-                onDetailsClick = { openPathDetails(it) },
-            )
-            pathContainer.addView(cardView)
+        // Diff-based path card rendering: only rebuild if effective path changed
+        val newFingerprint = section.effectivePath?.fingerprint
+        val newPolicyName = section.policyName
+        val newOverrideState = section.overrideState
+        val pathChanged = newFingerprint != lastRenderedFingerprint
+                || newPolicyName != lastRenderedPolicyName
+                || newOverrideState != lastRenderedOverrideState
+
+        if (pathChanged) {
+            lastRenderedFingerprint = newFingerprint
+            lastRenderedPolicyName = newPolicyName
+            lastRenderedOverrideState = newOverrideState
+
+            val pathContainer = v.findViewById<LinearLayout>(R.id.current_path_container)
+            pathContainer.removeAllViews()
+            if (section.effectivePath != null) {
+                val cardView = PathPreviewCardBinder.inflateDisplay(
+                    pathContainer,
+                    section.effectivePath,
+                    LayoutInflater.from(requireContext()),
+                    requireContext(),
+                    onDetailsClick = { openPathDetails(it) },
+                )
+                pathContainer.addView(cardView)
+            }
         }
 
         v.findViewById<View>(R.id.btn_override_path).setOnClickListener {

@@ -246,8 +246,8 @@ class TunnelDetailFragment : BaseFragment() {
         lastState = state
 
         if (state != Tunnel.State.UP) {
-            binding.downloadSpeed.text = "↓ 0.0"
-            binding.uploadSpeed.text = "↑ 0.0"
+            binding.downloadSpeed.text = "↓ 0.0 B/s"
+            binding.uploadSpeed.text = "↑ 0.0 B/s"
             binding.hubWifiIcon.setColorFilter(androidx.core.content.ContextCompat.getColor(requireContext(), R.color.scitra_outline))
             
             // Animate shadow off

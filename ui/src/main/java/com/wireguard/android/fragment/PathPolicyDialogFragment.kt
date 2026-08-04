@@ -1094,7 +1094,26 @@ class PathPolicyDialogFragment : DialogFragment() {
     }
 
     private fun saveAndDismiss() {
-        val json = syncJsonFromCurrentUi()
+        val json = try {
+            syncJsonFromCurrentUi()
+        } catch (e: Exception) {
+            Toast.makeText(context, "Invalid configuration: ${e.message}", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        // Validate the generated JSON has a meaningful policies section
+        val policies = json.optJSONObject("policies")
+        if (policies == null || policies.length() == 0) {
+            Toast.makeText(context, "Policy configuration is empty. Please configure at least one policy.", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        // Notify user if the policy name was auto-defaulted
+        val policyName = view?.findViewById<EditText>(R.id.et_policy_name)?.text?.toString()?.trim()
+        if (policyName.isNullOrEmpty()) {
+            Toast.makeText(context, "Policy name was empty — using \"default\".", Toast.LENGTH_SHORT).show()
+        }
+
         currentJson = json.toString(2)
 
         setFragmentResult(

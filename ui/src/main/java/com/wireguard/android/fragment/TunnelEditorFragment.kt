@@ -83,13 +83,14 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
             binding.tabIp.setTextColor(context.getColor(R.color.scitra_on_surface_variant))
             binding.bootstrapUrlLayout.visibility = View.VISIBLE
             binding.pathPolicyCard.visibility = View.VISIBLE
+            binding.btnConfigurePathPolicy.visibility = View.VISIBLE
         } else {
             binding.tabScion.setBackgroundResource(android.R.color.transparent)
             binding.tabScion.setTextColor(context.getColor(R.color.scitra_on_surface_variant))
             binding.tabIp.setBackgroundResource(R.drawable.scitra_tab_selected_bg)
             binding.tabIp.setTextColor(context.getColor(R.color.scitra_on_primary))
             binding.bootstrapUrlLayout.visibility = View.GONE
-            binding.btnConfigurePathPolicy.visibility = View.GONE
+            binding.pathPolicyCard.visibility = View.GONE
         }
         // Wichtig: bootstrapUrl und pathPolicy NICHT löschen!
     }

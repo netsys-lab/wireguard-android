@@ -53,7 +53,7 @@
                 android:text="@string/flow_scion_badge_label"
                 android:textSize="7sp"
                 android:textStyle="bold"
-                android:textColor="@color/scitra_primary_container"
+                android:textColor="@color/scitra_primary"
                 android:background="@drawable/scitra_status_badge_bg"
                 android:includeFontPadding="false"
                 android:visibility="gone"

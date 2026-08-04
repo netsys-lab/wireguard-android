@@ -5,7 +5,7 @@
     <!-- Scitra Colors (SCION Dark Theme) -->
     <color name="scitra_primary">#A6C8FF</color>
     <color name="scitra_primary_container">#004788</color>
-    <color name="scitra_on_primary">#003061</color>
+    <color name="scitra_on_primary">#FFFFFF</color>
     <color name="scitra_on_primary_container">#D4E3FF</color>
     <color name="scitra_primary_fixed">#D4E3FF</color>
     <color name="scitra_background">#111318</color>
@@ -22,5 +22,7 @@
     <!-- Wizard Colors -->
     <color name="scitra_success">#34D399</color>
     <color name="scitra_warning">#FBBF24</color>
+    <color name="scitra_error">#FF6B6B</color>
     <color name="scitra_code_bg">#1A1C20</color>
 </resources>
+
