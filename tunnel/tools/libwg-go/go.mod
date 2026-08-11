@@ -53,4 +53,4 @@ require (
 	zgo.at/zcache/v2 v2.1.0 // indirect
 )
 
-replace golang.zx2c4.com/wireguard => ../../../wireguard-go
+replace golang.zx2c4.com/wireguard => C:/Users/fidel/StudioProjects/wireguard-go
