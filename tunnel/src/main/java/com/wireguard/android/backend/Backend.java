@@ -86,4 +86,8 @@ public interface Backend {
      * @throws Exception Exception raised while changing state.
      */
     Tunnel.State setState(Tunnel tunnel, Tunnel.State state, @Nullable Config config) throws Exception;
+
+    default String getScionStatus() {
+        return "{}";
+    }
 }
