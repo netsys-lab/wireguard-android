@@ -90,6 +90,7 @@ class TunnelDetailFragment : BaseFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        updateMockBadge()
     }
 
     override fun onDestroyView() {
@@ -99,6 +100,7 @@ class TunnelDetailFragment : BaseFragment() {
 
     override fun onResume() {
         super.onResume()
+        updateMockBadge()
         timerActive = true
         lifecycleScope.launch {
             while (timerActive) {
@@ -536,4 +538,33 @@ class TunnelDetailFragment : BaseFragment() {
     fun toggleScionMode(view: View, checked: Boolean) {
         setScionMode(checked)
     }
+
+    // ─── Mock Scenario Switcher ──────────────────────────────
+
+    fun showMockScenarioSheet() {
+        val sheet = MockScenarioBottomSheet.newInstance()
+        sheet.onScenarioChanged = {
+            updateMockBadge()
+            lifecycleScope.launch {
+                updateSCIONInfo()
+                updateFlows()
+            }
+        }
+        sheet.show(parentFragmentManager, MockScenarioBottomSheet.TAG)
+    }
+
+    private fun updateMockBadge() {
+        val binding = binding ?: return
+        val isMock = GoBackend.isMockMode()
+        val scenario = GoBackend.getCurrentMockScenario()
+
+        if (isMock) {
+            binding.mockStatusChip.text = "🟣 MOCK: $scenario"
+            binding.mockStatusChip.setTextColor(requireContext().getColor(R.color.accent_blue_light))
+        } else {
+            binding.mockStatusChip.text = "🟢 LIVE"
+            binding.mockStatusChip.setTextColor(requireContext().getColor(R.color.status_green))
+        }
+    }
 }
+

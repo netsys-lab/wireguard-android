@@ -312,3 +312,18 @@ JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgScionTe
 	free(out_str);
 	return ret;
 }
+
+extern void wgSetMockMode(int enabled, struct go_string scenario);
+
+JNIEXPORT void JNICALL Java_com_wireguard_android_backend_GoBackend_wgSetMockMode(JNIEnv *env, jclass c, jboolean enabled, jstring scenario)
+{
+	const char *scenario_str = scenario ? (*env)->GetStringUTFChars(env, scenario, 0) : "";
+	size_t scenario_len = scenario ? (*env)->GetStringUTFLength(env, scenario) : 0;
+	wgSetMockMode(enabled ? 1 : 0, (struct go_string){
+		.str = scenario_str,
+		.n = scenario_len
+	});
+	if (scenario)
+		(*env)->ReleaseStringUTFChars(env, scenario, scenario_str);
+}
+

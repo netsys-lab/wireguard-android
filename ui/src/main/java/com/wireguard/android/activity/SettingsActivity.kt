@@ -93,6 +93,11 @@ class SettingsActivity : AppCompatActivity() {
                 startActivity(Intent(requireContext(), DebugPacketActivity::class.java))
                 true
             }
+            preferenceManager.findPreference<Preference>("mock_scenario_settings")?.setOnPreferenceClickListener {
+                val sheet = com.wireguard.android.fragment.MockScenarioBottomSheet.newInstance()
+                sheet.show(parentFragmentManager, com.wireguard.android.fragment.MockScenarioBottomSheet.TAG)
+                true
+            }
             val kernelModuleEnabler = preferenceManager.findPreference<Preference>("kernel_module_enabler")
             if (WgQuickBackend.hasKernelSupport()) {
                 lifecycleScope.launch {

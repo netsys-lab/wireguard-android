@@ -49,5 +49,9 @@
         android:summaryOff="@string/allow_remote_control_intents_summary_off"
         android:summaryOn="@string/allow_remote_control_intents_summary_on"
         android:title="@string/allow_remote_control_intents_title" />
+    <Preference
+        android:key="mock_scenario_settings"
+        android:title="Backend Mode &amp; Scenarios"
+        android:summary="Configure live vs simulated mock traffic and test scenarios" />
     <com.wireguard.android.preference.DonatePreference android:singleLineTitle="false" />
 </androidx.preference.PreferenceScreen>

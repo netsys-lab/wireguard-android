@@ -96,6 +96,29 @@ public final class GoBackend implements Backend {
 
     private static native void wgSetCoreLogLevel(int level);
 
+    private static native void wgSetMockMode(boolean enabled, String scenario);
+
+    private static boolean isMockMode = false;
+    private static String currentMockScenario = "default";
+
+    public static boolean isMockMode() {
+        return isMockMode;
+    }
+
+    public static String getCurrentMockScenario() {
+        return currentMockScenario;
+    }
+
+    public static void setMockMode(final boolean enabled, @Nullable final String scenario) {
+        isMockMode = enabled;
+        currentMockScenario = scenario != null ? scenario : "default";
+        wgSetMockMode(enabled, currentMockScenario);
+    }
+
+    public static void setMockMode(final boolean enabled) {
+        setMockMode(enabled, "default");
+    }
+
     private static native String wgVersion();
 
     @Nullable private static native String wgScionTestBridge(String inputPath);

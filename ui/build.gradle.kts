@@ -55,6 +55,8 @@ android {
             proguardFiles("proguard-android-optimize.txt")
             buildConfigField("boolean", "FLOW_CAPTURE_ENABLED", "false")
             buildConfigField("boolean", "FLOW_FAKE_PROVIDER_ENABLED", "false")
+            buildConfigField("boolean", "MOCK_BACKEND_ENABLED", "false")
+            buildConfigField("String", "MOCK_BACKEND_SCENARIO", "\"default\"")
             packaging {
                 resources {
                     excludes += "DebugProbesKt.bin"
@@ -68,6 +70,8 @@ android {
             versionNameSuffix = "-debug"
             buildConfigField("boolean", "FLOW_CAPTURE_ENABLED", scionProp("flow.capture.enabled"))
             buildConfigField("boolean", "FLOW_FAKE_PROVIDER_ENABLED", scionProp("flow.fake.provider.enabled"))
+            buildConfigField("boolean", "MOCK_BACKEND_ENABLED", scionProp("mock.backend.enabled", "false"))
+            buildConfigField("String", "MOCK_BACKEND_SCENARIO", "\"${scionProp("mock.backend.scenario", "default")}\"")
         }
         create("googleplay") {
             initWith(getByName("release"))

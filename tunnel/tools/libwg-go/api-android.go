@@ -100,11 +100,39 @@ func (l AndroidLogger) Printf(format string, args ...interface{}) {
 }
 
 type TunnelHandle struct {
-	device *device.Device
-	uapi   net.Listener
+	device     *device.Device
+	uapi       net.Listener
+	mockDevice *MockDevice
 }
 
-var tunnelHandles map[int32]TunnelHandle
+var (
+	tunnelHandles    map[int32]TunnelHandle
+	mockModeEnabled  atomic.Bool
+	mockScenario     atomic.Value // string
+	globalMockDevice *MockDevice
+	mockMu           sync.Mutex
+)
+
+//export wgSetMockMode
+func wgSetMockMode(enabled C.int, scenario string) {
+	scenario = strings.Clone(scenario)
+	if scenario == "" {
+		scenario = ScenarioDefaultMultiPath
+	}
+	mockMu.Lock()
+	defer mockMu.Unlock()
+	if enabled != 0 {
+		mockModeEnabled.Store(true)
+		mockScenario.Store(scenario)
+		if globalMockDevice == nil {
+			globalMockDevice = NewMockDevice(scenario)
+		} else {
+			globalMockDevice.SetScenario(scenario)
+		}
+	} else {
+		mockModeEnabled.Store(false)
+	}
+}
 
 func init() {
 	logFunc = defaultLogFunc
@@ -134,6 +162,25 @@ func wgTurnOn(interfaceName string, tunFd int32, settings string) int32 {
 	// cgo //export string params reference caller memory that may be freed after return.
 	interfaceName = strings.Clone(interfaceName)
 	settings = strings.Clone(settings)
+
+	if mockModeEnabled.Load() || tunFd == -2 {
+		scen, _ := mockScenario.Load().(string)
+		if scen == "" {
+			scen = ScenarioDefaultMultiPath
+		}
+		mockDev := NewMockDevice(scen)
+		var i int32
+		for i = 0; i < math.MaxInt32; i++ {
+			if _, exists := tunnelHandles[i]; !exists {
+				break
+			}
+		}
+		if i == math.MaxInt32 {
+			return -1
+		}
+		tunnelHandles[i] = TunnelHandle{mockDevice: mockDev}
+		return i
+	}
 
 	tag := C.CString("WireGuard/GoBackend/" + interfaceName)
 	androidDebug := AndroidLogger{level: C.ANDROID_LOG_DEBUG, tag: tag}.Printf
@@ -244,13 +291,18 @@ func wgTurnOff(tunnelHandle int32) {
 	if handle.uapi != nil {
 		handle.uapi.Close()
 	}
-	handle.device.Close()
+	if handle.device != nil {
+		handle.device.Close()
+	}
 }
 
 //export wgGetSocketV4
 func wgGetSocketV4(tunnelHandle int32) int32 {
 	handle, ok := tunnelHandles[tunnelHandle]
 	if !ok {
+		return -1
+	}
+	if handle.mockDevice != nil {
 		return -1
 	}
 	bind, _ := handle.device.Bind().(conn.PeekLookAtSocketFd)
@@ -270,6 +322,9 @@ func wgGetSocketV6(tunnelHandle int32) int32 {
 	if !ok {
 		return -1
 	}
+	if handle.mockDevice != nil {
+		return -1
+	}
 	bind, _ := handle.device.Bind().(conn.PeekLookAtSocketFd)
 	if bind == nil {
 		return -1
@@ -286,6 +341,14 @@ func wgGetConfig(tunnelHandle int32) *C.char {
 	handle, ok := tunnelHandles[tunnelHandle]
 	if !ok {
 		return nil
+	}
+	if handle.mockDevice != nil {
+		elapsed := int64(time.Since(handle.mockDevice.startTime).Seconds())
+		rx := 3800000 + elapsed*78200
+		tx := 1250000 + elapsed*24500
+		handshake := time.Now().Unix() - 12
+		uapi := fmt.Sprintf("public_key=4b486134376c48325a725176466f363068774738724d4554376759715a315033\nlisten_port=51820\npublic_key=666f6f62617262617a717578313233343536373839306162636465666768696a\nrx_bytes=%d\ntx_bytes=%d\nlast_handshake_time_sec=%d\nlast_handshake_time_nsec=0\n\n", rx, tx, handshake)
+		return C.CString(uapi)
 	}
 	settings, err := handle.device.IpcGet()
 	if err != nil {
@@ -359,6 +422,9 @@ func wgInitScion(tunnelHandle int32, configDir string, interfaceName string) *C.
 	if !ok {
 		return C.CString("invalid handle")
 	}
+	if handle.mockDevice != nil {
+		return C.CString("ok")
+	}
 	scionConfig := device.ScionDeviceConfig{
 		Enabled:       true,
 		ConfigDir:     configDir,
@@ -397,6 +463,9 @@ func wgInitScionWithBootstrapRetry(
 	handle, ok := tunnelHandles[tunnelHandle]
 	if !ok {
 		return C.CString("invalid handle")
+	}
+	if handle.mockDevice != nil {
+		return C.CString("ok")
 	}
 
 	if configDir == "" {
@@ -448,7 +517,13 @@ This is for the UI to display SCION status.
 func wgGetScionStatus(tunnelHandle int32) *C.char {
 	handle, ok := tunnelHandles[tunnelHandle]
 	if !ok {
+		if mockModeEnabled.Load() && globalMockDevice != nil {
+			return C.CString(globalMockDevice.SCIONPathSnapshotJSON())
+		}
 		return C.CString("{}")
+	}
+	if handle.mockDevice != nil {
+		return C.CString(handle.mockDevice.SCIONPathSnapshotJSON())
 	}
 	json, err := handle.device.SCIONPathSnapshotJSON()
 	if err != nil {
@@ -466,7 +541,13 @@ Polled by the frontend every ~1s for the tunnel overview top section.
 func wgGetSCIONInfo(tunnelHandle int32) *C.char {
 	handle, ok := tunnelHandles[tunnelHandle]
 	if !ok {
+		if mockModeEnabled.Load() && globalMockDevice != nil {
+			return C.CString(globalMockDevice.SCIONInfoJSON())
+		}
 		return C.CString("{}")
+	}
+	if handle.mockDevice != nil {
+		return C.CString(handle.mockDevice.SCIONInfoJSON())
 	}
 	json, err := handle.device.SCIONInfoJSON()
 	if err != nil {
@@ -484,8 +565,14 @@ and timestamps. Returns an error field if the device handle is invalid.
 func wgGetFlows(tunnelHandle int32) *C.char {
 	handle, ok := tunnelHandles[tunnelHandle]
 	if !ok {
+		if mockModeEnabled.Load() && globalMockDevice != nil {
+			return C.CString(globalMockDevice.FlowSnapshotsJSON())
+		}
 		resp, _ := json.Marshal(flow.FlowListResponse{Error: "device_not_found"})
 		return C.CString(string(resp))
+	}
+	if handle.mockDevice != nil {
+		return C.CString(handle.mockDevice.FlowSnapshotsJSON())
 	}
 	snapshots := handle.device.FlowSnapshots()
 	dtos := make([]flow.FlowDTO, len(snapshots))
@@ -510,10 +597,16 @@ latency/bandwidth/geo metadata per hop, and state (ready/pending/empty/error).
 func wgGetFlowPaths(tunnelHandle int32, flowID int64) *C.char {
 	handle, ok := tunnelHandles[tunnelHandle]
 	if !ok {
+		if mockModeEnabled.Load() && globalMockDevice != nil {
+			return C.CString(globalMockDevice.SCIONPathsForFlowJSON(flowID))
+		}
 		return C.CString(`{"error":"device_not_found"}`)
 	}
 	if flowID < 0 {
 		return C.CString(`{"error":"invalid_flow_id"}`)
+	}
+	if handle.mockDevice != nil {
+		return C.CString(handle.mockDevice.SCIONPathsForFlowJSON(flowID))
 	}
 	result := handle.device.SCIONPathsForFlow(flow.ID(flowID))
 	raw, err := json.Marshal(result)
@@ -533,10 +626,24 @@ error object on failure.
 func wgSetFlowPathOverride(tunnelHandle int32, flowID int64, fingerprint string) *C.char {
 	handle, ok := tunnelHandles[tunnelHandle]
 	if !ok {
+		if mockModeEnabled.Load() && globalMockDevice != nil {
+			err := globalMockDevice.SetFlowPathOverride(flowID, fingerprint)
+			if err != nil {
+				return C.CString(`{"error":"` + err.Error() + `"}`)
+			}
+			return C.CString("")
+		}
 		return C.CString(`{"error":"device_not_found"}`)
 	}
 	if flowID < 0 {
 		return C.CString(`{"error":"invalid_flow_id"}`)
+	}
+	if handle.mockDevice != nil {
+		err := handle.mockDevice.SetFlowPathOverride(flowID, fingerprint)
+		if err != nil {
+			return C.CString(`{"error":"` + err.Error() + `"}`)
+		}
+		return C.CString("")
 	}
 	err := handle.device.SetFlowPathOverride(flow.ID(flowID), fingerprint)
 	if err != nil {
@@ -554,10 +661,24 @@ effect. Returns an empty string on success or a JSON error object on failure.
 func wgClearFlowPathOverride(tunnelHandle int32, flowID int64) *C.char {
 	handle, ok := tunnelHandles[tunnelHandle]
 	if !ok {
+		if mockModeEnabled.Load() && globalMockDevice != nil {
+			err := globalMockDevice.ClearFlowPathOverride(flowID)
+			if err != nil {
+				return C.CString(`{"error":"` + err.Error() + `"}`)
+			}
+			return C.CString("")
+		}
 		return C.CString(`{"error":"device_not_found"}`)
 	}
 	if flowID < 0 {
 		return C.CString(`{"error":"invalid_flow_id"}`)
+	}
+	if handle.mockDevice != nil {
+		err := handle.mockDevice.ClearFlowPathOverride(flowID)
+		if err != nil {
+			return C.CString(`{"error":"` + err.Error() + `"}`)
+		}
+		return C.CString("")
 	}
 	handle.device.ClearFlowPathOverride(flow.ID(flowID))
 	return C.CString("")

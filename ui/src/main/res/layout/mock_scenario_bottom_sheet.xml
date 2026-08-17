@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0
+     Copyright © 2026 SCIONtra / WireGuard Project -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/scitra_bottom_sheet_bg"
+    android:paddingHorizontal="20dp"
+    android:paddingTop="24dp"
+    android:paddingBottom="32dp">
+
+    <!-- Header Title -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Backend Traffic Mode"
+        android:textColor="@color/scitra_on_surface"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="16dp"
+        android:text="Switch between live network traffic and simulated mock scenarios."
+        android:textColor="@color/scitra_on_surface_variant"
+        android:textSize="13sp" />
+
+    <!-- Mode Toggle (Live vs Mock) -->
+    <RadioGroup
+        android:id="@+id/mode_radio_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="16dp">
+
+        <RadioButton
+            android:id="@+id/radio_live_mode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🟢 Live Backend (Real Network)"
+            android:textColor="@color/scitra_on_surface"
+            android:textSize="14sp"
+            android:paddingVertical="8dp" />
+
+        <RadioButton
+            android:id="@+id/radio_mock_mode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🟣 Mock Backend (Simulated Data)"
+            android:textColor="@color/scitra_on_surface"
+            android:textSize="14sp"
+            android:paddingVertical="8dp" />
+    </RadioGroup>
+
+    <!-- Scenarios Section Header -->
+    <TextView
+        android:id="@+id/scenarios_header"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Mock Scenarios"
+        android:textColor="@color/scitra_primary"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <!-- Scenario Radio Group -->
+    <RadioGroup
+        android:id="@+id/scenario_radio_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="20dp">
+
+        <RadioButton
+            android:id="@+id/scenario_default"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="⚡ Default Multi-Path\n(3 active flows, multi-hop SCION paths with Zurich, Frankfurt, Geneva)"
+            android:textColor="@color/scitra_on_surface"
+            android:textSize="13sp"
+            android:paddingVertical="6dp" />
+
+        <RadioButton
+            android:id="@+id/scenario_high_latency"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="⏱️ High Latency / Congestion\n(Degraded path with 300ms+ latency and high jitter)"
+            android:textColor="@color/scitra_on_surface"
+            android:textSize="13sp"
+            android:paddingVertical="6dp" />
+
+        <RadioButton
+            android:id="@+id/scenario_stale_override"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="⚠️ Stale Override\n(Active path override marked as stale/expired)"
+            android:textColor="@color/scitra_on_surface"
+            android:textSize="13sp"
+            android:paddingVertical="6dp" />
+
+        <RadioButton
+            android:id="@+id/scenario_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="📭 Empty Flows\n(Zero active flows to test empty list state)"
+            android:textColor="@color/scitra_on_surface"
+            android:textSize="13sp"
+            android:paddingVertical="6dp" />
+    </RadioGroup>
+
+    <!-- Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end">
+
+        <Button
+            android:id="@+id/btn_cancel"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Close"
+            android:textColor="@color/scitra_on_surface_variant" />
+
+        <Button
+            android:id="@+id/btn_apply"
+            style="@style/Widget.Material3.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="Apply" />
+    </LinearLayout>
+
+</LinearLayout>
