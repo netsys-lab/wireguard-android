@@ -12,6 +12,7 @@ data class PathDetailsUiModel(
     val expirySeconds: Long?,
     val geoSummary: String,
     val hops: List<HopDetailUiModel>,
+    val geoCoordinates: List<PathGeoDomain> = emptyList(),
 )
 
 data class HopDetailUiModel(
@@ -23,6 +24,8 @@ data class HopDetailUiModel(
     val bandwidthBps: Long?,
     val internalHops: Int?,
     val location: String?,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
     val linkType: String?,
     val role: String,
     val notes: String? = null,

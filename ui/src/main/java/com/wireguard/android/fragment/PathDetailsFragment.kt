@@ -82,6 +82,9 @@ class PathDetailsFragment : BaseFragment() {
         view.findViewById<TextView>(R.id.pd_geo_summary).text =
             details.geoSummary.ifEmpty { getString(R.string.expires_unknown) }
 
+        val globeView = view.findViewById<com.wireguard.android.view.PathGlobeView>(R.id.pd_globe_view)
+        globeView?.setPath(details.geoCoordinates)
+
         view.findViewById<TextView>(R.id.pd_fingerprint).text = details.fingerprint
         view.findViewById<View>(R.id.btn_copy_fingerprint).setOnClickListener {
             copyToClipboard(details.fingerprint)

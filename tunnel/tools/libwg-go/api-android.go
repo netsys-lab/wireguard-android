@@ -131,6 +131,13 @@ func wgSetMockMode(enabled C.int, scenario string) {
 		}
 	} else {
 		mockModeEnabled.Store(false)
+		globalMockDevice = nil
+		// Clean up any remaining mock handles
+		for k, v := range tunnelHandles {
+			if v.device == nil {
+				delete(tunnelHandles, k)
+			}
+		}
 	}
 }
 
@@ -299,10 +306,7 @@ func wgTurnOff(tunnelHandle int32) {
 //export wgGetSocketV4
 func wgGetSocketV4(tunnelHandle int32) int32 {
 	handle, ok := tunnelHandles[tunnelHandle]
-	if !ok {
-		return -1
-	}
-	if handle.mockDevice != nil {
+	if !ok || handle.device == nil {
 		return -1
 	}
 	bind, _ := handle.device.Bind().(conn.PeekLookAtSocketFd)
@@ -319,10 +323,7 @@ func wgGetSocketV4(tunnelHandle int32) int32 {
 //export wgGetSocketV6
 func wgGetSocketV6(tunnelHandle int32) int32 {
 	handle, ok := tunnelHandles[tunnelHandle]
-	if !ok {
-		return -1
-	}
-	if handle.mockDevice != nil {
+	if !ok || handle.device == nil {
 		return -1
 	}
 	bind, _ := handle.device.Bind().(conn.PeekLookAtSocketFd)
@@ -342,13 +343,16 @@ func wgGetConfig(tunnelHandle int32) *C.char {
 	if !ok {
 		return nil
 	}
-	if handle.mockDevice != nil {
+	if mockModeEnabled.Load() && handle.mockDevice != nil {
 		elapsed := int64(time.Since(handle.mockDevice.startTime).Seconds())
 		rx := 3800000 + elapsed*78200
 		tx := 1250000 + elapsed*24500
 		handshake := time.Now().Unix() - 12
 		uapi := fmt.Sprintf("public_key=4b486134376c48325a725176466f363068774738724d4554376759715a315033\nlisten_port=51820\npublic_key=666f6f62617262617a717578313233343536373839306162636465666768696a\nrx_bytes=%d\ntx_bytes=%d\nlast_handshake_time_sec=%d\nlast_handshake_time_nsec=0\n\n", rx, tx, handshake)
 		return C.CString(uapi)
+	}
+	if handle.device == nil {
+		return nil
 	}
 	settings, err := handle.device.IpcGet()
 	if err != nil {
@@ -383,14 +387,6 @@ func wgScionTestBridge(inputPath string) *C.char {
 }
 
 //export wgScionBootstrap
-/*
-Downloads SCION topology + certificates from a bootstrap server. It:
-1. Fetches topology.json from <bootstrapURL>/topology
-2. Fetches the TRC certificate list from <bootstrapURL>/trcs
-3. Downloads each TRC blob and saves to <configDir>/certs/ISD1-B1-S1.trc
-4. Returns "ok" on success, or an error string
-This gives the Go backend the SCION network topology it needs to know which paths exist.
-*/
 func wgScionBootstrap(configDir string, bootstrapURL string) *C.char {
 	configDir = strings.Clone(configDir)
 	bootstrapURL = strings.Clone(bootstrapURL)
@@ -404,17 +400,7 @@ func wgScionBootstrap(configDir string, bootstrapURL string) *C.char {
 }
 
 //export wgInitScion
-/*
-Initializes the SCION translator on an already running WireGuard device. It:
-1. Reads topology.json from configDir to learn the local ISD-AS and border router address
-2. Creates a SCION daemon retriever (for looking up paths)
-3. Creates a path pool (caches SCION paths)
-4. Creates the translator (intercepts fc00::/8 packets → SCION packets)
-5. Wires everything into the running device
-This is the deferred init — the tunnel is already up, now SCION is enabled on it.
-*/
 func wgInitScion(tunnelHandle int32, configDir string, interfaceName string) *C.char {
-	// Defensive: clone all strings from cgo to ensure Go owns independent copies.
 	configDir = strings.Clone(configDir)
 	interfaceName = strings.Clone(interfaceName)
 
@@ -422,8 +408,11 @@ func wgInitScion(tunnelHandle int32, configDir string, interfaceName string) *C.
 	if !ok {
 		return C.CString("invalid handle")
 	}
-	if handle.mockDevice != nil {
+	if mockModeEnabled.Load() && handle.mockDevice != nil {
 		return C.CString("ok")
+	}
+	if handle.device == nil {
+		return C.CString("device_not_found")
 	}
 	scionConfig := device.ScionDeviceConfig{
 		Enabled:       true,
@@ -451,7 +440,6 @@ func wgInitScionWithBootstrapRetry(
 	logPathBytes bool,
 	logInternalStructs bool,
 ) *C.char {
-	// Defensive: clone all strings from cgo to ensure Go owns independent copies.
 	configDir = strings.Clone(configDir)
 	interfaceName = strings.Clone(interfaceName)
 	bootstrapURL = strings.Clone(bootstrapURL)
@@ -464,15 +452,17 @@ func wgInitScionWithBootstrapRetry(
 	if !ok {
 		return C.CString("invalid handle")
 	}
-	if handle.mockDevice != nil {
+	if mockModeEnabled.Load() && handle.mockDevice != nil {
 		return C.CString("ok")
+	}
+	if handle.device == nil {
+		return C.CString("device_not_found")
 	}
 
 	if configDir == "" {
 		configDir = filepath.Join(os.TempDir(), "wg-scion")
 	}
 
-	// Parse log configuration from Android
 	logCfg := scionlog.ParseConfig(logLevel, logComponents)
 
 	scionConfig := device.ScionDeviceConfig{
@@ -482,8 +472,6 @@ func wgInitScionWithBootstrapRetry(
 		LogConfig:     &logCfg,
 	}
 
-	// Parse explicitly configured local addresses (Android path).
-	// These bypass net.InterfaceByName which is unavailable on Android.
 	if localIPv4 != "" {
 		if addr, err := netip.ParseAddr(localIPv4); err == nil {
 			scionConfig.LocalIPv4 = addr
@@ -509,21 +497,19 @@ func wgInitScionWithBootstrapRetry(
 }
 
 //export wgGetScionStatus
-/*
-Returns a JSON snapshot of the SCION path pool:
-which ISD-AS pairs have cached paths, their latencies, expiry, etc.
-This is for the UI to display SCION status.
-*/
 func wgGetScionStatus(tunnelHandle int32) *C.char {
-	handle, ok := tunnelHandles[tunnelHandle]
-	if !ok {
-		if mockModeEnabled.Load() && globalMockDevice != nil {
+	if mockModeEnabled.Load() {
+		handle, ok := tunnelHandles[tunnelHandle]
+		if ok && handle.mockDevice != nil {
+			return C.CString(handle.mockDevice.SCIONPathSnapshotJSON())
+		}
+		if globalMockDevice != nil {
 			return C.CString(globalMockDevice.SCIONPathSnapshotJSON())
 		}
-		return C.CString("{}")
 	}
-	if handle.mockDevice != nil {
-		return C.CString(handle.mockDevice.SCIONPathSnapshotJSON())
+	handle, ok := tunnelHandles[tunnelHandle]
+	if !ok || handle.device == nil {
+		return C.CString("{}")
 	}
 	json, err := handle.device.SCIONPathSnapshotJSON()
 	if err != nil {
@@ -533,21 +519,19 @@ func wgGetScionStatus(tunnelHandle int32) *C.char {
 }
 
 //export wgGetSCIONInfo
-/*
-Returns a JSON snapshot of the local SCION identity:
-localIA, local IPv4/IPv6 addresses, border router address, and dispatch port range.
-Polled by the frontend every ~1s for the tunnel overview top section.
-*/
 func wgGetSCIONInfo(tunnelHandle int32) *C.char {
-	handle, ok := tunnelHandles[tunnelHandle]
-	if !ok {
-		if mockModeEnabled.Load() && globalMockDevice != nil {
+	if mockModeEnabled.Load() {
+		handle, ok := tunnelHandles[tunnelHandle]
+		if ok && handle.mockDevice != nil {
+			return C.CString(handle.mockDevice.SCIONInfoJSON())
+		}
+		if globalMockDevice != nil {
 			return C.CString(globalMockDevice.SCIONInfoJSON())
 		}
-		return C.CString("{}")
 	}
-	if handle.mockDevice != nil {
-		return C.CString(handle.mockDevice.SCIONInfoJSON())
+	handle, ok := tunnelHandles[tunnelHandle]
+	if !ok || handle.device == nil {
+		return C.CString("{}")
 	}
 	json, err := handle.device.SCIONInfoJSON()
 	if err != nil {
@@ -557,22 +541,20 @@ func wgGetSCIONInfo(tunnelHandle int32) *C.char {
 }
 
 //export wgGetFlows
-/*
-Returns a JSON snapshot of all active network flows tracked by the device.
-Each flow contains src/dst endpoints, protocol, IP version, traffic counters,
-and timestamps. Returns an error field if the device handle is invalid.
-*/
 func wgGetFlows(tunnelHandle int32) *C.char {
-	handle, ok := tunnelHandles[tunnelHandle]
-	if !ok {
-		if mockModeEnabled.Load() && globalMockDevice != nil {
+	if mockModeEnabled.Load() {
+		handle, ok := tunnelHandles[tunnelHandle]
+		if ok && handle.mockDevice != nil {
+			return C.CString(handle.mockDevice.FlowSnapshotsJSON())
+		}
+		if globalMockDevice != nil {
 			return C.CString(globalMockDevice.FlowSnapshotsJSON())
 		}
+	}
+	handle, ok := tunnelHandles[tunnelHandle]
+	if !ok || handle.device == nil {
 		resp, _ := json.Marshal(flow.FlowListResponse{Error: "device_not_found"})
 		return C.CString(string(resp))
-	}
-	if handle.mockDevice != nil {
-		return C.CString(handle.mockDevice.FlowSnapshotsJSON())
 	}
 	snapshots := handle.device.FlowSnapshots()
 	dtos := make([]flow.FlowDTO, len(snapshots))
@@ -589,24 +571,22 @@ func wgGetFlows(tunnelHandle int32) *C.char {
 }
 
 //export wgGetFlowPaths
-/*
-Returns cached SCION paths and metadata for a specific logical flow.
-The response includes all available paths with the current path marked,
-latency/bandwidth/geo metadata per hop, and state (ready/pending/empty/error).
-*/
 func wgGetFlowPaths(tunnelHandle int32, flowID int64) *C.char {
-	handle, ok := tunnelHandles[tunnelHandle]
-	if !ok {
-		if mockModeEnabled.Load() && globalMockDevice != nil {
+	if mockModeEnabled.Load() {
+		handle, ok := tunnelHandles[tunnelHandle]
+		if ok && handle.mockDevice != nil {
+			return C.CString(handle.mockDevice.SCIONPathsForFlowJSON(flowID))
+		}
+		if globalMockDevice != nil {
 			return C.CString(globalMockDevice.SCIONPathsForFlowJSON(flowID))
 		}
+	}
+	handle, ok := tunnelHandles[tunnelHandle]
+	if !ok || handle.device == nil {
 		return C.CString(`{"error":"device_not_found"}`)
 	}
 	if flowID < 0 {
 		return C.CString(`{"error":"invalid_flow_id"}`)
-	}
-	if handle.mockDevice != nil {
-		return C.CString(handle.mockDevice.SCIONPathsForFlowJSON(flowID))
 	}
 	result := handle.device.SCIONPathsForFlow(flow.ID(flowID))
 	raw, err := json.Marshal(result)
@@ -617,33 +597,30 @@ func wgGetFlowPaths(tunnelHandle int32, flowID int64) *C.char {
 }
 
 //export wgSetFlowPathOverride
-/*
-Sets a manual path override for the given flow. The override fingerprint
-must match one of the flow's currently available paths for the override
-to take effect immediately. Returns an empty string on success or a JSON
-error object on failure.
-*/
 func wgSetFlowPathOverride(tunnelHandle int32, flowID int64, fingerprint string) *C.char {
-	handle, ok := tunnelHandles[tunnelHandle]
-	if !ok {
-		if mockModeEnabled.Load() && globalMockDevice != nil {
+	if mockModeEnabled.Load() {
+		handle, ok := tunnelHandles[tunnelHandle]
+		if ok && handle.mockDevice != nil {
+			err := handle.mockDevice.SetFlowPathOverride(flowID, fingerprint)
+			if err != nil {
+				return C.CString(`{"error":"` + err.Error() + `"}`)
+			}
+			return C.CString("")
+		}
+		if globalMockDevice != nil {
 			err := globalMockDevice.SetFlowPathOverride(flowID, fingerprint)
 			if err != nil {
 				return C.CString(`{"error":"` + err.Error() + `"}`)
 			}
 			return C.CString("")
 		}
+	}
+	handle, ok := tunnelHandles[tunnelHandle]
+	if !ok || handle.device == nil {
 		return C.CString(`{"error":"device_not_found"}`)
 	}
 	if flowID < 0 {
 		return C.CString(`{"error":"invalid_flow_id"}`)
-	}
-	if handle.mockDevice != nil {
-		err := handle.mockDevice.SetFlowPathOverride(flowID, fingerprint)
-		if err != nil {
-			return C.CString(`{"error":"` + err.Error() + `"}`)
-		}
-		return C.CString("")
 	}
 	err := handle.device.SetFlowPathOverride(flow.ID(flowID), fingerprint)
 	if err != nil {
@@ -653,32 +630,30 @@ func wgSetFlowPathOverride(tunnelHandle int32, flowID int64, fingerprint string)
 }
 
 //export wgClearFlowPathOverride
-/*
-Clears any manual path override for the given flow. After clearing, the
-automatic policy selection (or default first-valid strategy) will take
-effect. Returns an empty string on success or a JSON error object on failure.
-*/
 func wgClearFlowPathOverride(tunnelHandle int32, flowID int64) *C.char {
-	handle, ok := tunnelHandles[tunnelHandle]
-	if !ok {
-		if mockModeEnabled.Load() && globalMockDevice != nil {
+	if mockModeEnabled.Load() {
+		handle, ok := tunnelHandles[tunnelHandle]
+		if ok && handle.mockDevice != nil {
+			err := handle.mockDevice.ClearFlowPathOverride(flowID)
+			if err != nil {
+				return C.CString(`{"error":"` + err.Error() + `"}`)
+			}
+			return C.CString("")
+		}
+		if globalMockDevice != nil {
 			err := globalMockDevice.ClearFlowPathOverride(flowID)
 			if err != nil {
 				return C.CString(`{"error":"` + err.Error() + `"}`)
 			}
 			return C.CString("")
 		}
+	}
+	handle, ok := tunnelHandles[tunnelHandle]
+	if !ok || handle.device == nil {
 		return C.CString(`{"error":"device_not_found"}`)
 	}
 	if flowID < 0 {
 		return C.CString(`{"error":"invalid_flow_id"}`)
-	}
-	if handle.mockDevice != nil {
-		err := handle.mockDevice.ClearFlowPathOverride(flowID)
-		if err != nil {
-			return C.CString(`{"error":"` + err.Error() + `"}`)
-		}
-		return C.CString("")
 	}
 	handle.device.ClearFlowPathOverride(flow.ID(flowID))
 	return C.CString("")

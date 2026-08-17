@@ -147,11 +147,17 @@ object FlowPathUiMapper {
                 internalHops = internalHopsAtHop,
                 location = geoAtHop?.label?.replace("\n", ", ")?.trim()?.trimEnd(',')?.trim()
                     ?.takeIf { it.isNotEmpty() && geoAtHop.latitude != null && geoAtHop.latitude != 0.0 && geoAtHop.longitude != null && geoAtHop.longitude != 0.0 },
+                latitude = geoAtHop?.latitude,
+                longitude = geoAtHop?.longitude,
                 linkType = linkTypeAtHop,
                 role = role,
                 notes = notes,
             )
         }
+
+        val validCoordinates = domain.geo?.filter {
+            it.latitude != null && it.latitude != 0.0 && it.longitude != null && it.longitude != 0.0
+        } ?: emptyList()
 
         return PathDetailsUiModel(
             fingerprint = domain.fingerprint,
@@ -165,6 +171,7 @@ object FlowPathUiMapper {
             expirySeconds = expirySecs,
             geoSummary = geoSummary,
             hops = hops,
+            geoCoordinates = validCoordinates,
         )
     }
 
