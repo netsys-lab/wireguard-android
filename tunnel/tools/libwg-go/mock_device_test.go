@@ -108,3 +108,101 @@ func TestMockDevice_EmptyScenario(t *testing.T) {
 		t.Errorf("Expected 0 flows in empty scenario, got %d", len(resp.Flows))
 	}
 }
+
+func TestMockDevice_PolicyFallback(t *testing.T) {
+	mock := NewMockDevice(ScenarioPolicyFallback)
+	pathsJSON := mock.SCIONPathsForFlowJSON(1)
+
+	var resp MockFlowPathsResponse
+	if err := json.Unmarshal([]byte(pathsJSON), &resp); err != nil {
+		t.Fatalf("Failed to parse paths JSON: %v", err)
+	}
+	if !resp.PolicyFallbackApplied {
+		t.Errorf("Expected PolicyFallbackApplied to be true")
+	}
+	if resp.PolicyMode != "configured" {
+		t.Errorf("Expected policyMode configured, got %s", resp.PolicyMode)
+	}
+	if resp.EffectiveFingerprint != "fp_frankfurt_transit" {
+		t.Errorf("Expected fallback winner fp_frankfurt_transit, got %s", resp.EffectiveFingerprint)
+	}
+}
+
+func TestMockDevice_GlobeShowcase(t *testing.T) {
+	mock := NewMockDevice(ScenarioGlobeShowcase)
+	pathsJSON := mock.SCIONPathsForFlowJSON(1)
+
+	var resp MockFlowPathsResponse
+	if err := json.Unmarshal([]byte(pathsJSON), &resp); err != nil {
+		t.Fatalf("Failed to parse paths JSON: %v", err)
+	}
+	if resp.EffectiveFingerprint != "fp_transatlantic_globe" {
+		t.Errorf("Expected globe winner fp_transatlantic_globe, got %s", resp.EffectiveFingerprint)
+	}
+
+	foundGlobe := false
+	for _, p := range resp.Paths {
+		if p.Fingerprint == "fp_transatlantic_globe" {
+			foundGlobe = true
+			if len(p.Geo) < 4 {
+				t.Errorf("Expected at least 4 geo hops for globe path, got %d", len(p.Geo))
+			}
+		}
+	}
+	if !foundGlobe {
+		t.Errorf("Expected to find fp_transatlantic_globe path")
+	}
+}
+
+func TestMockDevice_PendingDiscovery(t *testing.T) {
+	mock := NewMockDevice(ScenarioPendingDiscovery)
+
+	// Poll 1: should be pending
+	p1 := mock.SCIONPathsForFlowJSON(1)
+	var r1 MockFlowPathsResponse
+	_ = json.Unmarshal([]byte(p1), &r1)
+	if r1.State != "pending" {
+		t.Errorf("Expected poll 1 to be pending, got %s", r1.State)
+	}
+
+	// Poll 2: should be pending
+	p2 := mock.SCIONPathsForFlowJSON(1)
+	var r2 MockFlowPathsResponse
+	_ = json.Unmarshal([]byte(p2), &r2)
+	if r2.State != "pending" {
+		t.Errorf("Expected poll 2 to be pending, got %s", r2.State)
+	}
+
+	// Poll 3: should transition to ready
+	p3 := mock.SCIONPathsForFlowJSON(1)
+	var r3 MockFlowPathsResponse
+	_ = json.Unmarshal([]byte(p3), &r3)
+	if r3.State != "ready" {
+		t.Errorf("Expected poll 3 to be ready, got %s", r3.State)
+	}
+	if len(r3.Paths) == 0 {
+		t.Errorf("Expected paths when ready")
+	}
+}
+
+func TestMockDevice_MultiFlow(t *testing.T) {
+	mock := NewMockDevice(ScenarioMultiFlow)
+	flowsJSON := mock.FlowSnapshotsJSON()
+
+	var resp MockFlowListResponse
+	_ = json.Unmarshal([]byte(flowsJSON), &resp)
+	if len(resp.Flows) < 3 {
+		t.Fatalf("Expected at least 3 flows in multi_flow scenario, got %d", len(resp.Flows))
+	}
+
+	// Check Flow 2 (Tokyo) paths
+	p2 := mock.SCIONPathsForFlowJSON(2)
+	var r2 MockFlowPathsResponse
+	_ = json.Unmarshal([]byte(p2), &r2)
+	if r2.State != "ready" || len(r2.Paths) < 2 {
+		t.Errorf("Expected ready paths for flow 2, got state=%s, count=%d", r2.State, len(r2.Paths))
+	}
+	if r2.EffectiveFingerprint != "fp_tokyo_primary" {
+		t.Errorf("Expected fp_tokyo_primary for flow 2, got %s", r2.EffectiveFingerprint)
+	}
+}

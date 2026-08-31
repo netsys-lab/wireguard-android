@@ -175,4 +175,71 @@ class GoMockBackendJsonTest {
         assertEquals("64-1:0:12", snapshot.pairs[0].dstIa)
         assertTrue(snapshot.pairs[0].paths[0].isSelected)
     }
+
+    @Test
+    fun testParsePolicyFallback() {
+        val json = """
+            {
+                "flowId": 1,
+                "state": "ready",
+                "policyName": "HighBandwidthFailover",
+                "policyMode": "configured",
+                "policyFallbackApplied": true,
+                "overrideState": "",
+                "effectiveFingerprint": "fp_frankfurt_transit",
+                "paths": []
+            }
+        """.trimIndent()
+
+        val response = parseFlowPathsResponse(json)
+        val domain = FlowPathDomainMapper.toDomain(response)
+        assertEquals(PolicyState.FALLBACK, domain.policyState)
+        assertEquals("HighBandwidthFailover", domain.policyName)
+        assertTrue(domain.policyFallbackApplied)
+    }
+
+    @Test
+    fun testParseGlobePathWithGeo() {
+        val json = """
+            {
+                "flowId": 1,
+                "state": "ready",
+                "policyName": "GlobalIntercontinental",
+                "policyMode": "configured",
+                "policyFallbackApplied": false,
+                "effectiveFingerprint": "fp_transatlantic_globe",
+                "paths": [
+                    {
+                        "fingerprint": "fp_transatlantic_globe",
+                        "display": "Global Transatlantic [64-2:0:49 ➔ London ➔ NYC ➔ Tokyo ➔ 64-1:0:12]",
+                        "current": true,
+                        "nextHop": "192.168.1.1:30042",
+                        "expiry": "2026-08-17T20:00:00Z",
+                        "mtu": 1500,
+                        "interfaces": ["1", "5", "8", "9", "2"],
+                        "totalLatencyMicros": 185000,
+                        "bottleneckKbps": 1000000,
+                        "interAsLinks": 4,
+                        "geo": [
+                            {"latitude": 47.3769, "longitude": 8.5417, "address": "Zurich, Switzerland"},
+                            {"latitude": 51.5074, "longitude": -0.1278, "address": "London, UK"},
+                            {"latitude": 40.7128, "longitude": -74.0060, "address": "New York, USA"},
+                            {"latitude": 35.6762, "longitude": 139.6503, "address": "Tokyo, Japan"}
+                        ]
+                    }
+                ]
+            }
+        """.trimIndent()
+
+        val response = parseFlowPathsResponse(json)
+        val domain = FlowPathDomainMapper.toDomain(response)
+        assertEquals(1, domain.paths.size)
+        val path = domain.paths[0]
+        assertEquals("fp_transatlantic_globe", path.fingerprint)
+        assertNotNull(path.geo)
+        assertEquals(4, path.geo!!.size)
+        assertEquals("Zurich, Switzerland", path.geo!![0].label)
+        assertEquals("Tokyo, Japan", path.geo!![3].label)
+        assertEquals(47.3769, path.geo!![0].latitude, 0.001)
+    }
 }

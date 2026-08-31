@@ -6,9 +6,13 @@ package main
 
 const (
 	ScenarioDefaultMultiPath = "default"
-	ScenarioEmptyFlows       = "empty"
-	ScenarioHighLatency      = "high_latency"
+	ScenarioGlobeShowcase    = "globe_showcase"
+	ScenarioPolicyFallback   = "policy_fallback"
+	ScenarioPendingDiscovery = "pending"
 	ScenarioStaleOverride    = "stale_override"
+	ScenarioMultiFlow        = "multi_flow"
+	ScenarioHighLatency      = "high_latency"
+	ScenarioEmptyFlows       = "empty"
 )
 
 // MockEndpoint represents flow endpoints

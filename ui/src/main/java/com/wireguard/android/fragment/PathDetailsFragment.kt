@@ -53,6 +53,11 @@ class PathDetailsFragment : BaseFragment() {
         }
     }
 
+    override fun onDestroyView() {
+        pathDetails = null
+        super.onDestroyView()
+    }
+
     private fun render(details: PathDetailsUiModel) {
         val view = view ?: return
 

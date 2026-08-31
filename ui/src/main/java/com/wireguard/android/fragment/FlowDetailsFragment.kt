@@ -41,6 +41,11 @@ class FlowDetailsFragment : BaseFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        currentVisibleState = null
+        lastRenderedFingerprint = null
+        lastRenderedPolicyName = null
+        lastRenderedOverrideState = null
+
         view.findViewById<View>(R.id.btn_back).setOnClickListener {
             activity?.onBackPressedDispatcher?.onBackPressed()
         }
@@ -74,6 +79,14 @@ class FlowDetailsFragment : BaseFragment() {
         }
     }
 
+    override fun onDestroyView() {
+        currentVisibleState = null
+        lastRenderedFingerprint = null
+        lastRenderedPolicyName = null
+        lastRenderedOverrideState = null
+        super.onDestroyView()
+    }
+
     private fun observeViewModel() {
         val vm = viewModel ?: return
         lifecycleScope.launch {
@@ -99,9 +112,9 @@ class FlowDetailsFragment : BaseFragment() {
     }
 
     private fun showState(state: String) {
+        val v = view ?: return
         if (state == currentVisibleState) return
         currentVisibleState = state
-        val v = view ?: return
         v.findViewById<View>(R.id.flow_loading_view)?.visibility =
             if (state == "loading") View.VISIBLE else View.GONE
         v.findViewById<View>(R.id.flow_error_view)?.visibility =

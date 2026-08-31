@@ -38,8 +38,12 @@ class MockScenarioBottomSheet : BottomSheetDialogFragment() {
         val scenariosHeader = view.findViewById<TextView>(R.id.scenarios_header)
         val scenarioGroup = view.findViewById<RadioGroup>(R.id.scenario_radio_group)
         val radioDefault = view.findViewById<RadioButton>(R.id.scenario_default)
-        val radioHighLatency = view.findViewById<RadioButton>(R.id.scenario_high_latency)
+        val radioGlobeShowcase = view.findViewById<RadioButton>(R.id.scenario_globe_showcase)
+        val radioPolicyFallback = view.findViewById<RadioButton>(R.id.scenario_policy_fallback)
+        val radioPending = view.findViewById<RadioButton>(R.id.scenario_pending)
         val radioStaleOverride = view.findViewById<RadioButton>(R.id.scenario_stale_override)
+        val radioMultiFlow = view.findViewById<RadioButton>(R.id.scenario_multi_flow)
+        val radioHighLatency = view.findViewById<RadioButton>(R.id.scenario_high_latency)
         val radioEmpty = view.findViewById<RadioButton>(R.id.scenario_empty)
 
         val isMock = GoBackend.isMockMode()
@@ -56,8 +60,12 @@ class MockScenarioBottomSheet : BottomSheetDialogFragment() {
         }
 
         when (currentScenario) {
-            "high_latency" -> radioHighLatency.isChecked = true
+            "globe_showcase" -> radioGlobeShowcase.isChecked = true
+            "policy_fallback" -> radioPolicyFallback.isChecked = true
+            "pending" -> radioPending.isChecked = true
             "stale_override" -> radioStaleOverride.isChecked = true
+            "multi_flow" -> radioMultiFlow.isChecked = true
+            "high_latency" -> radioHighLatency.isChecked = true
             "empty" -> radioEmpty.isChecked = true
             else -> radioDefault.isChecked = true
         }
@@ -75,8 +83,12 @@ class MockScenarioBottomSheet : BottomSheetDialogFragment() {
         view.findViewById<Button>(R.id.btn_apply).setOnClickListener {
             val enableMock = radioMock.isChecked
             val scenario = when (scenarioGroup.checkedRadioButtonId) {
-                R.id.scenario_high_latency -> "high_latency"
+                R.id.scenario_globe_showcase -> "globe_showcase"
+                R.id.scenario_policy_fallback -> "policy_fallback"
+                R.id.scenario_pending -> "pending"
                 R.id.scenario_stale_override -> "stale_override"
+                R.id.scenario_multi_flow -> "multi_flow"
+                R.id.scenario_high_latency -> "high_latency"
                 R.id.scenario_empty -> "empty"
                 else -> "default"
             }
