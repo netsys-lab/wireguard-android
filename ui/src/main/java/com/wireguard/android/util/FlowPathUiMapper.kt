@@ -55,22 +55,31 @@ object FlowPathUiMapper {
             com.wireguard.android.model.PathQueryState.UNKNOWN -> return PathSectionState.Loading
         }
 
+        val effectiveFp = flowPathState.effectiveFingerprint
+            ?: (flowPathState.overrideFingerprint?.takeIf { flowPathState.overrideState == com.wireguard.android.model.OverrideState.ACTIVE })
+            ?: flowPathState.paths.firstOrNull()?.fingerprint
+
         val paths = flowPathState.paths.map { toPreview(it, emptyList()) }
         val previewsWithBadges = paths.map { p ->
             val domain = flowPathState.paths.find { it.fingerprint == p.fingerprint }!!
             val badges = CandidateSelector.deriveBadges(domain, flowPathState.paths)
-            p.copy(badges = badges + overrideBadge(p.fingerprint, flowPathState))
+            val isCurrentPath = p.fingerprint == effectiveFp
+            p.copy(
+                badges = badges + overrideBadge(p.fingerprint, flowPathState),
+                isCurrent = isCurrentPath,
+            )
         }
 
-        val effectivePath = flowPathState.effectiveFingerprint?.let { fp ->
-            previewsWithBadges.find { it.fingerprint == fp }
-        }
+        val effectivePath = (effectiveFp?.let { fp -> previewsWithBadges.find { it.fingerprint == fp } }
+            ?: previewsWithBadges.firstOrNull { it.isCurrent }
+            ?: previewsWithBadges.firstOrNull())
+            ?.copy(isCurrent = true)
 
         val quickCandidates = CandidateSelector.quickCandidates(previewsWithBadges)
 
         return PathSectionState.Ready(
             paths = previewsWithBadges,
-            effectiveFingerprint = flowPathState.effectiveFingerprint,
+            effectiveFingerprint = effectiveFp ?: flowPathState.effectiveFingerprint,
             overrideState = flowPathState.overrideState,
             overrideFingerprint = flowPathState.overrideFingerprint,
             policyState = flowPathState.policyState,

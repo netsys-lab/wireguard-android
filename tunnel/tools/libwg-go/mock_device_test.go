@@ -206,3 +206,61 @@ func TestMockDevice_MultiFlow(t *testing.T) {
 		t.Errorf("Expected fp_tokyo_primary for flow 2, got %s", r2.EffectiveFingerprint)
 	}
 }
+
+func TestMockDevice_OverrideAllCandidates(t *testing.T) {
+	mock := NewMockDevice(ScenarioDefaultMultiPath)
+	candidates := []string{
+		"fp_zurich_direct",
+		"fp_frankfurt_transit",
+		"fp_geneva_direct",
+		"fp_transatlantic_globe",
+	}
+
+	for _, candidate := range candidates {
+		if err := mock.SetFlowPathOverride(1, candidate); err != nil {
+			t.Fatalf("Failed to set override %s: %v", candidate, err)
+		}
+		raw := mock.SCIONPathsForFlowJSON(1)
+		var resp MockFlowPathsResponse
+		if err := json.Unmarshal([]byte(raw), &resp); err != nil {
+			t.Fatalf("Failed to parse JSON: %v", err)
+		}
+		if resp.EffectiveFingerprint != candidate {
+			t.Errorf("Override %s: expected EffectiveFingerprint=%s, got %s", candidate, candidate, resp.EffectiveFingerprint)
+		}
+		if resp.OverrideState != "active" {
+			t.Errorf("Override %s: expected OverrideState=active, got %s", candidate, resp.OverrideState)
+		}
+		foundCurrent := false
+		for _, p := range resp.Paths {
+			if p.Current {
+				foundCurrent = true
+				if p.Fingerprint != candidate {
+					t.Errorf("Override %s: path marked current has fingerprint %s", candidate, p.Fingerprint)
+				}
+			}
+		}
+		if !foundCurrent {
+			t.Errorf("Override %s: no path marked Current", candidate)
+		}
+	}
+}
+
+func TestMockDevice_UnknownOverrideFallback(t *testing.T) {
+	mock := NewMockDevice(ScenarioDefaultMultiPath)
+	if err := mock.SetFlowPathOverride(1, "fp_non_existent_xyz"); err != nil {
+		t.Fatalf("Failed to set override: %v", err)
+	}
+	raw := mock.SCIONPathsForFlowJSON(1)
+	var resp MockFlowPathsResponse
+	if err := json.Unmarshal([]byte(raw), &resp); err != nil {
+		t.Fatalf("Failed to parse JSON: %v", err)
+	}
+	// Since fp_non_existent_xyz is not in paths, overrideState should be stale and effective should fall back to policyWinner
+	if resp.OverrideState != "stale" {
+		t.Errorf("Expected stale override state for unknown fingerprint, got %s", resp.OverrideState)
+	}
+	if resp.EffectiveFingerprint != "fp_zurich_direct" {
+		t.Errorf("Expected effective fingerprint fallback to fp_zurich_direct, got %s", resp.EffectiveFingerprint)
+	}
+}

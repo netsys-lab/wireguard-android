@@ -51,6 +51,8 @@ func (m *MockDevice) SetScenario(scenario string) {
 	defer m.mu.Unlock()
 	m.scenario = scenario
 	m.pendingCounts = make(map[int64]int)
+	m.activeOverrides = make(map[int64]string)
+	m.overrideTimestamp = make(map[int64]time.Time)
 }
 
 // SCIONInfoJSON returns the local identity JSON
@@ -452,9 +454,20 @@ func (m *MockDevice) SCIONPathsForFlowJSON(flowID int64) string {
 	}
 
 	overrideFp := m.activeOverrides[flowID]
+	if m.scenario == ScenarioStaleOverride && overrideFp == "" && flowID == 1 {
+		// Default stale override candidate for demonstration
+		overrideFp = "fp_frankfurt_transit"
+	}
 	overrideState := ""
 	if overrideFp != "" {
-		if m.scenario == ScenarioStaleOverride {
+		inPaths := false
+		for _, p := range paths {
+			if p.Fingerprint == overrideFp {
+				inPaths = true
+				break
+			}
+		}
+		if m.scenario == ScenarioStaleOverride || !inPaths {
 			overrideState = "stale"
 		} else {
 			overrideState = "active"
@@ -464,6 +477,17 @@ func (m *MockDevice) SCIONPathsForFlowJSON(flowID int64) string {
 	effectiveFp := policyWinner
 	if overrideFp != "" && overrideState == "active" {
 		effectiveFp = overrideFp
+	}
+
+	effectiveValid := false
+	for _, p := range paths {
+		if p.Fingerprint == effectiveFp {
+			effectiveValid = true
+			break
+		}
+	}
+	if !effectiveValid && len(paths) > 0 {
+		effectiveFp = paths[0].Fingerprint
 	}
 
 	for i := range paths {

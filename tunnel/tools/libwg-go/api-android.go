@@ -129,6 +129,11 @@ func wgSetMockMode(enabled C.int, scenario string) {
 		} else {
 			globalMockDevice.SetScenario(scenario)
 		}
+		for _, h := range tunnelHandles {
+			if h.mockDevice != nil {
+				h.mockDevice.SetScenario(scenario)
+			}
+		}
 	} else {
 		mockModeEnabled.Store(false)
 		globalMockDevice = nil
@@ -598,6 +603,7 @@ func wgGetFlowPaths(tunnelHandle int32, flowID int64) *C.char {
 
 //export wgSetFlowPathOverride
 func wgSetFlowPathOverride(tunnelHandle int32, flowID int64, fingerprint string) *C.char {
+	fingerprint = strings.Clone(fingerprint)
 	if mockModeEnabled.Load() {
 		handle, ok := tunnelHandles[tunnelHandle]
 		if ok && handle.mockDevice != nil {

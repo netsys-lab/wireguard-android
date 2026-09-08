@@ -192,25 +192,27 @@ class FlowDetailsFragment : BaseFragment() {
         v.findViewById<TextView>(R.id.paths_available_count).text =
             getString(R.string.paths_available, section.paths.size)
 
-        // Diff-based path card rendering: only rebuild if effective path changed
-        val newFingerprint = section.effectivePath?.fingerprint
+        // Diff-based path card rendering: only rebuild if effective path changed or container is empty
+        val effectivePath = section.effectivePath ?: section.paths.firstOrNull()
+        val newFingerprint = effectivePath?.fingerprint
         val newPolicyName = section.policyName
         val newOverrideState = section.overrideState
+        val pathContainer = v.findViewById<LinearLayout>(R.id.current_path_container)
         val pathChanged = newFingerprint != lastRenderedFingerprint
                 || newPolicyName != lastRenderedPolicyName
                 || newOverrideState != lastRenderedOverrideState
+                || pathContainer.childCount == 0
 
         if (pathChanged) {
             lastRenderedFingerprint = newFingerprint
             lastRenderedPolicyName = newPolicyName
             lastRenderedOverrideState = newOverrideState
 
-            val pathContainer = v.findViewById<LinearLayout>(R.id.current_path_container)
             pathContainer.removeAllViews()
-            if (section.effectivePath != null) {
+            if (effectivePath != null) {
                 val cardView = PathPreviewCardBinder.inflateDisplay(
                     pathContainer,
-                    section.effectivePath,
+                    effectivePath,
                     LayoutInflater.from(requireContext()),
                     requireContext(),
                     onDetailsClick = { openPathDetails(it) },
