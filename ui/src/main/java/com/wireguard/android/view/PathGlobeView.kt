@@ -19,6 +19,7 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.animation.LinearInterpolator
 import com.wireguard.android.model.PathGeoDomain
 import kotlin.math.PI
@@ -55,10 +56,14 @@ class PathGlobeView @JvmOverloads constructor(
     // Zoom & scale
     private var zoom: Float = 1.0f
 
-    // Touch interaction
+    // Touch interaction & disambiguation
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private var lastTouchX = 0f
     private var lastTouchY = 0f
+    private var initialTouchX = 0f
+    private var initialTouchY = 0f
     private var isDragging = false
+    private var touchInterceptionDisallowed = false
 
     private val scaleDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScale(detector: ScaleGestureDetector): Boolean {
@@ -263,15 +268,82 @@ class PathGlobeView @JvmOverloads constructor(
         )
     )
 
+    // Precomputed flat radian coordinates for zero-allocation landmass rendering
+    private val worldLandmassesRad: List<DoubleArray> = worldLandmasses.map { polygon ->
+        val arr = DoubleArray(polygon.size * 2)
+        for (i in polygon.indices) {
+            val (latDeg, lonDeg) = polygon[i]
+            arr[i * 2] = Math.toRadians(latDeg)
+            arr[i * 2 + 1] = Math.toRadians(lonDeg)
+        }
+        arr
+    }
+
+    private val parallelLats = doubleArrayOf(-60.0, -30.0, 0.0, 30.0, 60.0)
+
+    // Reusable graphics primitives (zero allocations in onDraw)
+    private val clipPath = Path()
+    private val graticulePath = Path()
+    private val landmassPath = Path()
+    private val frontArcPath = Path()
+    private val backArcPath = Path()
+    private val reusableRect = RectF()
+    private val tempProj = ReusableProjectedPoint()
+    private val slerpOut = DoubleArray(2)
+
+    private class ReusableProjectedPoint {
+        var x: Float = 0f
+        var y: Float = 0f
+        var z: Float = 0f
+        var visible: Boolean = false
+
+        fun set(latRad: Double, lonRad: Double, cx: Float, cy: Float, radius: Float, cLat: Double, cLon: Double): Boolean {
+            val cosC = sin(cLat) * sin(latRad) + cos(cLat) * cos(latRad) * cos(lonRad - cLon)
+            visible = cosC >= 0.0
+            x = cx + (radius * cos(latRad) * sin(lonRad - cLon)).toFloat()
+            y = cy - (radius * (cos(cLat) * sin(latRad) - sin(cLat) * cos(latRad) * cos(lonRad - cLon))).toFloat()
+            z = (radius * cosC).toFloat()
+            return visible
+        }
+    }
+
+    private class VisiblePin {
+        var index: Int = 0
+        var pt: GlobePoint? = null
+        var projX: Float = 0f
+        var projY: Float = 0f
+        var labelOffsetY: Float = -36f
+        var labelOffsetX: Float = 0f
+        var showStem: Boolean = false
+    }
+
+    private val visiblePinsPool = mutableListOf<VisiblePin>()
+
+    // Cached shader dimensions
+    private var cachedWidth = 0f
+    private var cachedHeight = 0f
+    private var cachedBaseRadius = 0f
+
     init {
-        pulseAnimator.start()
+        updateAnimationState()
+    }
+
+    private fun updateAnimationState() {
+        val shouldAnimate = isAttachedToWindow && isShown && windowVisibility == View.VISIBLE
+        if (shouldAnimate) {
+            if (!pulseAnimator.isRunning) {
+                pulseAnimator.start()
+            }
+        } else {
+            if (pulseAnimator.isRunning) {
+                pulseAnimator.cancel()
+            }
+        }
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        if (!pulseAnimator.isRunning) {
-            pulseAnimator.start()
-        }
+        updateAnimationState()
     }
 
     override fun onDetachedFromWindow() {
@@ -279,12 +351,45 @@ class PathGlobeView @JvmOverloads constructor(
         super.onDetachedFromWindow()
     }
 
+    override fun onVisibilityChanged(changedView: View, visibility: Int) {
+        super.onVisibilityChanged(changedView, visibility)
+        updateAnimationState()
+    }
+
+    override fun onWindowVisibilityChanged(visibility: Int) {
+        super.onWindowVisibilityChanged(visibility)
+        updateAnimationState()
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        updateOceanShader(w.toFloat(), h.toFloat())
+    }
+
+    private fun updateOceanShader(w: Float, h: Float) {
+        if (w <= 0f || h <= 0f) return
+        cachedWidth = w
+        cachedHeight = h
+        val cx = w / 2f
+        val cy = h / 2f
+        val baseRadius = min(w, h) * 0.43f
+        cachedBaseRadius = baseRadius
+
+        sphereBgPaint.shader = RadialGradient(
+            cx - baseRadius * 0.35f, cy - baseRadius * 0.35f, baseRadius * 1.35f,
+            intArrayOf(Color.parseColor("#131D2D"), Color.parseColor("#090E17")),
+            floatArrayOf(0.3f, 1.0f),
+            Shader.TileMode.CLAMP
+        )
+    }
+
     fun setPath(geoCoordinates: List<PathGeoDomain>) {
         points.clear()
         val valid = geoCoordinates.filter {
-            it.latitude != null && it.latitude != 0.0 && it.longitude != null && it.longitude != 0.0
+            it.latitude != null && it.longitude != null
         }
         if (valid.isEmpty()) {
+            contentDescription = "Interactive SCION path globe"
             invalidate()
             return
         }
@@ -316,6 +421,11 @@ class PathGlobeView @JvmOverloads constructor(
         centerLon = targetLon
         zoom = 1.0f
 
+        val hopsCount = points.size
+        val src = points.first().label ?: "Origin"
+        val dst = points.last().label ?: "Destination"
+        contentDescription = "SCION Path globe showing $hopsCount hops from $src to $dst. Double tap to reset orientation."
+
         invalidate()
     }
 
@@ -325,6 +435,10 @@ class PathGlobeView @JvmOverloads constructor(
 
         if (scaleDetector.isInProgress) {
             isDragging = false
+            if (!touchInterceptionDisallowed) {
+                parent?.requestDisallowInterceptTouchEvent(true)
+                touchInterceptionDisallowed = true
+            }
             return true
         }
 
@@ -332,29 +446,53 @@ class PathGlobeView @JvmOverloads constructor(
             MotionEvent.ACTION_DOWN -> {
                 lastTouchX = event.x
                 lastTouchY = event.y
-                isDragging = true
-                parent?.requestDisallowInterceptTouchEvent(true)
+                initialTouchX = event.x
+                initialTouchY = event.y
+                isDragging = false
+                touchInterceptionDisallowed = false
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
-                if (isDragging && event.pointerCount == 1) {
+                if (event.pointerCount == 1) {
                     val dx = event.x - lastTouchX
                     val dy = event.y - lastTouchY
+                    val totalDx = abs(event.x - initialTouchX)
+                    val totalDy = abs(event.y - initialTouchY)
 
-                    // Drag sensitivity scaled inversely with zoom for stable control
-                    val sensitivity = 0.005 / zoom
-                    centerLon -= dx * sensitivity
-                    centerLat = (centerLat + dy * sensitivity).coerceIn(-PI / 2.2, PI / 2.2)
+                    if (!isDragging) {
+                        if (totalDx > touchSlop || totalDy > touchSlop) {
+                            if (totalDx > totalDy) {
+                                // Horizontal rotation intent
+                                isDragging = true
+                                if (!touchInterceptionDisallowed) {
+                                    parent?.requestDisallowInterceptTouchEvent(true)
+                                    touchInterceptionDisallowed = true
+                                }
+                            } else {
+                                // Vertical scrolling intent: let parent scroll view handle it
+                                return false
+                            }
+                        }
+                    }
 
-                    lastTouchX = event.x
-                    lastTouchY = event.y
-                    invalidate()
-                    return true
+                    if (isDragging) {
+                        val sensitivity = 0.005 / zoom
+                        centerLon -= dx * sensitivity
+                        centerLat = (centerLat + dy * sensitivity).coerceIn(-PI / 2.2, PI / 2.2)
+
+                        lastTouchX = event.x
+                        lastTouchY = event.y
+                        invalidate()
+                        return true
+                    }
                 }
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 isDragging = false
-                parent?.requestDisallowInterceptTouchEvent(false)
+                if (touchInterceptionDisallowed) {
+                    parent?.requestDisallowInterceptTouchEvent(false)
+                    touchInterceptionDisallowed = false
+                }
                 return true
             }
         }
@@ -366,21 +504,18 @@ class PathGlobeView @JvmOverloads constructor(
 
         val w = width.toFloat()
         val h = height.toFloat()
-        if (w <= 0 || h <= 0) return
+        if (w <= 0f || h <= 0f) return
+
+        if (w != cachedWidth || h != cachedHeight || sphereBgPaint.shader == null) {
+            updateOceanShader(w, h)
+        }
 
         val cx = w / 2f
         val cy = h / 2f
-        val baseRadius = min(w, h) * 0.43f
+        val baseRadius = cachedBaseRadius
         val radius = baseRadius * zoom
 
         // 1. Draw Sphere Background & Oceanic Depth
-        val oceanShader = RadialGradient(
-            cx - baseRadius * 0.35f, cy - baseRadius * 0.35f, baseRadius * 1.35f,
-            intArrayOf(Color.parseColor("#131D2D"), Color.parseColor("#090E17")),
-            floatArrayOf(0.3f, 1.0f),
-            Shader.TileMode.CLAMP
-        )
-        sphereBgPaint.shader = oceanShader
         canvas.drawCircle(cx, cy, baseRadius, sphereBgPaint)
 
         // Outer soft cyan glow
@@ -388,9 +523,8 @@ class PathGlobeView @JvmOverloads constructor(
         canvas.drawCircle(cx, cy, baseRadius, atmospherePaint)
 
         // Clip everything inside sphere
-        val clipPath = Path().apply {
-            addCircle(cx, cy, baseRadius, Path.Direction.CW)
-        }
+        clipPath.rewind()
+        clipPath.addCircle(cx, cy, baseRadius, Path.Direction.CW)
         canvas.save()
         canvas.clipPath(clipPath)
 
@@ -403,7 +537,7 @@ class PathGlobeView @JvmOverloads constructor(
         // 4. Draw Path Arcs between hops
         drawPathArcs(canvas, cx, cy, radius)
 
-        // 5. Draw Hop Node Pins and Intelligent Collision-Free Labels
+        // 5. Draw Hop Node Pins and Tiered Collision-Free Labels
         drawHopPins(canvas, cx, cy, radius)
 
         canvas.restore()
@@ -412,24 +546,22 @@ class PathGlobeView @JvmOverloads constructor(
         canvas.drawCircle(cx, cy, baseRadius, atmospherePaint)
     }
 
-    private fun project(latRad: Double, lonRad: Double, cx: Float, cy: Float, radius: Float): ProjectedPoint? {
-        val cosC = sin(centerLat) * sin(latRad) + cos(centerLat) * cos(latRad) * cos(lonRad - centerLon)
-        val visible = cosC >= 0.0
-
-        val x = cx + (radius * cos(latRad) * sin(lonRad - centerLon)).toFloat()
-        val y = cy - (radius * (cos(centerLat) * sin(latRad) - sin(centerLat) * cos(latRad) * cos(lonRad - centerLon))).toFloat()
-        val z = (radius * cosC).toFloat()
-
-        return ProjectedPoint(x, y, z, visible)
+    private fun projectInto(
+        latRad: Double,
+        lonRad: Double,
+        cx: Float,
+        cy: Float,
+        radius: Float,
+        out: ReusableProjectedPoint
+    ): Boolean {
+        return out.set(latRad, lonRad, cx, cy, radius, centerLat, centerLon)
     }
-
-    private data class ProjectedPoint(val x: Float, val y: Float, val z: Float, val visible: Boolean)
 
     private fun drawGraticule(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
         // Parallels (Latitudes: -60, -30, 0, 30, 60)
-        for (latDeg in listOf(-60.0, -30.0, 0.0, 30.0, 60.0)) {
+        for (latDeg in parallelLats) {
             val latRad = Math.toRadians(latDeg)
-            val path = Path()
+            graticulePath.rewind()
             var first = true
 
             val isEquator = latDeg == 0.0
@@ -437,25 +569,25 @@ class PathGlobeView @JvmOverloads constructor(
 
             for (lonDeg in -180..180 step 10) {
                 val lonRad = Math.toRadians(lonDeg.toDouble())
-                val p = project(latRad, lonRad, cx, cy, radius)
-                if (p != null && p.visible) {
+                projectInto(latRad, lonRad, cx, cy, radius, tempProj)
+                if (tempProj.visible) {
                     if (first) {
-                        path.moveTo(p.x, p.y)
+                        graticulePath.moveTo(tempProj.x, tempProj.y)
                         first = false
                     } else {
-                        path.lineTo(p.x, p.y)
+                        graticulePath.lineTo(tempProj.x, tempProj.y)
                     }
                 } else {
                     first = true
                 }
             }
-            canvas.drawPath(path, paint)
+            canvas.drawPath(graticulePath, paint)
         }
 
         // Meridians (Longitudes every 30 deg)
         for (lonDeg in -180 until 180 step 30) {
             val lonRad = Math.toRadians(lonDeg.toDouble())
-            val path = Path()
+            graticulePath.rewind()
             var first = true
 
             val isPrime = lonDeg == 0
@@ -463,43 +595,50 @@ class PathGlobeView @JvmOverloads constructor(
 
             for (latDeg in -80..80 step 5) {
                 val latRad = Math.toRadians(latDeg.toDouble())
-                val p = project(latRad, lonRad, cx, cy, radius)
-                if (p != null && p.visible) {
+                projectInto(latRad, lonRad, cx, cy, radius, tempProj)
+                if (tempProj.visible) {
                     if (first) {
-                        path.moveTo(p.x, p.y)
+                        graticulePath.moveTo(tempProj.x, tempProj.y)
                         first = false
                     } else {
-                        path.lineTo(p.x, p.y)
+                        graticulePath.lineTo(tempProj.x, tempProj.y)
                     }
                 } else {
                     first = true
                 }
             }
-            canvas.drawPath(path, paint)
+            canvas.drawPath(graticulePath, paint)
         }
     }
 
     private fun drawLandmasses(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
-        for (polygon in worldLandmasses) {
-            val path = Path()
+        for (polygonRad in worldLandmassesRad) {
+            landmassPath.rewind()
+            var anyVisible = false
             var first = true
 
-            for ((latDeg, lonDeg) in polygon) {
-                val latRad = Math.toRadians(latDeg)
-                val lonRad = Math.toRadians(lonDeg)
-                val p = project(latRad, lonRad, cx, cy, radius)
-                if (p != null && p.visible) {
-                    if (first) {
-                        path.moveTo(p.x, p.y)
-                        first = false
-                    } else {
-                        path.lineTo(p.x, p.y)
-                    }
+            for (i in polygonRad.indices step 2) {
+                val latRad = polygonRad[i]
+                val lonRad = polygonRad[i + 1]
+                projectInto(latRad, lonRad, cx, cy, radius, tempProj)
+
+                if (tempProj.visible) {
+                    anyVisible = true
+                }
+
+                if (first) {
+                    landmassPath.moveTo(tempProj.x, tempProj.y)
+                    first = false
+                } else {
+                    landmassPath.lineTo(tempProj.x, tempProj.y)
                 }
             }
-            path.close()
-            canvas.drawPath(path, landPaint)
-            canvas.drawPath(path, landBorderPaint)
+
+            if (anyVisible) {
+                landmassPath.close()
+                canvas.drawPath(landmassPath, landPaint)
+                canvas.drawPath(landmassPath, landBorderPaint)
+            }
         }
     }
 
@@ -507,8 +646,8 @@ class PathGlobeView @JvmOverloads constructor(
         if (points.size < 2) return
 
         val totalSegments = 24
-        val frontPath = Path()
-        val backPath = Path()
+        frontArcPath.rewind()
+        backArcPath.rewind()
 
         var globalPulseX = -1f
         var globalPulseY = -1f
@@ -523,46 +662,48 @@ class PathGlobeView @JvmOverloads constructor(
             val lat2 = Math.toRadians(p2.lat)
             val lon2 = Math.toRadians(p2.lon)
 
-            var lastPt: ProjectedPoint? = null
+            var lastWasVisible: Boolean? = null
 
             for (step in 0..totalSegments) {
                 val t = step / totalSegments.toDouble()
-                val (interLat, interLon) = slerp(lat1, lon1, lat2, lon2, t)
-                val proj = project(interLat, interLon, cx, cy, radius) ?: continue
+                slerpInto(lat1, lon1, lat2, lon2, t, slerpOut)
+                projectInto(slerpOut[0], slerpOut[1], cx, cy, radius, tempProj)
 
-                if (proj.visible) {
-                    if (lastPt == null || !lastPt.visible) {
-                        frontPath.moveTo(proj.x, proj.y)
+                if (tempProj.visible) {
+                    if (lastWasVisible != true) {
+                        frontArcPath.moveTo(tempProj.x, tempProj.y)
                     } else {
-                        frontPath.lineTo(proj.x, proj.y)
+                        frontArcPath.lineTo(tempProj.x, tempProj.y)
                     }
+                    lastWasVisible = true
                 } else {
-                    if (lastPt == null || lastPt.visible) {
-                        backPath.moveTo(proj.x, proj.y)
+                    if (lastWasVisible != false) {
+                        backArcPath.moveTo(tempProj.x, tempProj.y)
                     } else {
-                        backPath.lineTo(proj.x, proj.y)
+                        backArcPath.lineTo(tempProj.x, tempProj.y)
                     }
+                    lastWasVisible = false
                 }
-                lastPt = proj
             }
 
             // Compute current pulse dot along path
-            val pulseT = (pulseProgress * (points.size - 1) - i).coerceIn(0f, 1f).toDouble()
-            if (pulseT in 0.0..1.0 && (pulseProgress * (points.size - 1)) >= i && (pulseProgress * (points.size - 1)) <= (i + 1)) {
-                val (pLat, pLon) = slerp(lat1, lon1, lat2, lon2, pulseT)
-                val pProj = project(pLat, pLon, cx, cy, radius)
-                if (pProj != null && pProj.visible) {
-                    globalPulseX = pProj.x
-                    globalPulseY = pProj.y
+            val progressScaled = pulseProgress * (points.size - 1)
+            if (progressScaled >= i && progressScaled <= (i + 1)) {
+                val pulseT = (progressScaled - i).coerceIn(0f, 1f).toDouble()
+                slerpInto(lat1, lon1, lat2, lon2, pulseT, slerpOut)
+                projectInto(slerpOut[0], slerpOut[1], cx, cy, radius, tempProj)
+                if (tempProj.visible) {
+                    globalPulseX = tempProj.x
+                    globalPulseY = tempProj.y
                     globalPulseVisible = true
                 }
             }
         }
 
         // Draw back & front paths
-        canvas.drawPath(backPath, pathBackArcPaint)
-        canvas.drawPath(frontPath, pathGlowPaint)
-        canvas.drawPath(frontPath, pathArcPaint)
+        canvas.drawPath(backArcPath, pathBackArcPaint)
+        canvas.drawPath(frontArcPath, pathGlowPaint)
+        canvas.drawPath(frontArcPath, pathArcPaint)
 
         // Draw animated pulse
         if (globalPulseVisible) {
@@ -575,53 +716,97 @@ class PathGlobeView @JvmOverloads constructor(
         }
     }
 
-    private data class VisiblePin(
-        val index: Int,
-        val pt: GlobePoint,
-        val proj: ProjectedPoint,
-        var labelOffsetY: Float = -36f,
-        var labelOffsetX: Float = 0f,
-        var showStem: Boolean = false
-    )
-
     private fun drawHopPins(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
-        val visibleList = mutableListOf<VisiblePin>()
-
+        var visibleCount = 0
         for ((index, pt) in points.withIndex()) {
             val latRad = Math.toRadians(pt.lat)
             val lonRad = Math.toRadians(pt.lon)
-            val proj = project(latRad, lonRad, cx, cy, radius) ?: continue
-            if (!proj.visible) continue
-            visibleList.add(VisiblePin(index, pt, proj))
+            projectInto(latRad, lonRad, cx, cy, radius, tempProj)
+            if (!tempProj.visible) continue
+
+            while (visiblePinsPool.size <= visibleCount) {
+                visiblePinsPool.add(VisiblePin())
+            }
+            val pin = visiblePinsPool[visibleCount]
+            pin.index = index
+            pin.pt = pt
+            pin.projX = tempProj.x
+            pin.projY = tempProj.y
+            pin.labelOffsetY = -36f
+            pin.labelOffsetX = 0f
+            pin.showStem = false
+            visibleCount++
         }
 
-        if (visibleList.isEmpty()) return
+        if (visibleCount == 0) return
 
-        // Intelligent Collision Resolution:
-        // Check pairwise distance; if two pins project within 55px of each other,
-        // offset their labels in opposite directions so they NEVER overlap!
-        for (i in 0 until visibleList.size) {
-            for (j in i + 1 until visibleList.size) {
-                val pinA = visibleList[i]
-                val pinB = visibleList[j]
-                val dist = hypot((pinA.proj.x - pinB.proj.x).toDouble(), (pinA.proj.y - pinB.proj.y).toDouble()).toFloat()
+        // Multi-Node Cluster Collision Resolution using Disjoint-Set (Union-Find)
+        if (visibleCount > 1) {
+            val parent = IntArray(visibleCount) { it }
+            fun find(i: Int): Int {
+                var root = i
+                while (root != parent[root]) root = parent[root]
+                var curr = i
+                while (curr != root) {
+                    val next = parent[curr]
+                    parent[curr] = root
+                    curr = next
+                }
+                return root
+            }
 
-                if (dist < 55f) {
-                    // Stagger: pinA above, pinB below
-                    pinA.labelOffsetY = -44f
-                    pinA.showStem = true
+            for (i in 0 until visibleCount) {
+                val pinA = visiblePinsPool[i]
+                for (j in i + 1 until visibleCount) {
+                    val pinB = visiblePinsPool[j]
+                    val dist = hypot((pinA.projX - pinB.projX).toDouble(), (pinA.projY - pinB.projY).toDouble()).toFloat()
+                    if (dist < 55f) {
+                        val rootA = find(i)
+                        val rootB = find(j)
+                        if (rootA != rootB) {
+                            parent[rootB] = rootA
+                        }
+                    }
+                }
+            }
 
-                    pinB.labelOffsetY = 24f
-                    pinB.showStem = true
+            // Group pins into clusters by their root representative
+            val clusters = mutableMapOf<Int, MutableList<VisiblePin>>()
+            for (i in 0 until visibleCount) {
+                val root = find(i)
+                clusters.getOrPut(root) { mutableListOf() }.add(visiblePinsPool[i])
+            }
+
+            // Assign distinct vertical tiers and horizontal offsets for each pin in a cluster
+            val tierOffsets = floatArrayOf(-46f, 26f, -76f, 54f, -104f, 82f)
+            for ((_, cluster) in clusters) {
+                if (cluster.size == 1) {
+                    cluster[0].labelOffsetY = -36f
+                    cluster[0].labelOffsetX = 0f
+                    cluster[0].showStem = false
+                } else {
+                    for ((idx, pin) in cluster.withIndex()) {
+                        pin.labelOffsetY = tierOffsets[idx % tierOffsets.size]
+                        pin.labelOffsetX = if (cluster.size > 2) {
+                            when (idx % 3) {
+                                1 -> -20f
+                                2 -> 20f
+                                else -> 0f
+                            }
+                        } else 0f
+                        pin.showStem = true
+                    }
                 }
             }
         }
 
         // Draw Pins & Labels
-        for (item in visibleList) {
-            val proj = item.proj
-            val pt = item.pt
+        for (i in 0 until visibleCount) {
+            val item = visiblePinsPool[i]
+            val pt = item.pt ?: continue
             val index = item.index
+            val px = item.projX
+            val py = item.projY
 
             val pinColor = when {
                 pt.isSource -> Color.parseColor("#10B981") // Emerald Green
@@ -634,22 +819,22 @@ class PathGlobeView @JvmOverloads constructor(
             pinHaloPaint.alpha = 50
 
             // Halo pulse
-            canvas.drawCircle(proj.x, proj.y, 14f, pinHaloPaint)
+            canvas.drawCircle(px, py, 14f, pinHaloPaint)
             // Pin Dark Outline
-            canvas.drawCircle(proj.x, proj.y, 7f, pinDarkBorderPaint)
+            canvas.drawCircle(px, py, 7f, pinDarkBorderPaint)
             // Main Pin Core
-            canvas.drawCircle(proj.x, proj.y, 6f, pinFillPaint)
+            canvas.drawCircle(px, py, 6f, pinFillPaint)
             // Center Dot
             pinFillPaint.color = Color.WHITE
-            canvas.drawCircle(proj.x, proj.y, 2.5f, pinFillPaint)
+            canvas.drawCircle(px, py, 2.5f, pinFillPaint)
 
             // Label pill calculation
             val label = pt.label ?: "Hop ${index + 1}"
             val textWidth = labelTextPaint.measureText(label)
             val pillPadding = 10f
             val pillHeight = 32f
-            val pillCenterX = proj.x + item.labelOffsetX
-            val pillCenterY = proj.y + item.labelOffsetY
+            val pillCenterX = px + item.labelOffsetX
+            val pillCenterY = py + item.labelOffsetY
 
             val pillLeft = pillCenterX - (textWidth / 2f) - pillPadding
             val pillRight = pillCenterX + (textWidth / 2f) + pillPadding
@@ -659,19 +844,26 @@ class PathGlobeView @JvmOverloads constructor(
             // Draw stem line from pin to label if offset
             if (item.showStem) {
                 val stemTargetY = if (item.labelOffsetY < 0) pillBottom else pillTop
-                canvas.drawLine(proj.x, proj.y, pillCenterX, stemTargetY, labelStemPaint)
+                canvas.drawLine(px, py, pillCenterX, stemTargetY, labelStemPaint)
             }
 
-            val rect = RectF(pillLeft, pillTop, pillRight, pillBottom)
+            reusableRect.set(pillLeft, pillTop, pillRight, pillBottom)
             // Crisp solid label pill
-            canvas.drawRoundRect(rect, 8f, 8f, labelBgPaint)
-            canvas.drawRoundRect(rect, 8f, 8f, labelBorderPaint)
+            canvas.drawRoundRect(reusableRect, 8f, 8f, labelBgPaint)
+            canvas.drawRoundRect(reusableRect, 8f, 8f, labelBorderPaint)
             canvas.drawText(label, pillCenterX, pillCenterY + 8f, labelTextPaint)
         }
     }
 
-    // Great circle interpolation (Spherical Linear Interpolation)
-    private fun slerp(lat1: Double, lon1: Double, lat2: Double, lon2: Double, t: Double): Pair<Double, Double> {
+    // Great circle interpolation (Spherical Linear Interpolation) without heap allocation
+    private fun slerpInto(
+        lat1: Double,
+        lon1: Double,
+        lat2: Double,
+        lon2: Double,
+        t: Double,
+        out: DoubleArray
+    ) {
         val x1 = cos(lat1) * cos(lon1)
         val y1 = cos(lat1) * sin(lon1)
         val z1 = sin(lat1)
@@ -684,7 +876,9 @@ class PathGlobeView @JvmOverloads constructor(
         val omega = Math.acos(dot)
 
         if (abs(omega) < 1e-6) {
-            return lat1 to lon1
+            out[0] = lat1
+            out[1] = lon1
+            return
         }
 
         val sinOmega = sin(omega)
@@ -695,9 +889,7 @@ class PathGlobeView @JvmOverloads constructor(
         val y = a * y1 + b * y2
         val z = a * z1 + b * z2
 
-        val outLat = atan2(z, sqrt(x * x + y * y))
-        val outLon = atan2(y, x)
-
-        return outLat to outLon
+        out[0] = atan2(z, sqrt(x * x + y * y))
+        out[1] = atan2(y, x)
     }
 }

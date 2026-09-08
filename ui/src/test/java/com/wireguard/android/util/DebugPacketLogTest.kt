@@ -5,13 +5,13 @@
 
 package com.wireguard.android.util
 
-private typealias LogEntry = DebugPacketLogModels.LogEntry
-
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+
+private typealias LogEntry = DebugPacketLogModels.LogEntry
 
 class DebugPacketLogParserTest {
 
