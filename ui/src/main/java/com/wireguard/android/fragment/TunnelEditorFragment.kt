@@ -101,6 +101,7 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
         pathPolicyJson = proxy.`interface`.pathPolicy
         // TunnelMode als Quelle der Wahrheit verwenden
         setScionMode(proxy.`interface`.tunnelMode == "SCION")
+        updatePathPolicyStatus()
     }
 
     private fun onConfigSaved(savedTunnel: Tunnel, throwable: Throwable?) {
@@ -267,7 +268,7 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
 
     @Suppress("UNUSED_PARAMETER")
     fun onRequestConfigurePathPolicy(view: View?) {
-        val dialog = PathPolicyDialogFragment.newInstance(pathPolicyJson)
+        val dialog = PathPolicyDialogFragment.newInstance(pathPolicyJson, isEditMode = pathPolicyJson.isNotBlank())
         childFragmentManager.setFragmentResultListener(PathPolicyDialogFragment.REQUEST_KEY_POLICY, viewLifecycleOwner) { _, bundle ->
             val resultJson = bundle.getString(PathPolicyDialogFragment.KEY_RESULT_JSON)
             if (resultJson != null) {
@@ -426,7 +427,9 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
                 onSelectedTunnelChanged(null, tunnel)
             } else {
                 binding!!.config = config
+                pathPolicyJson = config.`interface`.pathPolicy
                 setScionMode(config.`interface`.tunnelMode == "SCION")
+                updatePathPolicyStatus()
             }
         }
         super.onViewStateRestored(savedInstanceState)

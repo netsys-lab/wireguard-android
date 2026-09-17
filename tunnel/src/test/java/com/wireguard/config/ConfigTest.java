@@ -46,4 +46,49 @@ public class ConfigTest {
         assertEquals("Test config's allowed IPs are 0.0.0.0/0 and ::0/0", config.getPeers().get(0).getAllowedIps(), expectedAllowedIps);
         assertEquals("Test config has one DNS server", 1, config.getInterface().getDnsServers().size());
     }
+
+    @Test
+    public void multiline_path_policy_parses_and_preserves_tunnel_config() throws IOException, ParseException {
+        final String rawConf = "[Interface]\n" +
+                "# TunnelMode = SCION\n" +
+                "# PathPolicy = {\n" +
+                "  \"policies\": {\n" +
+                "    \"p1\": {\n" +
+                "      \"name\": \"Jonas\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "}\n" +
+                "Address = 10.0.0.1/32\n" +
+                "PrivateKey = aAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEE=\n" +
+                "DNS = 1.1.1.1\n";
+
+        try (final java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(rawConf.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
+            final Config config = Config.parse(bais);
+            assertNotNull(config);
+            assertEquals(1, config.getInterface().getAddresses().size());
+            assertEquals(1, config.getInterface().getDnsServers().size());
+            assertTrue("Path policy should contain Jonas", config.getInterface().getPathPolicy().contains("Jonas"));
+
+            // Verify round-trip serializes on a single line
+            final String wgQuick = config.toWgQuickString();
+            assertTrue(wgQuick.contains("# PathPolicy = "));
+            // Ensure no raw JSON line breaks inside Interface
+            final String[] lines = wgQuick.split("\n");
+            for (final String l : lines) {
+                final String trimmed = l.trim();
+                if (trimmed.isEmpty() || trimmed.startsWith("#") || trimmed.startsWith("[")) continue;
+                assertTrue("Non-comment, non-empty line must contain '=': " + trimmed, trimmed.contains("="));
+            }
+
+            // Verify parsing the serialized string back
+            try (final java.io.ByteArrayInputStream roundTripStream = new java.io.ByteArrayInputStream(wgQuick.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
+                final Config roundTripConfig = Config.parse(roundTripStream);
+                assertNotNull(roundTripConfig);
+                assertEquals(config.getInterface().getAddresses(), roundTripConfig.getInterface().getAddresses());
+                assertEquals(config.getInterface().getKeyPair().getPrivateKey(), roundTripConfig.getInterface().getKeyPair().getPrivateKey());
+                assertTrue(roundTripConfig.getInterface().getPathPolicy().contains("Jonas"));
+            }
+        }
+    }
 }
+

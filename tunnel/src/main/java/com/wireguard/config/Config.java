@@ -73,8 +73,30 @@ public final class Config {
         @Nullable String pathPolicy = null;
         @Nullable String tunnelModeRaw = null;
         @Nullable String line;
+        final StringBuilder pathPolicyBuilder = new StringBuilder();
+        boolean readingMultiLinePathPolicy = false;
+        int openBraces = 0;
         while ((line = reader.readLine()) != null) {
             final String trimmedLine = line.trim();
+
+            if (readingMultiLinePathPolicy) {
+                if (trimmedLine.startsWith("[") || (trimmedLine.contains("=") && !trimmedLine.startsWith("#"))) {
+                    pathPolicy = pathPolicyBuilder.toString().trim();
+                    readingMultiLinePathPolicy = false;
+                    pathPolicyBuilder.setLength(0);
+                } else {
+                    final String jsonChunk = trimmedLine.startsWith("#") ? trimmedLine.substring(1).trim() : trimmedLine;
+                    pathPolicyBuilder.append(' ').append(jsonChunk);
+                    openBraces += countBraces(jsonChunk);
+                    if (openBraces <= 0) {
+                        pathPolicy = pathPolicyBuilder.toString().trim();
+                        readingMultiLinePathPolicy = false;
+                        pathPolicyBuilder.setLength(0);
+                    }
+                    continue;
+                }
+            }
+
             if (trimmedLine.startsWith("#")) {
                 final String upper = trimmedLine.toUpperCase(Locale.ENGLISH);
                 final int equalsIndex = trimmedLine.indexOf('=');
@@ -86,6 +108,12 @@ public final class Config {
                         bootstrapUrl = value;
                     } else if (upper.contains("PATHPOLICY")) {
                         pathPolicy = value;
+                        if (value.startsWith("{") && !value.endsWith("}")) {
+                            readingMultiLinePathPolicy = true;
+                            pathPolicyBuilder.setLength(0);
+                            pathPolicyBuilder.append(value);
+                            openBraces = countBraces(value);
+                        }
                     }
                 }
             }
@@ -121,6 +149,10 @@ public final class Config {
                         Reason.UNKNOWN_SECTION, line);
             }
         }
+        if (readingMultiLinePathPolicy && pathPolicyBuilder.length() > 0) {
+            pathPolicy = pathPolicyBuilder.toString().trim();
+            readingMultiLinePathPolicy = false;
+        }
         if (inPeerSection)
             builder.parsePeer(peerLines);
         if (!seenInterfaceSection)
@@ -129,6 +161,26 @@ public final class Config {
         // Combine all [Interface] sections in the file.
         builder.parseInterface(interfaceLines, tunnelModeRaw, bootstrapUrl, pathPolicy);
         return builder.build();
+    }
+
+    private static int countBraces(final String str) {
+        int count = 0;
+        boolean inQuotes = false;
+        boolean escaped = false;
+        for (int i = 0; i < str.length(); i++) {
+            final char c = str.charAt(i);
+            if (escaped) {
+                escaped = false;
+            } else if (c == '\\') {
+                escaped = true;
+            } else if (c == '"') {
+                inQuotes = !inQuotes;
+            } else if (!inQuotes) {
+                if (c == '{') count++;
+                else if (c == '}') count--;
+            }
+        }
+        return count;
     }
 
     @Override

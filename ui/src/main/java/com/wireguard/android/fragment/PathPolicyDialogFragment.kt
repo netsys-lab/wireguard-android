@@ -47,6 +47,7 @@ class PathPolicyDialogFragment : DialogFragment() {
     private lateinit var tvStepSubtitle: TextView
     private lateinit var btnBack: View
     private lateinit var btnNext: View
+    private lateinit var btnSave: View
     private lateinit var btnBackArrow: View
     private lateinit var btnAdvanced: View
     private lateinit var advancedConfigContainer: View
@@ -71,6 +72,9 @@ class PathPolicyDialogFragment : DialogFragment() {
     private lateinit var tvValidationDesc: TextView
 
     private var currentStep = 0  // Index into activeSteps
+
+    // Edit mode
+    private var isEditMode = false
 
     // Advanced mode
     private var isAdvancedMode = false
@@ -127,6 +131,7 @@ class PathPolicyDialogFragment : DialogFragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setStyle(STYLE_NORMAL, R.style.PathPolicyDialogTheme)
+        isEditMode = arguments?.getBoolean(KEY_IS_EDIT_MODE, false) ?: false
         arguments?.getString(KEY_POLICY_JSON)?.let {
             if (it.isNotEmpty()) {
                 currentJson = it
@@ -149,6 +154,7 @@ class PathPolicyDialogFragment : DialogFragment() {
         tvStepSubtitle = root.findViewById(R.id.tv_step_subtitle)
         btnBack = root.findViewById(R.id.btn_wizard_back)
         btnNext = root.findViewById(R.id.btn_wizard_next)
+        btnSave = root.findViewById(R.id.btn_wizard_save)
         btnBackArrow = root.findViewById(R.id.btn_back_arrow)
 
         aclList = root.findViewById(R.id.acl_list)
@@ -209,11 +215,20 @@ class PathPolicyDialogFragment : DialogFragment() {
             }
         }
 
+        btnSave.setOnClickListener {
+            saveAndDismiss()
+        }
+
         // Build ordering entries
         buildOrderingEntries()
 
         // Initialize from JSON
         syncUiFromCurrentJson()
+
+        if (isEditMode) {
+            root.findViewById<TextView>(R.id.tv_dialog_header_title)?.text = "Edit Path Policy"
+            enableAdvancedMode()
+        }
 
         // Set initial step
         navigateToStep(0)
@@ -415,13 +430,19 @@ class PathPolicyDialogFragment : DialogFragment() {
             val flipperIndex = activeSteps[i]
 
             // Column for dot + label
+            val targetStep = i
             val column = LinearLayout(ctx).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_HORIZONTAL
+                isClickable = true
+                isFocusable = true
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
                 )
+                setOnClickListener {
+                    navigateToStep(targetStep)
+                }
             }
 
             // Dot
@@ -525,7 +546,11 @@ class PathPolicyDialogFragment : DialogFragment() {
     private fun updateStepHeader() {
         val flipperIndex = activeSteps[currentStep]
         val info = steps[flipperIndex]
-        tvStepBadge.text = "● STEP ${currentStep + 1} OF ${activeSteps.size}"
+        if (isEditMode) {
+            tvStepBadge.text = "● EDITING POLICY • STEP ${currentStep + 1} OF ${activeSteps.size}"
+        } else {
+            tvStepBadge.text = "● STEP ${currentStep + 1} OF ${activeSteps.size}"
+        }
         tvStepTitle.text = info.title
         tvStepSubtitle.text = info.subtitle
     }
@@ -545,6 +570,12 @@ class PathPolicyDialogFragment : DialogFragment() {
             next?.text = "Save Policy"
         } else {
             next?.text = "Next  →"
+        }
+
+        if (isEditMode) {
+            btnSave.visibility = if (currentStep < activeSteps.size - 1) View.VISIBLE else View.GONE
+        } else {
+            btnSave.visibility = View.GONE
         }
     }
 
@@ -821,8 +852,16 @@ class PathPolicyDialogFragment : DialogFragment() {
         val reqs = policy.optJSONObject("requirements")
         if (reqs != null) {
             val mtu = reqs.optInt("min_mtu", -1)
-            val lat = reqs.optInt("max_meta_lat", -1)
-            val bw = reqs.optInt("min_meta_bw", -1)
+            val lat = when {
+                reqs.has("max_meta_lat") -> reqs.optInt("max_meta_lat")
+                reqs.has("max_latency") -> reqs.optInt("max_latency")
+                else -> -1
+            }
+            val bw = when {
+                reqs.has("min_meta_bw") -> reqs.optInt("min_meta_bw")
+                reqs.has("min_bandwidth") -> reqs.optInt("min_bandwidth")
+                else -> -1
+            }
             if (mtu != -1) root.findViewById<EditText>(R.id.et_min_mtu)?.setText(mtu.toString())
             if (lat != -1) root.findViewById<EditText>(R.id.et_max_latency)?.setText(lat.toString())
             if (bw != -1) root.findViewById<EditText>(R.id.et_min_bandwidth)?.setText(bw.toString())
@@ -1127,6 +1166,7 @@ class PathPolicyDialogFragment : DialogFragment() {
         const val REQUEST_KEY_POLICY = "request_key_policy"
         const val KEY_RESULT_JSON = "key_result_json"
         const val KEY_POLICY_JSON = "key_policy_json"
+        const val KEY_IS_EDIT_MODE = "key_is_edit_mode"
 
         private val DEFAULT_SAMPLE_JSON = """
         {
@@ -1157,9 +1197,10 @@ class PathPolicyDialogFragment : DialogFragment() {
         }
         """.trimIndent()
 
-        fun newInstance(currentPolicyJson: String): PathPolicyDialogFragment {
+        fun newInstance(currentPolicyJson: String, isEditMode: Boolean = false): PathPolicyDialogFragment {
             val extras = Bundle()
             extras.putString(KEY_POLICY_JSON, currentPolicyJson)
+            extras.putBoolean(KEY_IS_EDIT_MODE, isEditMode)
             val fragment = PathPolicyDialogFragment()
             fragment.arguments = extras
             return fragment

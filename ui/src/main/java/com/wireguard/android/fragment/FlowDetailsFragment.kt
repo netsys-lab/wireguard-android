@@ -148,13 +148,49 @@ class FlowDetailsFragment : BaseFragment() {
             getString(R.string.latest_handshake_ago, "Just now")
     }
 
+    override fun onResume() {
+        super.onResume()
+        updateConfiguredPolicyHeader()
+        viewModel?.loadPaths()
+    }
+
+    private fun updateConfiguredPolicyHeader() {
+        val v = view ?: return
+        val tunnel = selectedTunnel ?: return
+        lifecycleScope.launch {
+            try {
+                val config = tunnel.getConfigAsync()
+                val json = config.`interface`.pathPolicy
+                if (!json.isNullOrBlank()) {
+                    val policy = com.wireguard.android.util.PathPolicyParser.parse(json)
+                    v.findViewById<TextView>(R.id.policy_name)?.text = policy.name
+                    val currentSection = viewModel?.pathSection?.value as? PathSectionState.Ready
+                    if (currentSection == null || currentSection.overrideState == com.wireguard.android.model.OverrideState.INACTIVE) {
+                        v.findViewById<TextView>(R.id.policy_description)?.text = policy.summaryDescription
+                    }
+                }
+            } catch (ignored: Exception) {}
+        }
+    }
+
     private fun renderPathSection(section: PathSectionState.Ready) {
         val v = view ?: return
         showState("active")
 
-        // Update lightweight text fields (no layout rebuild)
-        v.findViewById<TextView>(R.id.policy_name).text = section.policyName ?: section.policyState.name
-        v.findViewById<TextView>(R.id.policy_description).text = policyDescription(section)
+        val configuredPolicy = try {
+            val json = selectedTunnel?.config?.`interface`?.pathPolicy
+            if (!json.isNullOrBlank()) com.wireguard.android.util.PathPolicyParser.parse(json) else null
+        } catch (ignored: Exception) { null }
+
+        val displayName = configuredPolicy?.name ?: section.policyName ?: section.policyState.name
+        v.findViewById<TextView>(R.id.policy_name).text = displayName
+
+        val description = if (configuredPolicy != null && section.overrideState == com.wireguard.android.model.OverrideState.INACTIVE) {
+            configuredPolicy.summaryDescription
+        } else {
+            policyDescription(section)
+        }
+        v.findViewById<TextView>(R.id.policy_description).text = description
 
         val policyBadge = v.findViewById<TextView>(R.id.policy_state_badge)
         val restoreBtn = v.findViewById<TextView>(R.id.btn_restore_automatic)
@@ -230,9 +266,8 @@ class FlowDetailsFragment : BaseFragment() {
                 .commit()
         }
 
-        v.findViewById<View>(R.id.btn_configure_policy).setOnClickListener {
-            val dialog = com.wireguard.android.fragment.PathPolicyDialogFragment()
-            dialog.show(childFragmentManager, "path_policy")
+        v.findViewById<View>(R.id.policy_card).setOnClickListener {
+            openPolicyDetails()
         }
 
         restoreBtn.setOnClickListener {
@@ -241,6 +276,15 @@ class FlowDetailsFragment : BaseFragment() {
 
         v.findViewById<View>(R.id.override_notice).visibility =
             if (section.overrideState != com.wireguard.android.model.OverrideState.INACTIVE) View.VISIBLE else View.GONE
+    }
+
+    private fun openPolicyDetails() {
+        val fragment = PolicyDetailsFragment.newInstance()
+        parentFragmentManager.beginTransaction()
+            .replace(getContainerId(), fragment)
+            .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
+            .addToBackStack(null)
+            .commit()
     }
 
     private fun openPathDetails(path: PathPreviewUiModel) {

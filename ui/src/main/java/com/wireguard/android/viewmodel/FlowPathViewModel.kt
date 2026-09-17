@@ -118,7 +118,23 @@ class FlowPathViewModel(
                     state.paths.find { it.fingerprint == fp }
                 }
                 pathsLoaded = true
-                _pathSection.value = FlowPathUiMapper.toPathSection(state, effectiveDomain)
+
+                val configuredName = try {
+                    val config = (_tunnel as? com.wireguard.android.model.ObservableTunnel)?.getConfigAsync()
+                    val json = config?.`interface`?.pathPolicy
+                    if (!json.isNullOrBlank()) com.wireguard.android.util.PathPolicyParser.parse(json).name else null
+                } catch (ignored: Exception) { null }
+
+                val updatedState = if (configuredName != null) {
+                    state.copy(
+                        policyName = configuredName,
+                        policyState = com.wireguard.android.model.PolicyState.CONFIGURED
+                    )
+                } else {
+                    state
+                }
+
+                _pathSection.value = FlowPathUiMapper.toPathSection(updatedState, effectiveDomain)
             }.onFailure { e ->
                 _pathSection.value = PathSectionState.Error(e.message ?: "Failed to load paths")
             }
