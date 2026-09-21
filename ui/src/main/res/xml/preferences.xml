@@ -51,7 +51,7 @@
         android:title="@string/allow_remote_control_intents_title" />
     <Preference
         android:key="mock_scenario_settings"
-        android:title="Backend Mode &amp; Scenarios"
-        android:summary="Configure live vs simulated mock traffic and test scenarios" />
+        android:title="Mock Backend Simulation"
+        android:summary="Simulate multi-flow SCION network traffic, paths, and telemetry" />
     <com.wireguard.android.preference.DonatePreference android:singleLineTitle="false" />
 </androidx.preference.PreferenceScreen>

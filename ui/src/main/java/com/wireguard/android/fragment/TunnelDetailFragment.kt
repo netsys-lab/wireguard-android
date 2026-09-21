@@ -576,8 +576,7 @@ class TunnelDetailFragment : BaseFragment() {
                 updateSCIONInfo()
                 updateFlows()
             }
-            val scenario = GoBackend.getCurrentMockScenario()
-            val msg = if (GoBackend.isMockMode()) "Switched to Mock backend: $scenario" else "Switched to Live traffic"
+            val msg = if (GoBackend.isMockMode()) "Mock traffic simulation enabled" else "Switched to Live traffic"
             Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
         }
         dialog.onDismissCallback = {

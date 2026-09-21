@@ -7,6 +7,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"sync"
 	"time"
 )
@@ -155,11 +156,13 @@ func (m *MockDevice) FlowSnapshotsJSON() string {
 		elapsedSec = 1
 	}
 
-	// Dynamic streaming bytes simulation
+	// Dynamic streaming bytes simulation with continuous progression
 	scionTx1 := 1_250_000 + elapsedSec*24_500
 	scionRx1 := 3_800_000 + elapsedSec*78_200
 	scionTx2 := 840_000 + elapsedSec*14_200
 	scionRx2 := 1_920_000 + elapsedSec*36_800
+	scionTx4 := 4_500_000 + elapsedSec*125_000
+	scionRx4 := 15_200_000 + elapsedSec*420_000
 	ipTx := 420_000 + elapsedSec*4_200
 	ipRx := 980_000 + elapsedSec*9_600
 
@@ -209,6 +212,28 @@ func (m *MockDevice) FlowSnapshotsJSON() string {
 			ScionDstIP: "198.51.100.25",
 		},
 		{
+			ID:         4,
+			IPVersion:  4,
+			Protocol:   6, // TCP (Cloud High-Speed Backup)
+			EndpointA:  MockEndpoint{Address: "192.168.1.100", Port: 52110},
+			EndpointB:  MockEndpoint{Address: "198.51.100.50", Port: 9000},
+			Status:     "active",
+			TxPackets:  scionTx4 / 1400,
+			TxBytes:    scionTx4,
+			RxPackets:  scionRx4 / 1400,
+			RxBytes:    scionRx4,
+			EgressKind: "scion",
+			SrcIA:      m.localIA,
+			DstIA:      "64-2:0:50",
+			CreatedAt:  m.startTime.Format(time.RFC3339),
+			LastSeen:   time.Now().Format(time.RFC3339),
+			LocalIP:    "192.168.1.100",
+			LocalPort:  52110,
+			RemoteIP:   "198.51.100.50",
+			RemotePort: 9000,
+			ScionDstIP: "198.51.100.50",
+		},
+		{
 			ID:         3,
 			IPVersion:  4,
 			Protocol:   17, // UDP (DNS / WireGuard)
@@ -240,7 +265,7 @@ func (m *MockDevice) SCIONPathsForFlowJSON(flowID int64) string {
 	defer m.mu.RUnlock()
 
 	// Empty scenario or non-SCION flow
-	if m.scenario == ScenarioEmptyFlows || flowID == 3 || (flowID != 1 && flowID != 2) {
+	if m.scenario == ScenarioEmptyFlows || flowID == 3 || (flowID != 1 && flowID != 2 && flowID != 4) {
 		resp := MockFlowPathsResponse{
 			FlowID: flowID,
 			State:  "empty",
@@ -281,11 +306,14 @@ func (m *MockDevice) SCIONPathsForFlowJSON(flowID int64) string {
 	policyMode := "default"
 	policyFallback := false
 
+	elapsedSec := int64(time.Since(m.startTime).Seconds())
+	jitter := math.Sin(float64(elapsedSec)*0.25) * 1.2
+
 	if flowID == 1 {
-		latZurich := 12.4 * latScale
-		latFrankfurt := 28.5 * latScale
-		latGeneva := 32.0 * latScale
-		latGlobe := 185.0 * latScale
+		latZurich := math.Max(8.0, (12.4+jitter)*latScale)
+		latFrankfurt := math.Max(18.0, (28.5-jitter*0.8)*latScale)
+		latGeneva := math.Max(22.0, (32.0+jitter*1.1)*latScale)
+		latGlobe := math.Max(150.0, (185.0+jitter*2.0)*latScale)
 
 		paths = []MockFlowPathDTO{
 			{
@@ -448,6 +476,60 @@ func (m *MockDevice) SCIONPathsForFlowJSON(flowID int64) string {
 					{Latitude: 47.3769, Longitude: 8.5417, Address: "Zurich, Switzerland"},
 					{Latitude: 1.3521, Longitude: 103.8198, Address: "Singapore"},
 					{Latitude: 35.6762, Longitude: 139.6503, Address: "Tokyo, Japan"},
+				},
+			},
+		}
+	} else if flowID == 4 {
+		policyWinner = "fp_frankfurt_transit"
+		policyName = "HighestBandwidth"
+		policyMode = "default"
+
+		paths = []MockFlowPathDTO{
+			{
+				Fingerprint:        "fp_frankfurt_transit",
+				Display:            "Frankfurt 10Gbps Transit [64-2:0:49 ➔ 64-2:0:50 ➔ 64-1:0:12]",
+				NextHop:            "192.168.1.1:30042",
+				Expiry:             time.Now().Add(3 * time.Hour).Format(time.RFC3339),
+				MTU:                1472,
+				Interfaces:         []string{"2", "1", "3"},
+				LatencyMs:          []float64{9.5, 9.5, 9.5},
+				Bandwidth:          []int64{10_000_000_000, 10_000_000_000, 10_000_000_000},
+				LatencyMicros:      []int64{9500, 9500, 9500},
+				BandwidthKbps:      []int64{10_000_000, 10_000_000, 10_000_000},
+				TotalLatencyMicros: 28500,
+				LatencyComplete:    true,
+				BottleneckKbps:     10_000_000,
+				BandwidthComplete:  true,
+				InterAsLinks:       2,
+				LinkType:           []string{"transit", "transit"},
+				InternalHops:       []int{2, 1},
+				Geo: []MockGeoDTO{
+					{Latitude: 47.3769, Longitude: 8.5417, Address: "Zurich, Switzerland"},
+					{Latitude: 50.1109, Longitude: 8.6821, Address: "Frankfurt, Germany"},
+					{Latitude: 47.5596, Longitude: 7.5886, Address: "Basel, Switzerland"},
+				},
+			},
+			{
+				Fingerprint:        "fp_zurich_direct",
+				Display:            "Zurich Direct [64-2:0:49 ➔ 64-1:0:12]",
+				NextHop:            "192.168.1.1:30042",
+				Expiry:             time.Now().Add(4 * time.Hour).Format(time.RFC3339),
+				MTU:                1472,
+				Interfaces:         []string{"1", "2"},
+				LatencyMs:          []float64{6.2, 6.2},
+				Bandwidth:          []int64{100_000_000, 100_000_000},
+				LatencyMicros:      []int64{6200, 6200},
+				BandwidthKbps:      []int64{100_000, 100_000},
+				TotalLatencyMicros: 12400,
+				LatencyComplete:    true,
+				BottleneckKbps:     100_000,
+				BandwidthComplete:  true,
+				InterAsLinks:       1,
+				LinkType:           []string{"direct"},
+				InternalHops:       []int{1},
+				Geo: []MockGeoDTO{
+					{Latitude: 47.3769, Longitude: 8.5417, Address: "Zurich, Switzerland"},
+					{Latitude: 47.5596, Longitude: 7.5886, Address: "Basel, Switzerland"},
 				},
 			},
 		}

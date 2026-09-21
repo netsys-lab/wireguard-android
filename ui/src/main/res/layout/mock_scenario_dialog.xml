@@ -14,7 +14,7 @@
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp">
+        android:layout_marginBottom="14dp">
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -71,8 +71,7 @@
     <!-- Scrollable Content -->
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_height="wrap_content"
         android:fillViewport="true">
 
         <LinearLayout
@@ -80,19 +79,19 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- Information Card (Highlighted in center) -->
+            <!-- Primary Informational Banner -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:background="@drawable/scitra_section_card_bg"
-                android:padding="14dp"
+                android:padding="16dp"
                 android:layout_marginBottom="16dp">
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="You are switching to mocked traffic to showcase further functionality of the app."
+                    android:text="You are switching to mocked backend traffic to showcase further functionality of the app."
                     android:textColor="@color/scitra_on_surface"
                     android:textSize="13sp"
                     android:textStyle="bold"
@@ -101,144 +100,156 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="Network traffic and SCION path metrics are continuously simulated from different autonomous systems and geographic locations around the world. This lets you explore live multi-path switching, 3D interactive globe visualization, latency tracking, and policy failovers without requiring a live SCION network."
+                    android:layout_marginTop="8dp"
+                    android:text="Real-time network traffic and SCION path metrics are continuously simulated across multiple flows and global routes. This allows you to explore the app's full capabilities without requiring a live SCION network."
                     android:textColor="@color/scitra_on_surface_variant"
                     android:textSize="12sp"
                     android:lineSpacingExtra="2dp" />
             </LinearLayout>
 
-            <!-- Mode Selector (Live vs Mock) -->
+            <!-- Simulation Feature Highlights -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Traffic Mode"
+                android:text="What is simulated:"
                 android:textColor="@color/scitra_on_surface"
                 android:textSize="12sp"
                 android:textStyle="bold"
                 android:letterSpacing="0.05"
-                android:layout_marginBottom="6dp" />
+                android:layout_marginBottom="8dp" />
 
-            <RadioGroup
-                android:id="@+id/mode_radio_group"
+            <!-- Highlight 1: 3D Globe -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/scitra_section_card_bg"
+                android:padding="12dp"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🌐"
+                    android:textSize="18sp"
+                    android:layout_marginEnd="10dp" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Interactive 3D Globe Routing"
+                        android:textColor="@color/scitra_on_surface"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Global intercontinental coordinates across Zurich, London, New York, and Tokyo."
+                        android:textColor="@color/scitra_on_surface_variant"
+                        android:textSize="11sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Highlight 2: Multi-Flow Telemetry -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/scitra_section_card_bg"
+                android:padding="12dp"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📊"
+                    android:textSize="18sp"
+                    android:layout_marginEnd="10dp" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Dynamic Multi-Flow Telemetry"
+                        android:textColor="@color/scitra_on_surface"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Parallel active flows (HTTPS, Media, DNS, High-Speed) with live packet progression."
+                        android:textColor="@color/scitra_on_surface_variant"
+                        android:textSize="11sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Highlight 3: Path Selection & Overrides -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/scitra_section_card_bg"
+                android:padding="12dp"
                 android:layout_marginBottom="14dp">
 
-                <RadioButton
-                    android:id="@+id/radio_mock_mode"
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="⚡"
+                    android:textSize="18sp"
+                    android:layout_marginEnd="10dp" />
+
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="🟣 Mock Backend"
-                    android:textColor="@color/scitra_on_surface"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
+                    android:orientation="vertical">
 
-                <RadioButton
-                    android:id="@+id/radio_live_mode"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="🟢 Live Traffic"
-                    android:textColor="@color/scitra_on_surface"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-            </RadioGroup>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Path Selection &amp; Manual Overrides"
+                        android:textColor="@color/scitra_on_surface"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
 
-            <!-- Scenarios Header -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Test policy selection (Lowest Latency, 10 Gbps Bandwidth) and custom path pinning."
+                        android:textColor="@color/scitra_on_surface_variant"
+                        android:textSize="11sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Current Status Indicator -->
             <TextView
-                android:id="@+id/scenarios_header"
-                android:layout_width="wrap_content"
+                android:id="@+id/tv_current_status"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Choose Simulation Scenario"
+                android:gravity="center"
                 android:textColor="@color/scitra_on_surface"
                 android:textSize="12sp"
                 android:textStyle="bold"
-                android:letterSpacing="0.05"
-                android:layout_marginBottom="6dp" />
+                android:paddingVertical="4dp"
+                tools:text="Current mode: 🟢 Live Network" />
 
-            <!-- Scenario Radio Group -->
-            <RadioGroup
-                android:id="@+id/scenario_radio_group"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_marginBottom="12dp">
-
-                <RadioButton
-                    android:id="@+id/scenario_default"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Standard Multi-Path (Recommended)\nDiverse candidates: Lowest Latency, Highest Bandwidth, Shortest Path."
-                    android:textColor="@color/scitra_on_surface"
-                    android:textSize="12sp"
-                    android:paddingVertical="4dp" />
-
-                <RadioButton
-                    android:id="@+id/scenario_globe_showcase"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Globe 3D Showcase\nIntercontinental coordinates across Europe, US, and Asia for 3D Globe."
-                    android:textColor="@color/scitra_on_surface"
-                    android:textSize="12sp"
-                    android:paddingVertical="4dp" />
-
-                <RadioButton
-                    android:id="@+id/scenario_multi_flow"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Multiple Concurrent Flows\nParallel active SCION flows to test flow list and details switching."
-                    android:textColor="@color/scitra_on_surface"
-                    android:textSize="12sp"
-                    android:paddingVertical="4dp" />
-
-                <RadioButton
-                    android:id="@+id/scenario_policy_fallback"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Policy Fallback Mode\nSimulates policy constraint failure and fallback rule activation."
-                    android:textColor="@color/scitra_on_surface"
-                    android:textSize="12sp"
-                    android:paddingVertical="4dp" />
-
-                <RadioButton
-                    android:id="@+id/scenario_high_latency"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="High Latency / Congestion\nDegraded paths with 300ms+ latency and high jitter."
-                    android:textColor="@color/scitra_on_surface"
-                    android:textSize="12sp"
-                    android:paddingVertical="4dp" />
-
-                <RadioButton
-                    android:id="@+id/scenario_pending"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Pending Path Discovery\nSimulates path lookup latency with loading state and retry."
-                    android:textColor="@color/scitra_on_surface"
-                    android:textSize="12sp"
-                    android:paddingVertical="4dp" />
-
-                <RadioButton
-                    android:id="@+id/scenario_stale_override"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Stale Override\nActive path override marked as stale/expired to test recovery."
-                    android:textColor="@color/scitra_on_surface"
-                    android:textSize="12sp"
-                    android:paddingVertical="4dp" />
-
-                <RadioButton
-                    android:id="@+id/scenario_empty"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Empty Flows\nZero active flows to test empty list state."
-                    android:textColor="@color/scitra_on_surface"
-                    android:textSize="12sp"
-                    android:paddingVertical="4dp" />
-            </RadioGroup>
         </LinearLayout>
     </ScrollView>
 
@@ -255,7 +266,7 @@
             style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Cancel"
+            android:text="Close"
             android:textColor="@color/scitra_on_surface_variant" />
 
         <Button
@@ -264,7 +275,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:text="Apply &amp; Switch"
+            android:text="Start Simulation"
             android:backgroundTint="@color/scitra_primary"
             android:textColor="@color/scitra_on_primary" />
     </LinearLayout>
