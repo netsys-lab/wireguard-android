@@ -84,13 +84,22 @@ class TunnelDetailFragment : BaseFragment() {
     ): View? {
         super.onCreateView(inflater, container, savedInstanceState)
         binding = TunnelDetailFragmentBinding.inflate(inflater, container, false)
+        binding?.fragment = this
         binding?.executePendingBindings()
         return binding?.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        updateMockBadge()
+        val binding = binding ?: return
+        binding.fragment = this
+        binding.tabLive.setOnClickListener { setMockMode(false) }
+        binding.tabMock.setOnClickListener { setMockMode(true) }
+        binding.tabMock.setOnLongClickListener {
+            showMockScenarioSheet()
+            true
+        }
+        updateMockToggle()
     }
 
     override fun onDestroyView() {
@@ -100,7 +109,7 @@ class TunnelDetailFragment : BaseFragment() {
 
     override fun onResume() {
         super.onResume()
-        updateMockBadge()
+        updateMockToggle()
         timerActive = true
         lifecycleScope.launch {
             while (timerActive) {
@@ -539,31 +548,59 @@ class TunnelDetailFragment : BaseFragment() {
         setScionMode(checked)
     }
 
-    // ─── Mock Scenario Switcher ──────────────────────────────
+    // ─── Mock / Live Mode Toggle ─────────────────────────────
+
+    fun setMockMode(enableMock: Boolean) {
+        val wasMock = GoBackend.isMockMode()
+        if (enableMock) {
+            // When switching to Mock, present the centered informative dialog
+            showMockScenarioSheet()
+        } else {
+            if (wasMock) {
+                GoBackend.setMockMode(false)
+                updateMockToggle()
+                lifecycleScope.launch {
+                    updateSCIONInfo()
+                    updateFlows()
+                }
+                Toast.makeText(context, "Switched to Live traffic", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     fun showMockScenarioSheet() {
-        val sheet = MockScenarioBottomSheet.newInstance()
-        sheet.onScenarioChanged = {
-            updateMockBadge()
+        val dialog = MockScenarioDialogFragment.newInstance()
+        dialog.onScenarioChanged = {
+            updateMockToggle()
             lifecycleScope.launch {
                 updateSCIONInfo()
                 updateFlows()
             }
+            val scenario = GoBackend.getCurrentMockScenario()
+            val msg = if (GoBackend.isMockMode()) "Switched to Mock backend: $scenario" else "Switched to Live traffic"
+            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
         }
-        sheet.show(parentFragmentManager, MockScenarioBottomSheet.TAG)
+        dialog.onDismissCallback = {
+            updateMockToggle()
+        }
+        dialog.show(parentFragmentManager, MockScenarioDialogFragment.TAG)
     }
 
-    private fun updateMockBadge() {
+    private fun updateMockToggle() {
         val binding = binding ?: return
         val isMock = GoBackend.isMockMode()
-        val scenario = GoBackend.getCurrentMockScenario()
+        val context = context ?: return
 
         if (isMock) {
-            binding.mockStatusChip.text = "🟣 MOCK: $scenario"
-            binding.mockStatusChip.setTextColor(requireContext().getColor(R.color.accent_blue_light))
+            binding.tabMock.setBackgroundResource(R.drawable.scitra_tab_selected_bg)
+            binding.tabMock.setTextColor(ContextCompat.getColor(context, R.color.scitra_on_primary))
+            binding.tabLive.background = null
+            binding.tabLive.setTextColor(ContextCompat.getColor(context, R.color.scitra_on_surface_variant))
         } else {
-            binding.mockStatusChip.text = "🟢 LIVE"
-            binding.mockStatusChip.setTextColor(requireContext().getColor(R.color.status_green))
+            binding.tabLive.setBackgroundResource(R.drawable.scitra_tab_selected_bg)
+            binding.tabLive.setTextColor(ContextCompat.getColor(context, R.color.scitra_on_primary))
+            binding.tabMock.background = null
+            binding.tabMock.setTextColor(ContextCompat.getColor(context, R.color.scitra_on_surface_variant))
         }
     }
 }

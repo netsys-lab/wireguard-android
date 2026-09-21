@@ -89,7 +89,7 @@
                 </LinearLayout>
 
                 <!-- ═══════════════════════════════════════ -->
-                <!-- STATUS ROW: SCION badge + Toggle -->
+                <!-- STATUS ROW: Mock/Live Toggle + SCION/IP Toggle -->
                 <!-- ═══════════════════════════════════════ -->
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -98,34 +98,41 @@
                     android:gravity="center_vertical"
                     android:paddingVertical="4dp">
 
-                    <!-- SCION badge -->
-                    <TextView
-                        android:id="@+id/scion_badge"
+                    <!-- Mock / Live mode selector toggle -->
+                    <LinearLayout
+                        android:id="@+id/mock_mode_selector"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:background="@drawable/scitra_status_badge_bg"
-                        android:text="@{config != null &amp;&amp; config.interface.scionEnabled ? @string/scion_connection : @string/normal_connection}"
-                        android:textColor="@{config != null &amp;&amp; config.interface.scionEnabled ? @color/status_green : @color/scitra_on_surface_variant}"
-                        android:textSize="10sp"
-                        android:textStyle="bold"
-                        android:letterSpacing="0.05" />
+                        android:layout_height="34dp"
+                        android:background="@drawable/scitra_toggle_bg"
+                        android:orientation="horizontal"
+                        android:padding="3dp">
 
-                    <!-- Mock / Live Mode chip -->
-                    <TextView
-                        android:id="@+id/mock_status_chip"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:background="@drawable/scitra_status_badge_bg"
-                        android:text="LIVE"
-                        android:textColor="@color/status_green"
-                        android:textSize="10sp"
-                        android:textStyle="bold"
-                        android:letterSpacing="0.05"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:onClick="@{() -> fragment.showMockScenarioSheet()}"
-                        tools:text="🟣 MOCK: default" />
+                        <TextView
+                            android:id="@+id/tab_live"
+                            android:layout_width="wrap_content"
+                            android:layout_height="match_parent"
+                            android:paddingHorizontal="14dp"
+                            android:gravity="center"
+                            android:text="LIVE"
+                            android:textSize="11sp"
+                            android:textStyle="bold"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:onClick="@{() -> fragment.setMockMode(false)}" />
+
+                        <TextView
+                            android:id="@+id/tab_mock"
+                            android:layout_width="wrap_content"
+                            android:layout_height="match_parent"
+                            android:paddingHorizontal="14dp"
+                            android:gravity="center"
+                            android:text="MOCK"
+                            android:textSize="11sp"
+                            android:textStyle="bold"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:onClick="@{() -> fragment.setMockMode(true)}" />
+                    </LinearLayout>
 
                     <View
                         android:layout_width="0dp"
