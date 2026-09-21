@@ -41,6 +41,8 @@ data class FlowDto(
     val remoteIP: String? = null,
     val remotePort: Int? = null,
     val scionDstIP: String? = null,
+    val packageName: String? = null,
+    val ownerUid: Int? = null,
 ) {
     val egressKindEnum: FlowEgressKind get() = egressKind.toFlowEgressKind()
 
@@ -75,7 +77,7 @@ data class SCIONInfoDto(
 )
 
 data class FlowListResponseDto(
-    val flows: List<FlowDto> = emptyList(),
+    val flows: List<FlowDto>,
     val error: String? = null,
 )
 
@@ -108,6 +110,8 @@ fun parseFlowListResponse(json: String): FlowListResponseDto {
             remoteIP = f.optString("remoteIP", null)?.takeIf { it.isNotEmpty() },
             remotePort = if (f.has("remotePort") && !f.isNull("remotePort")) f.optInt("remotePort", 0) else null,
             scionDstIP = f.optString("scionDstIP", null)?.takeIf { it.isNotEmpty() },
+            packageName = f.optString("packageName", null)?.takeIf { it.isNotEmpty() },
+            ownerUid = if (f.has("ownerUid") && !f.isNull("ownerUid")) f.optInt("ownerUid", 0) else null,
         )
     }
     val err = if (errorVal != null && errorVal.isNotEmpty()) errorVal else null

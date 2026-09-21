@@ -9,6 +9,7 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -34,6 +35,7 @@ import com.wireguard.android.util.RealFlowRepository
 import com.wireguard.android.util.FlowRowBinder
 import com.wireguard.android.util.FlowRowData
 import com.wireguard.android.util.FlowSortFilter
+import com.wireguard.android.util.FlowAppResolver
 import com.wireguard.config.Config
 import com.wireguard.config.Interface
 import kotlinx.coroutines.Dispatchers
@@ -66,6 +68,8 @@ class TunnelDetailFragment : BaseFragment() {
     private var lastAllFlows: List<FlowDto> = emptyList()
     private var flowRateCalculator: FlowRateCalculator = FlowRateCalculator()
     private var lastFlowPollTime: Long = 0L
+    private var selectedAppPackage: String? = null
+    private var flowAppResolver: FlowAppResolver? = null
 
     private val statusColorMap: Map<String, Int> = mapOf(
         "ACTIVE" to R.color.status_active,
@@ -93,11 +97,20 @@ class TunnelDetailFragment : BaseFragment() {
         super.onViewCreated(view, savedInstanceState)
         val binding = binding ?: return
         binding.fragment = this
+        val resolver = FlowAppResolver(requireContext())
+        flowAppResolver = resolver
+        lifecycleScope.launch {
+            resolver.ensureInitialized()
+        }
         binding.tabLive.setOnClickListener { setMockMode(false) }
         binding.tabMock.setOnClickListener { setMockMode(true) }
         binding.tabMock.setOnLongClickListener {
             showMockScenarioSheet()
             true
+        }
+        binding.btnBackToApps.setOnClickListener {
+            selectedAppPackage = null
+            renderFilteredFlows(lastAllFlows)
         }
         updateMockToggle()
     }
@@ -148,6 +161,7 @@ class TunnelDetailFragment : BaseFragment() {
         flowRateCalculator.reset()
         lastFlowPollTime = 0L
         showAllFlows = false
+        selectedAppPackage = null
         lifecycleScope.launch { updateStats() }
     }
 
@@ -166,6 +180,11 @@ class TunnelDetailFragment : BaseFragment() {
     // ─── Navigation ─────────────────────────────────────────
 
     fun onBackPressed(@Suppress("UNUSED_PARAMETER") view: View) {
+        if (selectedAppPackage != null) {
+            selectedAppPackage = null
+            renderFilteredFlows(lastAllFlows)
+            return
+        }
         activity?.onBackPressedDispatcher?.onBackPressed()
     }
 
@@ -364,12 +383,9 @@ class TunnelDetailFragment : BaseFragment() {
 
     private fun renderFilteredFlows(flows: List<FlowDto>) {
         val binding = binding ?: return
-        if (binding.flowsContainer == null) return
         updateFilterButton(binding)
 
         val filtered = if (showAllFlows) flows else FlowSortFilter.filterSCIONOnly(flows)
-        val container = binding.flowsContainer
-        container.removeAllViews()
 
         if (filtered.isEmpty()) {
             val msgRes = when {
@@ -382,24 +398,100 @@ class TunnelDetailFragment : BaseFragment() {
             return
         }
 
-        lifecycleScope.launch {
-            val rowDataList = FlowSortFilter.computeRowData(filtered, flowRateCalculator, statusColorMap)
-            val sorted = rowDataList.sortedWith(
-                compareByDescending<FlowRowData> { it.rates.combinedBitsPerSec }
-                    .thenByDescending { it.rates.combinedPktsPerSec }
-                    .thenByDescending { parseLastSeenEpoch(it.flow.lastSeen) }
-                    .thenBy { it.flow.id }
-            )
-            val inflater = LayoutInflater.from(container.context)
-            val ctx = container.context
+        val currentSelectedApp = selectedAppPackage
+        val resolver = flowAppResolver ?: FlowAppResolver(requireContext()).also { flowAppResolver = it }
 
-            for (rowData in sorted) {
-                val row = FlowRowBinder.bindFlowRow(container, rowData, inflater, ctx) { data ->
-                    onFlowItemClicked(data.flow)
+        lifecycleScope.launch {
+            resolver.ensureInitialized()
+
+            if (currentSelectedApp == null) {
+                // Level 1: App view
+                binding.appBreadcrumbBar.visibility = View.GONE
+                binding.flowsContainer.visibility = View.GONE
+                binding.appsContainer.visibility = View.VISIBLE
+                binding.colHeaderFirst.text = getString(R.string.flow_header_app)
+                binding.flowsSectionTitle.text = getString(R.string.apps_routing_scion)
+
+                val appGroups = resolver.groupFlowsByApp(filtered, flowRateCalculator, statusColorMap)
+                val appsContainer = binding.appsContainer
+                appsContainer.removeAllViews()
+
+                if (appGroups.isEmpty()) {
+                    showFlowEmptyState(binding, R.string.no_active_flows)
+                    lastFlowCount = 0
+                    return@launch
                 }
-                container.addView(row)
+
+                val inflater = LayoutInflater.from(appsContainer.context)
+                val ctx = appsContainer.context
+                val defaultIcon = ContextCompat.getDrawable(ctx, R.drawable.ic_globe)
+
+                for (group in appGroups) {
+                    val rowView = inflater.inflate(R.layout.scitra_app_flow_row, appsContainer, false)
+                    val iconView = rowView.findViewById<ImageView>(R.id.app_row_icon)
+                    val nameView = rowView.findViewById<TextView>(R.id.app_row_name)
+                    val countView = rowView.findViewById<TextView>(R.id.app_row_flows_count)
+                    val txView = rowView.findViewById<TextView>(R.id.app_row_tx)
+                    val rxView = rowView.findViewById<TextView>(R.id.app_row_rx)
+
+                    iconView.setImageDrawable(group.appInfo.icon ?: defaultIcon)
+                    nameView.text = group.appInfo.appName
+                    val flowPlural = if (group.flows.size == 1) "flow" else "flows"
+                    countView.text = "${group.flows.size} $flowPlural · ${group.appInfo.packageName}"
+                    txView.text = group.txRateText
+                    rxView.text = group.rxRateText
+
+                    rowView.setOnClickListener {
+                        selectedAppPackage = group.appInfo.packageName
+                        renderFilteredFlows(lastAllFlows)
+                    }
+                    appsContainer.addView(rowView)
+                }
+                lastFlowCount = appGroups.size
+            } else {
+                // Level 2: Flow drill-down for selected app
+                binding.appBreadcrumbBar.visibility = View.VISIBLE
+                binding.appsContainer.visibility = View.GONE
+                binding.flowsContainer.visibility = View.VISIBLE
+                binding.colHeaderFirst.text = getString(R.string.flow_header_remote)
+                binding.flowsSectionTitle.text = getString(R.string.matched_flows)
+
+                val appInfo = resolver.resolveAppForPackage(currentSelectedApp)
+                binding.breadcrumbAppName.text = appInfo.appName
+                val defaultIcon = ContextCompat.getDrawable(binding.root.context, R.drawable.ic_globe)
+                binding.breadcrumbAppIcon.setImageDrawable(appInfo.icon ?: defaultIcon)
+
+                val matchedFlows = filtered.filter { flow ->
+                    resolver.resolveAppForFlow(flow).packageName == currentSelectedApp
+                }
+
+                val flowsContainer = binding.flowsContainer
+                flowsContainer.removeAllViews()
+
+                if (matchedFlows.isEmpty()) {
+                    showFlowEmptyState(binding, R.string.no_active_app_flows)
+                    lastFlowCount = 0
+                    return@launch
+                }
+
+                val rowDataList = FlowSortFilter.computeRowData(matchedFlows, flowRateCalculator, statusColorMap)
+                val sorted = rowDataList.sortedWith(
+                    compareByDescending<FlowRowData> { it.rates.combinedBitsPerSec }
+                        .thenByDescending { it.rates.combinedPktsPerSec }
+                        .thenByDescending { parseLastSeenEpoch(it.flow.lastSeen) }
+                        .thenBy { it.flow.id }
+                )
+                val inflater = LayoutInflater.from(flowsContainer.context)
+                val ctx = flowsContainer.context
+
+                for (rowData in sorted) {
+                    val row = FlowRowBinder.bindFlowRow(flowsContainer, rowData, inflater, ctx) { data ->
+                        onFlowItemClicked(data.flow)
+                    }
+                    flowsContainer.addView(row)
+                }
+                lastFlowCount = sorted.size
             }
-            lastFlowCount = sorted.size
         }
     }
 
@@ -421,8 +513,20 @@ class TunnelDetailFragment : BaseFragment() {
     }
 
     private fun showFlowEmptyState(binding: TunnelDetailFragmentBinding, msgResId: Int) {
+        binding.appsContainer.removeAllViews()
         binding.flowsContainer.removeAllViews()
-        val context = binding.flowsContainer.context
+        val activeContainer = if (selectedAppPackage == null) {
+            binding.appBreadcrumbBar.visibility = View.GONE
+            binding.appsContainer.visibility = View.VISIBLE
+            binding.flowsContainer.visibility = View.GONE
+            binding.appsContainer
+        } else {
+            binding.appBreadcrumbBar.visibility = View.VISIBLE
+            binding.appsContainer.visibility = View.GONE
+            binding.flowsContainer.visibility = View.VISIBLE
+            binding.flowsContainer
+        }
+        val context = activeContainer.context
         val msg = context.getString(msgResId)
         val tv = TextView(context).apply {
             text = msg
@@ -434,7 +538,7 @@ class TunnelDetailFragment : BaseFragment() {
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { topMargin = 8; bottomMargin = 8 }
         }
-        binding.flowsContainer.addView(tv)
+        activeContainer.addView(tv)
     }
 
     private suspend fun resolveBackend(): GoBackend? {

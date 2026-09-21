@@ -23,7 +23,7 @@ import org.junit.Test
 
 class FlowPathViewModelTest {
 
-    private val testTunnel = Tunnel { "test-tunnel" }
+    private val testTunnel = Tunnel("test-tunnel")
 
     @Test
     fun `init loads flow context and paths`() {
@@ -310,6 +310,8 @@ class FlowPathViewModelTest {
                     )
                 )
         }
+        override suspend fun setOverride(tunnel: Tunnel, flowId: Long, fingerprint: String): Result<Unit> = Result.success(Unit)
+        override suspend fun clearOverride(tunnel: Tunnel, flowId: Long): Result<Unit> = Result.success(Unit)
     }
 }
 

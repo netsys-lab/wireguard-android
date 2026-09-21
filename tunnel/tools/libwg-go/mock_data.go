@@ -43,6 +43,8 @@ type MockFlowDTO struct {
 	RemoteIP    string       `json:"remoteIP,omitempty"`
 	RemotePort  int          `json:"remotePort,omitempty"`
 	ScionDstIP  string       `json:"scionDstIP,omitempty"`
+	PackageName string       `json:"packageName,omitempty"`
+	OwnerUID    int          `json:"ownerUid,omitempty"`
 }
 
 // MockFlowListResponse represents the response for wgGetFlows

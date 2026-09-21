@@ -356,8 +356,13 @@
     <string name="path_empty">No paths available for this destination</string>
     <string name="path_error">Could not load paths</string>
     <string name="retry">Retry</string>
+    <string name="no_active_app_flows">No active flows for this app</string>
+    <string name="apps_routing_scion">APPS ROUTING SCION</string>
+    <string name="matched_flows">MATCHED FLOWS</string>
+    <string name="back_to_apps">Back to Apps</string>
 
     <!-- Flow Row Column Headers -->
+    <string name="flow_header_app">APP</string>
     <string name="flow_header_remote">REMOTE</string>
     <string name="flow_header_tx">TX</string>
     <string name="flow_header_rx">RX</string>

@@ -339,8 +339,81 @@
                     android:orientation="vertical"
                     android:visibility="visible">
 
+                    <!-- Breadcrumb bar when an app is selected (Level 2) -->
+                    <LinearLayout
+                        android:id="@+id/app_breadcrumb_bar"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingVertical="4dp"
+                        android:paddingHorizontal="2dp"
+                        android:layout_marginBottom="8dp"
+                        android:visibility="gone">
+
+                        <LinearLayout
+                            android:id="@+id/btn_back_to_apps"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:background="?android:attr/selectableItemBackgroundBorderless"
+                            android:paddingVertical="4dp"
+                            android:paddingEnd="8dp">
+
+                            <ImageView
+                                android:layout_width="18dp"
+                                android:layout_height="18dp"
+                                android:src="@drawable/ic_arrow_back"
+                                app:tint="@color/scitra_primary"
+                                android:layout_marginEnd="4dp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/back_to_apps"
+                                android:textColor="@color/scitra_primary"
+                                android:textSize="12sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="0dp"
+                            android:layout_height="1dp"
+                            android:layout_weight="1" />
+
+                        <!-- Selected App Chip -->
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:background="@drawable/scitra_section_card_bg"
+                            android:paddingHorizontal="8dp"
+                            android:paddingVertical="4dp">
+
+                            <ImageView
+                                android:id="@+id/breadcrumb_app_icon"
+                                android:layout_width="16dp"
+                                android:layout_height="16dp"
+                                android:layout_marginEnd="6dp" />
+
+                            <TextView
+                                android:id="@+id/breadcrumb_app_name"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/scitra_on_surface"
+                                android:textSize="11sp"
+                                android:textStyle="bold"
+                                tools:text="Chrome" />
+                        </LinearLayout>
+                    </LinearLayout>
+
                     <!-- Header row with filter toggle -->
                     <LinearLayout
+                        android:id="@+id/flows_header_row"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
@@ -348,10 +421,11 @@
                         android:layout_marginBottom="12dp">
 
                         <TextView
+                            android:id="@+id/flows_section_title"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="@string/top_flows"
+                            android:text="@string/apps_routing_scion"
                             android:textColor="@color/scitra_on_surface"
                             android:textSize="13sp"
                             android:textStyle="bold"
@@ -370,7 +444,7 @@
                             android:onClick="@{fragment::onToggleFlowFilter}" />
                     </LinearLayout>
 
-                    <!-- Column Header: REMOTE | TX | RX -->
+                    <!-- Column Header: REMOTE/APP | TX | RX -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -381,10 +455,11 @@
                         android:paddingEnd="8dp">
 
                         <TextView
+                            android:id="@+id/col_header_first"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="0.48"
-                            android:text="@string/flow_header_remote"
+                            android:text="@string/flow_header_app"
                             android:textColor="@color/scitra_on_surface_variant"
                             android:textSize="10sp"
                             android:textStyle="bold"
@@ -419,15 +494,24 @@
 
                     </LinearLayout>
 
-                    <!-- Dynamic flow items populated by TunnelDetailFragment -->
+                    <!-- Level 1: Dynamic app flow items -->
                     <LinearLayout
-                        android:id="@+id/flows_container"
+                        android:id="@+id/apps_container"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical" />
 
+                    <!-- Level 2: Dynamic flow items populated by TunnelDetailFragment -->
+                    <LinearLayout
+                        android:id="@+id/flows_container"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone" />
+
                     <!-- Show all active flows link -->
                     <TextView
+                        android:id="@+id/tv_switch_flow_view"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_horizontal"

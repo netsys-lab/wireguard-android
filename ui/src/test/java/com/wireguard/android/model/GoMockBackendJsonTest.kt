@@ -240,6 +240,6 @@ class GoMockBackendJsonTest {
         assertEquals(4, path.geo!!.size)
         assertEquals("Zurich, Switzerland", path.geo!![0].label)
         assertEquals("Tokyo, Japan", path.geo!![3].label)
-        assertEquals(47.3769, path.geo!![0].latitude, 0.001)
+        assertEquals(47.3769, path.geo!![0].latitude!!, 0.001)
     }
 }

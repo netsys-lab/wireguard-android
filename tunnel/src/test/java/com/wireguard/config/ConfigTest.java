@@ -48,7 +48,7 @@ public class ConfigTest {
     }
 
     @Test
-    public void multiline_path_policy_parses_and_preserves_tunnel_config() throws IOException, ParseException {
+    public void multiline_path_policy_parses_and_preserves_tunnel_config() throws BadConfigException, IOException, ParseException {
         final String rawConf = "[Interface]\n" +
                 "# TunnelMode = SCION\n" +
                 "# PathPolicy = {\n" +

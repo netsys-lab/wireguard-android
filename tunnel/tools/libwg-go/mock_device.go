@@ -188,6 +188,8 @@ func (m *MockDevice) FlowSnapshotsJSON() string {
 			RemoteIP:   "198.51.100.10",
 			RemotePort: 443,
 			ScionDstIP: "198.51.100.10",
+			PackageName: "com.android.chrome",
+			OwnerUID:    10042,
 		},
 		{
 			ID:         2,
@@ -210,6 +212,8 @@ func (m *MockDevice) FlowSnapshotsJSON() string {
 			RemoteIP:   "198.51.100.25",
 			RemotePort: 8448,
 			ScionDstIP: "198.51.100.25",
+			PackageName: "org.matrix.android",
+			OwnerUID:    10088,
 		},
 		{
 			ID:         4,
@@ -232,6 +236,8 @@ func (m *MockDevice) FlowSnapshotsJSON() string {
 			RemoteIP:   "198.51.100.50",
 			RemotePort: 9000,
 			ScionDstIP: "198.51.100.50",
+			PackageName: "com.google.android.youtube",
+			OwnerUID:    10125,
 		},
 		{
 			ID:         3,
@@ -251,6 +257,8 @@ func (m *MockDevice) FlowSnapshotsJSON() string {
 			LocalPort:  53535,
 			RemoteIP:   "1.1.1.1",
 			RemotePort: 53,
+			PackageName: "com.wireguard.android",
+			OwnerUID:    10001,
 		},
 	}
 
