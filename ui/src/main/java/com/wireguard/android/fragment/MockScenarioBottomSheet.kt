@@ -47,17 +47,14 @@ class MockScenarioDialogFragment : DialogFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val btnClose = view.findViewById<ImageView>(R.id.btn_close_dialog)
-        val tvStatus = view.findViewById<TextView>(R.id.tv_current_status)
         val btnCancel = view.findViewById<Button>(R.id.btn_cancel)
         val btnApply = view.findViewById<Button>(R.id.btn_apply)
 
         val isMock = GoBackend.isMockMode()
 
         if (isMock) {
-            tvStatus.text = "Current mode: 🟣 Simulated Mock Traffic Active"
             btnApply.text = "Switch to Live Traffic"
         } else {
-            tvStatus.text = "Current mode: 🟢 Live Network Traffic Active"
             btnApply.text = "Start Simulation"
         }
 
