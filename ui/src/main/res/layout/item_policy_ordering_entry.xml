@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:background="@drawable/scitra_card_bg"
+    android:padding="12dp"
+    android:layout_marginBottom="8dp"
+    android:gravity="center_vertical">
+
+    <!-- Priority Badge (#1, #2...) -->
+    <TextView
+        android:id="@+id/tv_order_rank"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:gravity="center"
+        android:background="@drawable/scitra_badge_chip_bg"
+        android:text="#1"
+        android:textColor="@color/scitra_primary"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:layout_marginEnd="12dp" />
+
+    <!-- Label & Detail -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_order_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Lowest Latency"
+            android:textColor="@color/scitra_on_surface"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_order_key"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="meta_latency_asc"
+            android:textColor="@color/scitra_outline"
+            android:fontFamily="monospace"
+            android:textSize="11sp"
+            android:layout_marginTop="2dp" />
+    </LinearLayout>
+
+    <!-- Up Button -->
+    <ImageButton
+        android:id="@+id/btn_order_up"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_arrow_up"
+        app:tint="@color/scitra_on_surface"
+        android:contentDescription="Move up"
+        android:padding="4dp"
+        android:scaleType="centerInside" />
+
+    <!-- Down Button -->
+    <ImageButton
+        android:id="@+id/btn_order_down"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_arrow_down"
+        app:tint="@color/scitra_on_surface"
+        android:contentDescription="Move down"
+        android:padding="4dp"
+        android:scaleType="centerInside"
+        android:layout_marginStart="4dp" />
+
+    <!-- Delete Button -->
+    <ImageButton
+        android:id="@+id/btn_order_delete"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_action_delete"
+        app:tint="@color/md_theme_dark_error"
+        android:contentDescription="Delete criterion"
+        android:padding="4dp"
+        android:scaleType="centerInside"
+        android:layout_marginStart="4dp" />
+
+</LinearLayout>
