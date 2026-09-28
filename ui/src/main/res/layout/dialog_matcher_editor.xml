@@ -116,8 +116,10 @@
                     android:id="@+id/spinner_matcher_policy"
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
-                    android:background="@drawable/scitra_dashed_item_bg"
-                    android:paddingHorizontal="10dp" />
+                    android:background="@drawable/scitra_select_field_bg"
+                    android:popupBackground="@drawable/scitra_dropdown_popup_bg"
+                    android:popupElevation="12dp"
+                    android:dropDownVerticalOffset="4dp" />
 
                 <TextView
                     android:id="@+id/tv_policy_warning"

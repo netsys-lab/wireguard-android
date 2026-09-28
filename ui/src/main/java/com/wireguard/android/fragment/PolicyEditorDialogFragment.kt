@@ -24,6 +24,7 @@ import androidx.fragment.app.setFragmentResult
 import com.wireguard.android.R
 import com.wireguard.android.model.ScitraPolicyEntry
 import com.wireguard.android.model.ScitraRequirements
+import com.wireguard.android.widget.ScitraDropdownAdapter
 import com.wireguard.android.util.PathPolicyParser
 import org.json.JSONArray
 import org.json.JSONObject
@@ -149,19 +150,35 @@ class PolicyEditorDialogFragment : DialogFragment() {
             allowedExtends.addAll(existingPolicies)
         }
 
-        val extendsAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, allowedExtends)
-        spinnerExtends.adapter = extendsAdapter
+        ScitraDropdownAdapter.forPolicies(
+            context = requireContext(),
+            policyNames = allowedExtends,
+            spinner = spinnerExtends
+        )
 
         // Populate Failover Spinner (combobox of other existing policies)
         val allowedFailover = mutableListOf("(None)")
         existingPolicies.filter { it != originalPolicyName }.forEach { allowedFailover.add(it) }
-        val failoverAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, allowedFailover)
-        spinnerFailover.adapter = failoverAdapter
+        ScitraDropdownAdapter.forPolicies(
+            context = requireContext(),
+            policyNames = allowedFailover,
+            spinner = spinnerFailover
+        )
 
         // Populate Selector Spinner
         val selectorOptions = listOf("(None / Default)", "lowest_rtt", "highest_bandwidth", "random")
-        val selectorAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, selectorOptions)
-        spinnerSelector.adapter = selectorAdapter
+        val selectorSubtitles = mapOf(
+            "(None / Default)" to "Use standard path order ranking",
+            "lowest_rtt" to "Continuously probe and pick minimal round-trip time",
+            "highest_bandwidth" to "Pick path with highest advertised bottleneck",
+            "random" to "Distribute flows randomly across paths"
+        )
+        ScitraDropdownAdapter.forGenericOptions(
+            context = requireContext(),
+            options = selectorOptions,
+            subtitles = selectorSubtitles,
+            spinner = spinnerSelector
+        )
     }
 
     private fun populateDataFromArguments() {
@@ -172,24 +189,24 @@ class PolicyEditorDialogFragment : DialogFragment() {
             // Extends
             val extendsVal = pObj.optString("extends", "")
             if (extendsVal.isNotEmpty()) {
-                val adapter = spinnerExtends.adapter as? ArrayAdapter<String>
-                val pos = (0 until (adapter?.count ?: 0)).firstOrNull { adapter?.getItem(it) == extendsVal } ?: 0
+                val adapter = spinnerExtends.adapter
+                val pos = (0 until (adapter?.count ?: 0)).firstOrNull { adapter?.getItem(it).toString() == extendsVal } ?: 0
                 spinnerExtends.setSelection(pos)
             }
 
             // Failover
             val failoverVal = pObj.optString("failover", "")
             if (failoverVal.isNotEmpty()) {
-                val adapter = spinnerFailover.adapter as? ArrayAdapter<String>
-                val pos = (0 until (adapter?.count ?: 0)).firstOrNull { adapter?.getItem(it) == failoverVal } ?: 0
+                val adapter = spinnerFailover.adapter
+                val pos = (0 until (adapter?.count ?: 0)).firstOrNull { adapter?.getItem(it).toString() == failoverVal } ?: 0
                 spinnerFailover.setSelection(pos)
             }
 
             // Selector
             val selectorVal = pObj.optString("selector", "")
             if (selectorVal.isNotEmpty()) {
-                val adapter = spinnerSelector.adapter as? ArrayAdapter<String>
-                val pos = (0 until (adapter?.count ?: 0)).firstOrNull { adapter?.getItem(it) == selectorVal } ?: 0
+                val adapter = spinnerSelector.adapter
+                val pos = (0 until (adapter?.count ?: 0)).firstOrNull { adapter?.getItem(it).toString() == selectorVal } ?: 0
                 spinnerSelector.setSelection(pos)
             }
 

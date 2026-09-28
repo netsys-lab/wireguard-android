@@ -84,6 +84,10 @@
                 android:id="@+id/spinner_ia_pairs"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
+                android:background="@drawable/scitra_select_field_bg"
+                android:popupBackground="@drawable/scitra_dropdown_popup_bg"
+                android:popupElevation="12dp"
+                android:dropDownVerticalOffset="4dp"
                 android:layout_marginBottom="12dp" />
 
             <!-- Available Paths Count -->
@@ -110,6 +114,10 @@
                 android:id="@+id/spinner_paths"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
+                android:background="@drawable/scitra_select_field_bg"
+                android:popupBackground="@drawable/scitra_dropdown_popup_bg"
+                android:popupElevation="12dp"
+                android:dropDownVerticalOffset="4dp"
                 android:layout_marginBottom="16dp" />
 
             <!-- Path Detail Card -->

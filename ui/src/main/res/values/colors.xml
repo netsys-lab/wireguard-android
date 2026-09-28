@@ -72,6 +72,7 @@
     <color name="scitra_on_primary_container">#D4E3FF</color>
     <color name="scitra_primary_fixed">#D4E3FF</color>
     <color name="scitra_background">#FFFFFF</color>
+    <color name="scitra_surface">#FFFFFF</color>
     <color name="scitra_on_surface">#1A1C20</color>
     <color name="scitra_on_surface_variant">#5A6577</color>
     <color name="scitra_surface_container_lowest">#FFFFFF</color>

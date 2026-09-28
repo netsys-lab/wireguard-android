@@ -161,8 +161,10 @@
                     android:id="@+id/spinner_policy_extends"
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
-                    android:background="@drawable/scitra_dashed_item_bg"
-                    android:paddingHorizontal="10dp"
+                    android:background="@drawable/scitra_select_field_bg"
+                    android:popupBackground="@drawable/scitra_dropdown_popup_bg"
+                    android:popupElevation="12dp"
+                    android:dropDownVerticalOffset="4dp"
                     android:layout_marginBottom="16dp" />
 
                 <!-- Failover Combobox/Spinner -->
@@ -187,8 +189,10 @@
                     android:id="@+id/spinner_policy_failover"
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
-                    android:background="@drawable/scitra_dashed_item_bg"
-                    android:paddingHorizontal="10dp"
+                    android:background="@drawable/scitra_select_field_bg"
+                    android:popupBackground="@drawable/scitra_dropdown_popup_bg"
+                    android:popupElevation="12dp"
+                    android:dropDownVerticalOffset="4dp"
                     android:layout_marginBottom="16dp" />
 
                 <!-- Dynamic Path Selector -->
@@ -213,8 +217,10 @@
                     android:id="@+id/spinner_policy_selector"
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
-                    android:background="@drawable/scitra_dashed_item_bg"
-                    android:paddingHorizontal="10dp" />
+                    android:background="@drawable/scitra_select_field_bg"
+                    android:popupBackground="@drawable/scitra_dropdown_popup_bg"
+                    android:popupElevation="12dp"
+                    android:dropDownVerticalOffset="4dp" />
 
             </LinearLayout>
 

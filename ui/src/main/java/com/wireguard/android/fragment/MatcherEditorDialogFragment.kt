@@ -22,6 +22,7 @@ import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.setFragmentResult
 import com.wireguard.android.R
 import com.wireguard.android.model.ScitraMatcher
+import com.wireguard.android.widget.ScitraDropdownAdapter
 import org.json.JSONObject
 
 class MatcherEditorDialogFragment : DialogFragment() {
@@ -124,20 +125,19 @@ class MatcherEditorDialogFragment : DialogFragment() {
         if (policiesToDisplay.isEmpty()) {
             tvPolicyWarning.visibility = View.VISIBLE
             btnSaveMatcher.isEnabled = false
-            spinnerPolicy.adapter = ArrayAdapter(
-                requireContext(),
-                android.R.layout.simple_spinner_dropdown_item,
-                listOf("(No custom policies available)")
+            ScitraDropdownAdapter.forPolicies(
+                context = requireContext(),
+                policyNames = listOf("(No custom policies available)"),
+                spinner = spinnerPolicy,
             )
         } else {
             tvPolicyWarning.visibility = View.GONE
             btnSaveMatcher.isEnabled = true
-            val adapter = ArrayAdapter(
-                requireContext(),
-                android.R.layout.simple_spinner_dropdown_item,
-                policiesToDisplay
+            ScitraDropdownAdapter.forPolicies(
+                context = requireContext(),
+                policyNames = policiesToDisplay,
+                spinner = spinnerPolicy,
             )
-            spinnerPolicy.adapter = adapter
         }
     }
 
@@ -242,9 +242,9 @@ class MatcherEditorDialogFragment : DialogFragment() {
 
             // Policy selection
             val policyTarget = obj.optString("policy", "")
-            val adapter = spinnerPolicy.adapter as? ArrayAdapter<String>
+            val adapter = spinnerPolicy.adapter
             if (adapter != null && policyTarget.isNotEmpty()) {
-                val pos = (0 until adapter.count).firstOrNull { adapter.getItem(it) == policyTarget } ?: 0
+                val pos = (0 until adapter.count).firstOrNull { adapter.getItem(it).toString() == policyTarget } ?: 0
                 spinnerPolicy.setSelection(pos)
             }
 
