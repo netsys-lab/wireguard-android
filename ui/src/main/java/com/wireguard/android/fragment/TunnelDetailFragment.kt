@@ -36,6 +36,7 @@ import com.wireguard.android.util.FlowRowBinder
 import com.wireguard.android.util.FlowRowData
 import com.wireguard.android.util.FlowSortFilter
 import com.wireguard.android.util.FlowAppResolver
+import com.wireguard.android.util.TunnelPolicyHelper
 import com.wireguard.config.Config
 import com.wireguard.config.Interface
 import kotlinx.coroutines.Dispatchers
@@ -113,6 +114,28 @@ class TunnelDetailFragment : BaseFragment() {
             renderFilteredFlows(lastAllFlows)
         }
         updateMockToggle()
+
+        // Path Policy Manager interaction
+        parentFragmentManager.setFragmentResultListener(
+            PathPolicyManagerDialogFragment.REQUEST_KEY_POLICY,
+            viewLifecycleOwner
+        ) { _, bundle ->
+            val json = bundle.getString(PathPolicyManagerDialogFragment.KEY_RESULT_JSON) ?: return@setFragmentResultListener
+            val tunnel = selectedTunnel ?: return@setFragmentResultListener
+            lifecycleScope.launch {
+                val saved = TunnelPolicyHelper.savePolicyJson(tunnel, json)
+                if (saved) {
+                    Toast.makeText(requireContext(), R.string.policy_card_saved_toast, Toast.LENGTH_SHORT).show()
+                    updatePolicyOverview(tunnel)
+                    updateFlows()
+                } else {
+                    Toast.makeText(requireContext(), R.string.policy_card_save_error, Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
+        binding.btnManagePolicies.setOnClickListener { openPolicyManager() }
+        binding.cardPolicyOverview.setOnClickListener { openPolicyManager() }
     }
 
     override fun onDestroyView() {
@@ -163,6 +186,7 @@ class TunnelDetailFragment : BaseFragment() {
         showAllFlows = false
         selectedAppPackage = null
         lifecycleScope.launch { updateStats() }
+        updatePolicyOverview(newTunnel)
     }
 
     override fun onStop() {
@@ -207,6 +231,31 @@ class TunnelDetailFragment : BaseFragment() {
     fun onSeeAllFlows(@Suppress("UNUSED_PARAMETER") view: View) {
         showAllFlows = !showAllFlows
         renderFilteredFlows(lastAllFlows)
+    }
+
+    private fun openPolicyManager() {
+        val tunnel = selectedTunnel ?: return
+        lifecycleScope.launch {
+            val rawJson = TunnelPolicyHelper.getPolicyJson(tunnel)
+            val dialog = PathPolicyManagerDialogFragment.newInstance(rawJson)
+            dialog.show(parentFragmentManager, PathPolicyManagerDialogFragment.TAG)
+        }
+    }
+
+    private fun updatePolicyOverview(tunnel: ObservableTunnel?) {
+        val b = binding ?: return
+        if (tunnel == null) return
+        lifecycleScope.launch {
+            val summary = TunnelPolicyHelper.getPolicySummary(tunnel)
+            val currentBinding = binding ?: return@launch
+            currentBinding.tvPolicyMatchersSummary.text = summary.matchersSummary
+            currentBinding.tvPolicyLibrarySummary.text = if (summary.customPolicyCount > 0) {
+                "Library: ${summary.customPolicyCount} custom policies"
+            } else {
+                "Library: default policy only"
+            }
+            currentBinding.badgePolicyCount.text = "${summary.policyNames.size} " + if (summary.policyNames.size == 1) "Policy" else "Policies"
+        }
     }
 
     fun onFlowItemClicked(flow: FlowDto) {

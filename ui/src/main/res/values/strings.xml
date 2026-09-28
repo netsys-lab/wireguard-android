@@ -479,7 +479,12 @@
     </plurals>
     <plurals name="n_links">
         <item quantity="one">%d link</item>
-        <item quantity="other">%d links</item>
     </plurals>
+
+    <!-- SCION Path Policy Cards -->
+    <string name="policy_management_title">SCION Path Policies</string>
+    <string name="policy_card_configure">Configure →</string>
+    <string name="policy_card_saved_toast">SCION path policies updated</string>
+    <string name="policy_card_save_error">Failed to save path policies</string>
 </resources>
 

@@ -31,6 +31,7 @@ import com.journeyapps.barcodescanner.ScanOptions
 import com.wireguard.android.Application
 import com.wireguard.android.R
 import com.wireguard.android.activity.TunnelCreatorActivity
+import com.wireguard.android.backend.Tunnel
 import com.wireguard.android.databinding.ObservableKeyedRecyclerViewAdapter.RowConfigurationHandler
 import com.wireguard.android.databinding.TunnelListFragmentBinding
 import com.wireguard.android.databinding.TunnelListItemBinding
@@ -39,6 +40,7 @@ import com.wireguard.android.updater.SnackbarUpdateShower
 import com.wireguard.android.util.ErrorMessages
 import com.wireguard.android.util.QrCodeFromFileScanner
 import com.wireguard.android.util.TunnelImporter
+import com.wireguard.android.util.TunnelPolicyHelper
 import com.wireguard.android.widget.MultiselectableRelativeLayout
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
@@ -115,6 +117,8 @@ class TunnelListFragment : BaseFragment() {
                 standardTunnels.add(item)
             }
         }
+
+        updateHomePolicyCard()
     }
 
     private val tunnelFileImportResultLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { data ->
@@ -164,6 +168,24 @@ class TunnelListFragment : BaseFragment() {
                 }
             }
         }
+
+        // Path Policy Manager interaction
+        parentFragmentManager.setFragmentResultListener(
+            PathPolicyManagerDialogFragment.REQUEST_KEY_POLICY,
+            viewLifecycleOwner
+        ) { _, bundle ->
+            val json = bundle.getString(PathPolicyManagerDialogFragment.KEY_RESULT_JSON) ?: return@setFragmentResultListener
+            val targetTunnel = getActiveOrPrimaryScionTunnel() ?: return@setFragmentResultListener
+            lifecycleScope.launch {
+                val saved = TunnelPolicyHelper.savePolicyJson(targetTunnel, json)
+                if (saved) {
+                    Toast.makeText(requireContext(), R.string.policy_card_saved_toast, Toast.LENGTH_SHORT).show()
+                    updateHomePolicyCard()
+                } else {
+                    Toast.makeText(requireContext(), R.string.policy_card_save_error, Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     override fun onCreateView(
@@ -204,6 +226,8 @@ class TunnelListFragment : BaseFragment() {
             btnSettings.setOnClickListener {
                 startActivity(Intent(requireActivity(), com.wireguard.android.activity.SettingsActivity::class.java))
             }
+            cardHomePolicy.setOnClickListener { openHomePolicyManager() }
+            btnHomeManagePolicies.setOnClickListener { openHomePolicyManager() }
 
             executePendingBindings()
             snackbarUpdateShower.attach(mainContainer, null)
@@ -249,6 +273,41 @@ class TunnelListFragment : BaseFragment() {
             Log.e(TAG, message, throwable)
         }
         showSnackbar(message)
+    }
+
+    private fun getActiveOrPrimaryScionTunnel(): ObservableTunnel? {
+        return scionTunnels.firstOrNull { it.state == Tunnel.State.UP }
+            ?: scionTunnels.firstOrNull()
+    }
+
+    private fun openHomePolicyManager() {
+        val tunnel = getActiveOrPrimaryScionTunnel() ?: return
+        lifecycleScope.launch {
+            val rawJson = TunnelPolicyHelper.getPolicyJson(tunnel)
+            val dialog = PathPolicyManagerDialogFragment.newInstance(rawJson)
+            dialog.show(parentFragmentManager, PathPolicyManagerDialogFragment.TAG)
+        }
+    }
+
+    private fun updateHomePolicyCard() {
+        val b = binding ?: return
+        val tunnel = getActiveOrPrimaryScionTunnel()
+        if (tunnel == null) {
+            b.cardHomePolicy.visibility = View.GONE
+            return
+        }
+        b.cardHomePolicy.visibility = View.VISIBLE
+        lifecycleScope.launch {
+            val summary = TunnelPolicyHelper.getPolicySummary(tunnel)
+            val currentBinding = binding ?: return@launch
+            currentBinding.tvHomePolicyRules.text = summary.matchersSummary
+            currentBinding.tvHomePolicySub.text = if (summary.customPolicyCount > 0) {
+                "${tunnel.name} • ${summary.customPolicyCount} custom policies"
+            } else {
+                "${tunnel.name} • Tap to customize routing priorities"
+            }
+            currentBinding.badgeHomePolicyCount.text = "${summary.policyNames.size} " + if (summary.policyNames.size == 1) "Policy" else "Policies"
+        }
     }
 
     override fun onViewStateRestored(savedInstanceState: Bundle?) {
