@@ -205,8 +205,8 @@ class TunnelDetailFragment : BaseFragment() {
     }
 
     fun onSeeAllFlows(@Suppress("UNUSED_PARAMETER") view: View) {
-        // TODO: Navigate to full flows screen
-        Toast.makeText(context, "Path Information coming soon", Toast.LENGTH_SHORT).show()
+        showAllFlows = !showAllFlows
+        renderFilteredFlows(lastAllFlows)
     }
 
     fun onFlowItemClicked(flow: FlowDto) {
@@ -383,6 +383,7 @@ class TunnelDetailFragment : BaseFragment() {
 
     private fun renderFilteredFlows(flows: List<FlowDto>) {
         val binding = binding ?: return
+        binding.tvSwitchFlowView.visibility = View.VISIBLE
         updateFilterButton(binding)
 
         val filtered = if (showAllFlows) flows else FlowSortFilter.filterSCIONOnly(flows)
@@ -410,7 +411,7 @@ class TunnelDetailFragment : BaseFragment() {
                 binding.flowsContainer.visibility = View.GONE
                 binding.appsContainer.visibility = View.VISIBLE
                 binding.colHeaderFirst.text = getString(R.string.flow_header_app)
-                binding.flowsSectionTitle.text = getString(R.string.apps_routing_scion)
+                binding.flowsSectionTitle.text = if (showAllFlows) getString(R.string.all_active_apps) else getString(R.string.apps_routing_scion)
 
                 val appGroups = resolver.groupFlowsByApp(filtered, flowRateCalculator, statusColorMap)
                 val appsContainer = binding.appsContainer
@@ -454,7 +455,7 @@ class TunnelDetailFragment : BaseFragment() {
                 binding.appsContainer.visibility = View.GONE
                 binding.flowsContainer.visibility = View.VISIBLE
                 binding.colHeaderFirst.text = getString(R.string.flow_header_remote)
-                binding.flowsSectionTitle.text = getString(R.string.matched_flows)
+                binding.flowsSectionTitle.text = if (showAllFlows) getString(R.string.all_matched_flows) else getString(R.string.matched_flows)
 
                 val appInfo = resolver.resolveAppForPackage(currentSelectedApp)
                 binding.breadcrumbAppName.text = appInfo.appName
@@ -505,16 +506,20 @@ class TunnelDetailFragment : BaseFragment() {
     }
 
     private fun updateFilterButton(binding: TunnelDetailFragmentBinding) {
-        binding.flowFilterText.text = if (showAllFlows) {
-            context?.getString(R.string.filter_show_scion)
+        val isAppLevel = selectedAppPackage == null
+        if (showAllFlows) {
+            binding.flowFilterText.text = if (isAppLevel) getString(R.string.show_scion_apps_only) else getString(R.string.show_scion_flows_only)
+            binding.tvSwitchFlowView.text = if (isAppLevel) getString(R.string.show_scion_apps_only) else getString(R.string.show_scion_flows_only)
         } else {
-            context?.getString(R.string.filter_show_all)
+            binding.flowFilterText.text = getString(R.string.filter_show_all)
+            binding.tvSwitchFlowView.text = if (isAppLevel) getString(R.string.show_all_active_apps) else getString(R.string.show_all_active_flows)
         }
     }
 
     private fun showFlowEmptyState(binding: TunnelDetailFragmentBinding, msgResId: Int) {
         binding.appsContainer.removeAllViews()
         binding.flowsContainer.removeAllViews()
+        binding.tvSwitchFlowView.visibility = View.GONE
         val activeContainer = if (selectedAppPackage == null) {
             binding.appBreadcrumbBar.visibility = View.GONE
             binding.appsContainer.visibility = View.VISIBLE

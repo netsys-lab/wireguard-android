@@ -358,8 +358,13 @@
     <string name="retry">Retry</string>
     <string name="no_active_app_flows">No active flows for this app</string>
     <string name="apps_routing_scion">APPS ROUTING SCION</string>
+    <string name="all_active_apps">ALL ACTIVE APPS</string>
     <string name="matched_flows">MATCHED FLOWS</string>
+    <string name="all_matched_flows">ALL MATCHED FLOWS</string>
     <string name="back_to_apps">Back to Apps</string>
+    <string name="show_all_active_apps">Show all active apps</string>
+    <string name="show_scion_apps_only">Show SCION apps only</string>
+    <string name="show_scion_flows_only">Show SCION flows only</string>
 
     <!-- Flow Row Column Headers -->
     <string name="flow_header_app">APP</string>
