@@ -34,31 +34,10 @@ object PathPolicyParser {
             if (matchersArr != null) {
                 for (i in 0 until matchersArr.length()) {
                     val m = matchersArr.optJSONObject(i) ?: continue
-                    val policyName = m.optString("policy", "").trim()
-                    if (policyName.isEmpty()) continue
-
-                    val source = m.optString("source", "").trim().takeIf { it.isNotEmpty() }
-                    val dest = m.optString("destination", "").trim().takeIf { it.isNotEmpty() }
-                    val proto = m.optString("protocol", "").trim().lowercase().takeIf { it.isNotEmpty() }
-                    val tc = if (m.has("traffic_class")) m.optInt("traffic_class") else null
-                    val appName = when {
-                        m.has("app_name") -> m.optString("app_name", "").trim().takeIf { it.isNotEmpty() }
-                        m.has("package") -> m.optString("package", "").trim().takeIf { it.isNotEmpty() }
-                        else -> null
+                    val matcher = parseMatcher(m)
+                    if (matcher.policy.isNotEmpty()) {
+                        matchersList.add(matcher)
                     }
-                    val appUid = if (m.has("app_uid")) m.optInt("app_uid") else null
-
-                    matchersList.add(
-                        ScitraMatcher(
-                            policy = policyName,
-                            source = source,
-                            destination = dest,
-                            protocol = proto,
-                            trafficClass = tc,
-                            appName = appName,
-                            appUid = appUid,
-                        )
-                    )
                 }
             }
 
@@ -70,61 +49,7 @@ object PathPolicyParser {
                 while (keys.hasNext()) {
                     val name = keys.next()
                     val p = policiesObj.optJSONObject(name) ?: continue
-
-                    val extends = p.optString("extends", "").trim().takeIf { it.isNotEmpty() }
-                    val failover = p.optString("failover", "").trim().takeIf { it.isNotEmpty() }
-
-                    // ACL
-                    val aclList = mutableListOf<String>()
-                    val aclArr = p.optJSONArray("acl")
-                    if (aclArr != null) {
-                        for (j in 0 until aclArr.length()) {
-                            val rule = aclArr.optString(j, "").trim()
-                            if (rule.isNotEmpty()) aclList.add(rule)
-                        }
-                    }
-
-                    // Sequence
-                    val seq = p.optString("sequence", "").trim().takeIf { it.isNotEmpty() }
-
-                    // Requirements
-                    val reqObj = p.optJSONObject("requirements")
-                    val requirements = ScitraRequirements(
-                        minMtu = if (reqObj?.has("min_mtu") == true) reqObj.optInt("min_mtu") else null,
-                        maxMetaLat = when {
-                            reqObj?.has("max_meta_lat") == true -> reqObj.optInt("max_meta_lat")
-                            reqObj?.has("max_latency") == true -> reqObj.optInt("max_latency")
-                            else -> null
-                        },
-                        minMetaBw = when {
-                            reqObj?.has("min_meta_bw") == true -> reqObj.optLong("min_meta_bw")
-                            reqObj?.has("min_bandwidth") == true -> reqObj.optLong("min_bandwidth")
-                            else -> null
-                        },
-                    )
-
-                    // Ordering
-                    val orderingList = mutableListOf<String>()
-                    val ordArr = p.optJSONArray("ordering")
-                    if (ordArr != null) {
-                        for (j in 0 until ordArr.length()) {
-                            val ord = ordArr.optString(j, "").trim()
-                            if (ord.isNotEmpty()) orderingList.add(ord)
-                        }
-                    }
-
-                    // Dynamic path selector
-                    val selector = p.optString("selector", "").trim().takeIf { it.isNotEmpty() }
-
-                    policiesMap[name] = ScitraPolicyEntry(
-                        extends = extends,
-                        failover = failover,
-                        acl = aclList,
-                        sequence = seq,
-                        requirements = requirements,
-                        ordering = orderingList,
-                        selector = selector,
-                    )
+                    policiesMap[name] = parsePolicyEntry(p)
                 }
             }
 
@@ -221,6 +146,102 @@ object PathPolicyParser {
         }
 
         return if (indentSpaces > 0) root.toString(indentSpaces) else root.toString()
+    }
+
+    /**
+     * Parses a single ScitraPolicyEntry from a JSONObject.
+     */
+    fun parsePolicyEntry(p: JSONObject): ScitraPolicyEntry {
+        val ext = p.optString("extends", "").trim().takeIf { it.isNotEmpty() }
+        val failover = p.optString("failover", "").trim().takeIf { it.isNotEmpty() }
+
+        val aclList = mutableListOf<String>()
+        val aclArr = p.optJSONArray("acl")
+        if (aclArr != null) {
+            for (j in 0 until aclArr.length()) {
+                val rule = aclArr.optString(j, "").trim()
+                if (rule.isNotEmpty()) aclList.add(rule)
+            }
+        }
+
+        val seq = p.optString("sequence", "").trim().takeIf { it.isNotEmpty() }
+
+        val reqObj = p.optJSONObject("requirements")
+        val requirements = ScitraRequirements(
+            minMtu = if (reqObj?.has("min_mtu") == true) reqObj.optInt("min_mtu") else null,
+            maxMetaLat = when {
+                reqObj?.has("max_meta_lat") == true -> reqObj.optInt("max_meta_lat")
+                reqObj?.has("max_latency") == true -> reqObj.optInt("max_latency")
+                else -> null
+            },
+            minMetaBw = when {
+                reqObj?.has("min_meta_bw") == true -> reqObj.optLong("min_meta_bw")
+                reqObj?.has("min_bandwidth") == true -> reqObj.optLong("min_bandwidth")
+                else -> null
+            },
+        )
+
+        val orderingList = mutableListOf<String>()
+        val ordArr = p.optJSONArray("ordering")
+        if (ordArr != null) {
+            for (j in 0 until ordArr.length()) {
+                val ord = ordArr.optString(j, "").trim()
+                if (ord.isNotEmpty()) orderingList.add(ord)
+            }
+        }
+
+        val selector = p.optString("selector", "").trim().takeIf { it.isNotEmpty() }
+
+        return ScitraPolicyEntry(
+            extends = ext,
+            failover = failover,
+            acl = aclList,
+            sequence = seq,
+            requirements = requirements,
+            ordering = orderingList,
+            selector = selector,
+        )
+    }
+
+    /**
+     * Parses a single ScitraPolicyEntry from a JSON string.
+     */
+    fun parsePolicyEntry(jsonStr: String): ScitraPolicyEntry {
+        return parsePolicyEntry(JSONObject(jsonStr))
+    }
+
+    /**
+     * Parses a single ScitraMatcher from a JSONObject.
+     */
+    fun parseMatcher(m: JSONObject): ScitraMatcher {
+        val policyName = m.optString("policy", "").trim()
+        val source = m.optString("source", "").trim().takeIf { it.isNotEmpty() }
+        val dest = m.optString("destination", "").trim().takeIf { it.isNotEmpty() }
+        val proto = m.optString("protocol", "").trim().lowercase().takeIf { it.isNotEmpty() }
+        val tc = if (m.has("traffic_class")) m.optInt("traffic_class") else null
+        val appName = when {
+            m.has("app_name") -> m.optString("app_name", "").trim().takeIf { it.isNotEmpty() }
+            m.has("package") -> m.optString("package", "").trim().takeIf { it.isNotEmpty() }
+            else -> null
+        }
+        val appUid = if (m.has("app_uid")) m.optInt("app_uid") else null
+
+        return ScitraMatcher(
+            policy = policyName,
+            source = source,
+            destination = dest,
+            protocol = proto,
+            trafficClass = tc,
+            appName = appName,
+            appUid = appUid,
+        )
+    }
+
+    /**
+     * Parses a single ScitraMatcher from a JSON string.
+     */
+    fun parseMatcher(jsonStr: String): ScitraMatcher {
+        return parseMatcher(JSONObject(jsonStr))
     }
 
     /**

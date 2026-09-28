@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/scitra_card_bg"
+    android:padding="14dp"
+    android:layout_marginBottom="8dp">
+
+    <!-- Top Row: Name, Extends/Failover Badges, Edit/Duplicate/Delete -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- Policy Name -->
+        <TextView
+            android:id="@+id/tv_policy_entry_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="p1"
+            android:textColor="@color/scitra_on_surface"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <!-- Duplicate -->
+        <ImageButton
+            android:id="@+id/btn_policy_duplicate"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_action_copy"
+            app:tint="@color/scitra_on_surface_variant"
+            android:contentDescription="Duplicate policy"
+            android:padding="4dp"
+            android:scaleType="centerInside" />
+
+        <!-- Edit -->
+        <ImageButton
+            android:id="@+id/btn_policy_edit"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_action_edit"
+            app:tint="@color/scitra_primary"
+            android:contentDescription="Edit policy"
+            android:padding="4dp"
+            android:scaleType="centerInside"
+            android:layout_marginStart="4dp" />
+
+        <!-- Delete -->
+        <ImageButton
+            android:id="@+id/btn_policy_delete"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_action_delete"
+            app:tint="@color/md_theme_dark_error"
+            android:contentDescription="Delete policy"
+            android:padding="4dp"
+            android:scaleType="centerInside"
+            android:layout_marginStart="4dp" />
+    </LinearLayout>
+
+    <!-- Badges Row: Extends, Failover, Selector -->
+    <LinearLayout
+        android:id="@+id/layout_policy_badges"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="6dp">
+
+        <TextView
+            android:id="@+id/badge_policy_extends"
+            android:layout_width="wrap_content"
+            android:layout_height="22dp"
+            android:gravity="center"
+            android:background="@drawable/scitra_badge_chip_bg"
+            android:paddingHorizontal="8dp"
+            android:text="Extends: default"
+            android:textColor="@color/scitra_primary"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            android:layout_marginEnd="6dp" />
+
+        <TextView
+            android:id="@+id/badge_policy_failover"
+            android:layout_width="wrap_content"
+            android:layout_height="22dp"
+            android:gravity="center"
+            android:background="@drawable/scitra_chip_unselected"
+            android:paddingHorizontal="8dp"
+            android:text="Failover: p2"
+            android:textColor="@color/scitra_on_surface_variant"
+            android:textSize="10sp"
+            android:visibility="gone"
+            android:layout_marginEnd="6dp" />
+
+        <TextView
+            android:id="@+id/badge_policy_selector"
+            android:layout_width="wrap_content"
+            android:layout_height="22dp"
+            android:gravity="center"
+            android:background="@drawable/scitra_chip_unselected"
+            android:paddingHorizontal="8dp"
+            android:text="Selector: lowest_rtt"
+            android:textColor="@color/scitra_warning"
+            android:textSize="10sp"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- Summary Details (Ordering, Requirements, ACL) -->
+    <TextView
+        android:id="@+id/tv_policy_entry_summary"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Ordering: Lowest Latency, Fewest Hops • MTU ≥ 1420"
+        android:textColor="@color/scitra_on_surface_variant"
+        android:textSize="12sp"
+        android:layout_marginTop="6dp" />
+
+</LinearLayout>

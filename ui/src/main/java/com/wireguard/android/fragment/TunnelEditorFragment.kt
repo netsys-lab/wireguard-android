@@ -268,17 +268,17 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
 
     @Suppress("UNUSED_PARAMETER")
     fun onRequestConfigurePathPolicy(view: View?) {
-        val dialog = PathPolicyDialogFragment.newInstance(pathPolicyJson, isEditMode = pathPolicyJson.isNotBlank())
-        childFragmentManager.setFragmentResultListener(PathPolicyDialogFragment.REQUEST_KEY_POLICY, viewLifecycleOwner) { _, bundle ->
-            val resultJson = bundle.getString(PathPolicyDialogFragment.KEY_RESULT_JSON)
+        val dialog = PathPolicyManagerDialogFragment.newInstance(pathPolicyJson)
+        childFragmentManager.setFragmentResultListener(PathPolicyManagerDialogFragment.REQUEST_KEY_POLICY, viewLifecycleOwner) { _, bundle ->
+            val resultJson = bundle.getString(PathPolicyManagerDialogFragment.KEY_RESULT_JSON)
             if (resultJson != null) {
                 pathPolicyJson = resultJson
                 binding?.config?.`interface`?.pathPolicy = resultJson
                 updatePathPolicyStatus()
-                Toast.makeText(context, "Path Policy configured successfully!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Path Policies updated successfully!", Toast.LENGTH_SHORT).show()
             }
         }
-        dialog.show(childFragmentManager, null)
+        dialog.show(childFragmentManager, PathPolicyManagerDialogFragment.TAG)
     }
 
     private fun updatePathPolicyStatus() {
@@ -295,33 +295,28 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
             binding.pathPolicyStatusBadge.setBackgroundResource(R.drawable.scitra_chip_selected)
             
             try {
-                val json = org.json.JSONObject(pathPolicyJson)
+                val config = com.wireguard.android.util.PathPolicyParser.parseConfig(pathPolicyJson)
                 val summaryLines = mutableListOf<String>()
                 
-                val policies = json.optJSONObject("policies")
-                if (policies != null && policies.length() > 0) {
-                    val keysList = mutableListOf<String>()
-                    val keys = policies.keys()
-                    while (keys.hasNext()) {
-                        keysList.add(keys.next())
-                    }
-                    val policyNames = keysList.joinToString(", ")
-                    summaryLines.add("Policies: $policyNames")
+                val customPolicies = config.policies.filter { it.key != "default" }
+                val policyNames = if (customPolicies.isNotEmpty()) {
+                    customPolicies.keys.joinToString(", ")
+                } else {
+                    "default"
                 }
+                summaryLines.add("Policies: $policyNames (${config.policies.size} total)")
                 
-                val matchers = json.optJSONArray("matchers")
-                if (matchers != null && matchers.length() > 0) {
-                    val firstMatcher = matchers.optJSONObject(0)
-                    val protocol = firstMatcher?.optString("protocol", "") ?: ""
-                    summaryLines.add("Matchers: ${matchers.length()}" + (if (protocol.isNotEmpty()) " ($protocol)" else ""))
+                if (config.matchers.isNotEmpty()) {
+                    val appMatchers = config.matchers.count { !it.appName.isNullOrBlank() }
+                    val appNote = if (appMatchers > 0) " ($appMatchers app-specific)" else ""
+                    summaryLines.add("Matchers: ${config.matchers.size}$appNote")
+                } else {
+                    summaryLines.add("Matchers: None (All traffic → Default policy)")
                 }
-                
-                val apps = json.optJSONObject("apps")
-                if (apps != null) {
-                    val mode = apps.optString("mode", "include")
-                    val packages = apps.optJSONArray("packages")
-                    val count = packages?.length() ?: 0
-                    summaryLines.add("Apps: $count $mode${if (count != 1) "d" else ""}")
+
+                config.legacyApps?.takeIf { it.packages.isNotEmpty() }?.let { apps ->
+                    val mode = if (apps.mode == com.wireguard.android.model.AppFilterMode.EXCLUDE) "excluded" else "included"
+                    summaryLines.add("Legacy Apps: ${apps.packages.size} $mode")
                 }
                 
                 if (summaryLines.isNotEmpty()) {

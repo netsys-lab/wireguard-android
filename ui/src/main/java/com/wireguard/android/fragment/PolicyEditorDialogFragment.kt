@@ -503,7 +503,9 @@ class PolicyEditorDialogFragment : DialogFragment() {
         const val TAG = "PolicyEditorDialogFragment"
         const val REQUEST_KEY_POLICY_ENTRY = "request_key_policy_entry"
         const val KEY_ORIGINAL_POLICY_NAME = "key_original_policy_name"
+        const val KEY_ORIGINAL_NAME = KEY_ORIGINAL_POLICY_NAME
         const val KEY_POLICY_NAME = "key_policy_name"
+        const val KEY_NEW_NAME = KEY_POLICY_NAME
         const val KEY_POLICY_ENTRY_JSON = "key_policy_entry_json"
         const val KEY_EXISTING_POLICIES = "key_existing_policies"
         const val KEY_IS_DEFAULT = "key_is_default"

@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/scitra_card_bg"
+    android:padding="14dp"
+    android:layout_marginBottom="8dp">
+
+    <!-- Top Row: Rank, Target Policy Badge, Up/Down/Edit/Delete -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- Rank Badge (#1, #2) -->
+        <TextView
+            android:id="@+id/tv_matcher_rank"
+            android:layout_width="wrap_content"
+            android:layout_height="24dp"
+            android:gravity="center"
+            android:background="@drawable/scitra_badge_chip_bg"
+            android:paddingHorizontal="8dp"
+            android:text="#1"
+            android:textColor="@color/scitra_primary"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <!-- Target Policy Chip -->
+        <TextView
+            android:id="@+id/tv_matcher_target_policy"
+            android:layout_width="wrap_content"
+            android:layout_height="24dp"
+            android:gravity="center"
+            android:background="@drawable/scitra_status_badge_bg"
+            android:paddingHorizontal="10dp"
+            android:text="→ Policy: p1"
+            android:textColor="@color/scitra_on_primary"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:layout_marginStart="8dp" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <!-- Reorder Up -->
+        <ImageButton
+            android:id="@+id/btn_matcher_up"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_arrow_up"
+            app:tint="@color/scitra_on_surface"
+            android:contentDescription="Move up"
+            android:padding="4dp"
+            android:scaleType="centerInside" />
+
+        <!-- Reorder Down -->
+        <ImageButton
+            android:id="@+id/btn_matcher_down"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_arrow_down"
+            app:tint="@color/scitra_on_surface"
+            android:contentDescription="Move down"
+            android:padding="4dp"
+            android:scaleType="centerInside" />
+
+        <!-- Edit -->
+        <ImageButton
+            android:id="@+id/btn_matcher_edit"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_action_edit"
+            app:tint="@color/scitra_primary"
+            android:contentDescription="Edit matcher"
+            android:padding="4dp"
+            android:scaleType="centerInside" />
+
+        <!-- Delete -->
+        <ImageButton
+            android:id="@+id/btn_matcher_delete"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_action_delete"
+            app:tint="@color/md_theme_dark_error"
+            android:contentDescription="Delete matcher"
+            android:padding="4dp"
+            android:scaleType="centerInside" />
+    </LinearLayout>
+
+    <!-- Details / Conditions Row -->
+    <LinearLayout
+        android:id="@+id/layout_matcher_details"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="8dp">
+
+        <!-- App Filter Line -->
+        <TextView
+            android:id="@+id/tv_matcher_app"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📱 App: com.android.chrome"
+            android:textColor="@color/scitra_on_surface"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <!-- Criteria Summary -->
+        <TextView
+            android:id="@+id/tv_matcher_criteria"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TCP • To: [1-ff00:0:1,10.0.0.1]:80"
+            android:textColor="@color/scitra_on_surface_variant"
+            android:textSize="12sp"
+            android:layout_marginTop="2dp" />
+    </LinearLayout>
+
+</LinearLayout>

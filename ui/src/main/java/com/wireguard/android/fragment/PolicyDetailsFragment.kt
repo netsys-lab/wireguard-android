@@ -25,6 +25,8 @@ import com.wireguard.android.model.ParsedPathPolicy
 import com.wireguard.android.model.PathSectionState
 import com.wireguard.android.model.PolicyAclRuleUiModel
 import com.wireguard.android.model.PolicyOrderingUiModel
+import com.wireguard.android.model.ScitraPolicyConfig
+import com.wireguard.android.model.ScitraPolicyEntry
 import com.wireguard.android.util.PathPolicyParser
 import com.wireguard.android.viewmodel.FlowPathViewModel
 import com.wireguard.config.Config
@@ -62,22 +64,69 @@ class PolicyDetailsFragment : BaseFragment() {
             }
         }
 
-        view.findViewById<View>(R.id.btn_configure_policy_action).setOnClickListener {
+        view.findViewById<View>(R.id.btn_edit_current_policy_chip)?.setOnClickListener {
+            openEditCurrentPolicyDialog()
+        }
+
+        view.findViewById<View>(R.id.btn_edit_current_policy_action)?.setOnClickListener {
+            openEditCurrentPolicyDialog()
+        }
+
+        view.findViewById<View>(R.id.btn_configure_policy_action)?.setOnClickListener {
             openConfigurePolicyDialog()
         }
 
-        view.findViewById<View>(R.id.btn_reset_policy_action).setOnClickListener {
+        view.findViewById<View>(R.id.btn_reset_policy_action)?.setOnClickListener {
             resetPolicyToDefault()
         }
 
+        // Result from full PathPolicyManagerDialogFragment
         childFragmentManager.setFragmentResultListener(
-            PathPolicyDialogFragment.REQUEST_KEY_POLICY,
+            PathPolicyManagerDialogFragment.REQUEST_KEY_POLICY,
             viewLifecycleOwner
         ) { _, bundle ->
-            val resultJson = bundle.getString(PathPolicyDialogFragment.KEY_RESULT_JSON)
+            val resultJson = bundle.getString(PathPolicyManagerDialogFragment.KEY_RESULT_JSON)
             if (resultJson != null) {
                 saveNewPolicy(resultJson)
             }
+        }
+
+        // Result from single PolicyEditorDialogFragment
+        childFragmentManager.setFragmentResultListener(
+            PolicyEditorDialogFragment.REQUEST_KEY_POLICY_ENTRY,
+            viewLifecycleOwner
+        ) { _, bundle ->
+            val origName = bundle.getString(PolicyEditorDialogFragment.KEY_ORIGINAL_POLICY_NAME)
+            val newName = bundle.getString(PolicyEditorDialogFragment.KEY_POLICY_NAME) ?: return@setFragmentResultListener
+            val entryJson = bundle.getString(PolicyEditorDialogFragment.KEY_POLICY_ENTRY_JSON) ?: return@setFragmentResultListener
+
+            val entry = PathPolicyParser.parsePolicyEntry(entryJson)
+            val config = if (currentPolicyJson.isNotBlank()) {
+                PathPolicyParser.parseConfig(currentPolicyJson)
+            } else {
+                ScitraPolicyConfig(policies = linkedMapOf("default" to ScitraPolicyEntry()))
+            }
+
+            val updatedPolicies = LinkedHashMap(config.policies)
+            if (origName != null && origName != newName) {
+                updatedPolicies.remove(origName)
+            }
+            updatedPolicies[newName] = entry
+
+            val updatedMatchers = if (origName != null && origName != newName) {
+                config.matchers.map { matcher ->
+                    if (matcher.policy == origName) matcher.copy(policy = newName) else matcher
+                }
+            } else {
+                config.matchers
+            }
+
+            val newConfig = config.copy(
+                matchers = updatedMatchers,
+                policies = updatedPolicies
+            )
+            val newJson = PathPolicyParser.serializeConfig(newConfig, 2)
+            saveNewPolicy(newJson)
         }
 
         loadAndRenderPolicy()
@@ -387,14 +436,36 @@ class PolicyDetailsFragment : BaseFragment() {
         }
     }
 
+    private fun openEditCurrentPolicyDialog() {
+        val policyName = parsedPolicy?.name ?: "default"
+        val isDefault = policyName == "default"
+
+        val config = if (currentPolicyJson.isNotBlank()) {
+            PathPolicyParser.parseConfig(currentPolicyJson)
+        } else {
+            ScitraPolicyConfig(policies = linkedMapOf("default" to ScitraPolicyEntry()))
+        }
+
+        val policyEntry = config.policies[policyName] ?: ScitraPolicyEntry()
+        val existingPolicies = ArrayList(config.policies.keys)
+
+        val dialog = PolicyEditorDialogFragment.newInstance(
+            originalPolicyName = policyName,
+            policyEntry = policyEntry,
+            existingPolicies = existingPolicies,
+            isDefault = isDefault,
+        )
+        dialog.show(childFragmentManager, PolicyEditorDialogFragment.TAG)
+    }
+
     private fun openConfigurePolicyDialog() {
         val jsonToEdit = if (currentPolicyJson.isNotBlank()) {
             currentPolicyJson
         } else {
             parsedPolicy?.rawJson ?: ""
         }
-        val dialog = PathPolicyDialogFragment.newInstance(jsonToEdit, isEditMode = true)
-        dialog.show(childFragmentManager, "path_policy")
+        val dialog = PathPolicyManagerDialogFragment.newInstance(jsonToEdit)
+        dialog.show(childFragmentManager, PathPolicyManagerDialogFragment.TAG)
     }
 
     private fun saveNewPolicy(newJson: String) {

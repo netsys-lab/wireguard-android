@@ -1,0 +1,350 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/scitra_background"
+    android:fitsSystemWindows="true">
+
+    <!-- ===== TOP APP BAR WITH IMPORT / EXPORT / RAW ACTIONS ===== -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="12dp">
+
+        <ImageView
+            android:id="@+id/btn_close_manager"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_centerVertical="true"
+            android:src="@drawable/ic_close"
+            app:tint="@color/scitra_on_surface"
+            android:scaleType="centerInside"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Close manager" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_toEndOf="@id/btn_close_manager"
+            android:layout_marginStart="12dp"
+            android:text="Path Policies"
+            android:textColor="@color/scitra_on_surface"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <!-- Header Actions: Raw JSON, Import, Export -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <ImageButton
+                android:id="@+id/btn_view_raw_json"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_code_brackets"
+                app:tint="@color/scitra_on_surface_variant"
+                android:contentDescription="View Raw JSON"
+                android:padding="6dp"
+                android:scaleType="centerInside" />
+
+            <ImageButton
+                android:id="@+id/btn_import_policy"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_action_open"
+                app:tint="@color/scitra_on_surface_variant"
+                android:contentDescription="Import JSON file"
+                android:padding="6dp"
+                android:scaleType="centerInside"
+                android:layout_marginStart="4dp" />
+
+            <ImageButton
+                android:id="@+id/btn_export_policy"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_action_save"
+                app:tint="@color/scitra_on_surface_variant"
+                android:contentDescription="Export JSON file"
+                android:padding="6dp"
+                android:scaleType="centerInside"
+                android:layout_marginStart="4dp" />
+        </LinearLayout>
+    </RelativeLayout>
+
+    <!-- ===== SCROLLABLE HUB CONTENT ===== -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="20dp"
+            android:paddingBottom="24dp">
+
+            <!-- Intro Header -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SCION Path Routing Hub"
+                android:textColor="@color/scitra_primary"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.08"
+                android:layout_marginTop="4dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Configure matchers to filter traffic and route flows to specific path policies."
+                android:textColor="@color/scitra_on_surface_variant"
+                android:textSize="13sp"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="16dp" />
+
+            <!-- ============================================== -->
+            <!-- 1. DEFAULT FALLBACK POLICY CARD -->
+            <!-- ============================================== -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/scitra_selected_card_bg"
+                android:padding="16dp"
+                android:layout_marginBottom="24dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="6dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Default Fallback Policy"
+                        android:textColor="@color/scitra_on_surface"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="22dp"
+                        android:gravity="center"
+                        android:background="@drawable/scitra_badge_chip_bg"
+                        android:paddingHorizontal="8dp"
+                        android:text="CATCH-ALL"
+                        android:textColor="@color/scitra_primary"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Applied automatically to candidate paths when no matcher rule triggers."
+                    android:textColor="@color/scitra_on_surface_variant"
+                    android:textSize="12sp"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- Summary Info -->
+                <TextView
+                    android:id="@+id/tv_default_policy_summary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Ordering: meta_latency_asc, hops_asc • Allow all transit ASes"
+                    android:textColor="@color/scitra_primary"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="12dp" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_edit_default_policy"
+                    android:layout_width="match_parent"
+                    android:layout_height="38dp"
+                    android:background="@drawable/scitra_btn_outline_bg"
+                    android:text="Edit Default Policy"
+                    android:textAllCaps="false"
+                    android:textColor="@color/scitra_primary"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- ============================================== -->
+            <!-- 2. TRAFFIC MATCHERS SECTION -->
+            <!-- ============================================== -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="4dp">
+
+                <TextView
+                    android:id="@+id/tv_matchers_section_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Traffic Matchers (0)"
+                    android:textColor="@color/scitra_on_surface"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_add_matcher"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:background="@drawable/scitra_btn_outline_bg"
+                    android:text="+ Add Matcher"
+                    android:textAllCaps="false"
+                    android:textColor="@color/scitra_primary"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:paddingHorizontal="14dp" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Evaluated in document order (top to bottom). The first match determines the policy."
+                android:textColor="@color/scitra_on_surface_variant"
+                android:textSize="12sp"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Empty State for Matchers -->
+            <TextView
+                android:id="@+id/tv_matchers_empty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="No custom matchers defined.\nAll traffic will route through the Default Fallback Policy."
+                android:textColor="@color/scitra_outline"
+                android:textSize="12sp"
+                android:background="@drawable/scitra_dashed_item_bg"
+                android:paddingVertical="18dp"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Matchers Container -->
+            <LinearLayout
+                android:id="@+id/layout_matchers_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="24dp" />
+
+            <!-- ============================================== -->
+            <!-- 3. POLICY LIBRARY SECTION -->
+            <!-- ============================================== -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="4dp">
+
+                <TextView
+                    android:id="@+id/tv_policies_section_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Policy Library (0)"
+                    android:textColor="@color/scitra_on_surface"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_add_policy"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:background="@drawable/scitra_btn_outline_bg"
+                    android:text="+ Add Policy"
+                    android:textAllCaps="false"
+                    android:textColor="@color/scitra_primary"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:paddingHorizontal="14dp" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Named sets of path filtering rules and sort priorities available for assignment."
+                android:textColor="@color/scitra_on_surface_variant"
+                android:textSize="12sp"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Empty State for Policies -->
+            <TextView
+                android:id="@+id/tv_policies_empty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="No custom policies defined in your library.\nClick '+ Add Policy' to create reusable routing policies."
+                android:textColor="@color/scitra_outline"
+                android:textSize="12sp"
+                android:background="@drawable/scitra_dashed_item_bg"
+                android:paddingVertical="18dp"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Policies Container -->
+            <LinearLayout
+                android:id="@+id/layout_policies_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- ===== BOTTOM ACTION BAR ===== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="14dp"
+        android:background="@color/scitra_surface_container_high"
+        android:elevation="8dp">
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_cancel_manager"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="Cancel"
+            android:textAllCaps="false"
+            android:textColor="@color/scitra_on_surface"
+            android:background="@drawable/scitra_btn_outline_bg"
+            android:layout_marginEnd="8dp" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_apply_manager"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="Apply &amp; Save"
+            android:textAllCaps="false"
+            android:textColor="@color/scitra_on_primary"
+            android:background="@drawable/scitra_btn_primary"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
+
+</LinearLayout>
