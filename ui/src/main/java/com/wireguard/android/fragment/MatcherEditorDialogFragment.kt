@@ -242,9 +242,17 @@ class MatcherEditorDialogFragment : DialogFragment() {
 
             // Policy selection
             val policyTarget = obj.optString("policy", "")
+            val cleanTarget = if (policyTarget.startsWith("ScitraDropdownItem(id=")) {
+                policyTarget.substringAfter("id=").substringBefore(",").substringBefore(")")
+            } else policyTarget
+
             val adapter = spinnerPolicy.adapter
-            if (adapter != null && policyTarget.isNotEmpty()) {
-                val pos = (0 until adapter.count).firstOrNull { adapter.getItem(it).toString() == policyTarget } ?: 0
+            if (adapter != null && cleanTarget.isNotEmpty()) {
+                val pos = (0 until adapter.count).firstOrNull {
+                    val item = adapter.getItem(it)
+                    val id = if (item is com.wireguard.android.widget.ScitraDropdownItem) item.id else item.toString()
+                    id == cleanTarget
+                } ?: 0
                 spinnerPolicy.setSelection(pos)
             }
 
@@ -283,7 +291,14 @@ class MatcherEditorDialogFragment : DialogFragment() {
     }
 
     private fun onSaveClicked() {
-        val selectedPolicy = spinnerPolicy.selectedItem?.toString()?.trim() ?: ""
+        val selectedItem = spinnerPolicy.selectedItem
+        val rawSelected = when (selectedItem) {
+            is com.wireguard.android.widget.ScitraDropdownItem -> selectedItem.id
+            else -> selectedItem?.toString()?.trim() ?: ""
+        }
+        val selectedPolicy = if (rawSelected.startsWith("ScitraDropdownItem(id=")) {
+            rawSelected.substringAfter("id=").substringBefore(",").substringBefore(")")
+        } else rawSelected
 
         if (selectedPolicy.isEmpty() || selectedPolicy.startsWith("(No custom")) {
             Toast.makeText(requireContext(), "A valid target policy must be selected.", Toast.LENGTH_SHORT).show()

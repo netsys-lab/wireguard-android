@@ -186,27 +186,46 @@ class PolicyEditorDialogFragment : DialogFragment() {
         try {
             val pObj = JSONObject(entryJsonStr)
 
+            fun cleanName(n: String): String {
+                if (n.startsWith("ScitraDropdownItem(id=")) {
+                    return n.substringAfter("id=").substringBefore(",").substringBefore(")")
+                }
+                return n
+            }
+
             // Extends
-            val extendsVal = pObj.optString("extends", "")
-            if (extendsVal.isNotEmpty()) {
+            val extendsVal = cleanName(pObj.optString("extends", ""))
+            if (extendsVal.isNotEmpty() && extendsVal != "(None)") {
                 val adapter = spinnerExtends.adapter
-                val pos = (0 until (adapter?.count ?: 0)).firstOrNull { adapter?.getItem(it).toString() == extendsVal } ?: 0
+                val pos = (0 until (adapter?.count ?: 0)).firstOrNull {
+                    val itm = adapter?.getItem(it)
+                    val id = if (itm is com.wireguard.android.widget.ScitraDropdownItem) itm.id else itm.toString()
+                    id == extendsVal
+                } ?: 0
                 spinnerExtends.setSelection(pos)
             }
 
             // Failover
-            val failoverVal = pObj.optString("failover", "")
-            if (failoverVal.isNotEmpty()) {
+            val failoverVal = cleanName(pObj.optString("failover", ""))
+            if (failoverVal.isNotEmpty() && failoverVal != "(None)") {
                 val adapter = spinnerFailover.adapter
-                val pos = (0 until (adapter?.count ?: 0)).firstOrNull { adapter?.getItem(it).toString() == failoverVal } ?: 0
+                val pos = (0 until (adapter?.count ?: 0)).firstOrNull {
+                    val itm = adapter?.getItem(it)
+                    val id = if (itm is com.wireguard.android.widget.ScitraDropdownItem) itm.id else itm.toString()
+                    id == failoverVal
+                } ?: 0
                 spinnerFailover.setSelection(pos)
             }
 
             // Selector
-            val selectorVal = pObj.optString("selector", "")
-            if (selectorVal.isNotEmpty()) {
+            val selectorVal = cleanName(pObj.optString("selector", ""))
+            if (selectorVal.isNotEmpty() && !selectorVal.startsWith("(None")) {
                 val adapter = spinnerSelector.adapter
-                val pos = (0 until (adapter?.count ?: 0)).firstOrNull { adapter?.getItem(it).toString() == selectorVal } ?: 0
+                val pos = (0 until (adapter?.count ?: 0)).firstOrNull {
+                    val itm = adapter?.getItem(it)
+                    val id = if (itm is com.wireguard.android.widget.ScitraDropdownItem) itm.id else itm.toString()
+                    id == selectorVal
+                } ?: 0
                 spinnerSelector.setSelection(pos)
             }
 
@@ -435,17 +454,26 @@ class PolicyEditorDialogFragment : DialogFragment() {
             }
         }
 
+        fun getCleanSpinnerId(spinner: Spinner): String? {
+            val itm = spinner.selectedItem ?: return null
+            val raw = when (itm) {
+                is com.wireguard.android.widget.ScitraDropdownItem -> itm.id
+                else -> itm.toString().trim()
+            }
+            val id = if (raw.startsWith("ScitraDropdownItem(id=")) {
+                raw.substringAfter("id=").substringBefore(",").substringBefore(")")
+            } else raw
+            return if (id.isEmpty() || id == "(None)" || id.startsWith("(None")) null else id
+        }
+
         // Extends
-        val selectedExtendsItem = spinnerExtends.selectedItem?.toString() ?: ""
-        val extendsVal = if (selectedExtendsItem == "(None)") null else selectedExtendsItem.takeIf { it.isNotBlank() }
+        val extendsVal = getCleanSpinnerId(spinnerExtends)
 
         // Failover
-        val selectedFailoverItem = spinnerFailover.selectedItem?.toString() ?: ""
-        val failoverVal = if (selectedFailoverItem == "(None)") null else selectedFailoverItem.takeIf { it.isNotBlank() }
+        val failoverVal = getCleanSpinnerId(spinnerFailover)
 
         // Selector
-        val selectedSelectorItem = spinnerSelector.selectedItem?.toString() ?: ""
-        val selectorVal = if (selectedSelectorItem.startsWith("(None")) null else selectedSelectorItem.takeIf { it.isNotBlank() }
+        val selectorVal = getCleanSpinnerId(spinnerSelector)
 
         // Requirements
         val minMtu = etMinMtu.text.toString().trim().toIntOrNull()

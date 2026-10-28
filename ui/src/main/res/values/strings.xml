@@ -411,7 +411,7 @@
     <string name="policy_rules_section">Routing Constraints &amp; ACL</string>
     <string name="policy_ordering_section">Prioritization Pipeline</string>
     <string name="policy_json_spec_section">Policy Specification</string>
-    <string name="view_policy_details">View policy details →</string>
+    <string name="view_policy_details">Open Policy Library →</string>
     <string name="reset_to_default_policy">Reset to Default Policy</string>
     <string name="policy_reset_success">Path policy reset to default</string>
     <string name="policy_updated_success">Path policy configured successfully</string>
@@ -482,9 +482,11 @@
     </plurals>
 
     <!-- SCION Path Policy Cards -->
-    <string name="policy_management_title">SCION Path Policies</string>
+    <string name="policy_management_title">Policy Library</string>
     <string name="policy_card_configure">Configure →</string>
     <string name="policy_card_saved_toast">SCION path policies updated</string>
     <string name="policy_card_save_error">Failed to save path policies</string>
+    <string name="policy_library_title">Policy Library</string>
+    <string name="policy_library_no_tunnel">No SCION tunnel configured to manage policies</string>
 </resources>
 

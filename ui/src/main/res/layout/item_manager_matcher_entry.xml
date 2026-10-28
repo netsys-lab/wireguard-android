@@ -6,6 +6,9 @@
     android:orientation="vertical"
     android:background="@drawable/scitra_card_bg"
     android:padding="14dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
     android:layout_marginBottom="8dp">
 
     <!-- Top Row: Rank, Target Policy Badge, Up/Down/Edit/Delete -->
@@ -24,28 +27,27 @@
             android:background="@drawable/scitra_badge_chip_bg"
             android:paddingHorizontal="8dp"
             android:text="#1"
-            android:textColor="@color/scitra_primary"
+            android:textColor="@color/scitra_on_primary"
             android:textSize="11sp"
             android:textStyle="bold" />
 
         <!-- Target Policy Chip -->
         <TextView
             android:id="@+id/tv_matcher_target_policy"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="24dp"
-            android:gravity="center"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
             android:background="@drawable/scitra_status_badge_bg"
             android:paddingHorizontal="10dp"
             android:text="→ Policy: p1"
-            android:textColor="@color/scitra_on_primary"
+            android:textColor="@color/scitra_success"
             android:textSize="11sp"
             android:textStyle="bold"
-            android:layout_marginStart="8dp" />
-
-        <View
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="6dp" />
 
         <!-- Reorder Up -->
         <ImageButton
@@ -81,7 +83,8 @@
             app:tint="@color/scitra_primary"
             android:contentDescription="Edit matcher"
             android:padding="4dp"
-            android:scaleType="centerInside" />
+            android:scaleType="centerInside"
+            android:layout_marginStart="2dp" />
 
         <!-- Delete -->
         <ImageButton
@@ -93,37 +96,19 @@
             app:tint="@color/md_theme_dark_error"
             android:contentDescription="Delete matcher"
             android:padding="4dp"
-            android:scaleType="centerInside" />
+            android:scaleType="centerInside"
+            android:layout_marginStart="2dp" />
     </LinearLayout>
 
-    <!-- Details / Conditions Row -->
-    <LinearLayout
-        android:id="@+id/layout_matcher_details"
+    <!-- App / Match Target Line -->
+    <TextView
+        android:id="@+id/tv_matcher_app"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:layout_marginTop="8dp">
-
-        <!-- App Filter Line -->
-        <TextView
-            android:id="@+id/tv_matcher_app"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="📱 App: com.android.chrome"
-            android:textColor="@color/scitra_on_surface"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:visibility="gone" />
-
-        <!-- Criteria Summary -->
-        <TextView
-            android:id="@+id/tv_matcher_criteria"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="TCP • To: [1-ff00:0:1,10.0.0.1]:80"
-            android:textColor="@color/scitra_on_surface_variant"
-            android:textSize="12sp"
-            android:layout_marginTop="2dp" />
-    </LinearLayout>
+        android:text="📱 App: com.example.app"
+        android:textColor="@color/scitra_on_surface"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:layout_marginTop="8dp" />
 
 </LinearLayout>

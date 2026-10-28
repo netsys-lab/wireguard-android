@@ -15,7 +15,9 @@ import com.wireguard.android.model.ObservableTunnel
 import com.wireguard.android.model.PathPreviewUiModel
 import com.wireguard.android.model.PathSectionState
 import com.wireguard.android.model.PolicyState
+import android.widget.Toast
 import com.wireguard.android.util.PathPreviewCardBinder
+import com.wireguard.android.util.TunnelPolicyHelper
 import com.wireguard.android.util.createFlowPathRepositoryProvider
 import com.wireguard.android.viewmodel.FlowPathViewModel
 import kotlinx.coroutines.launch
@@ -48,6 +50,24 @@ class FlowDetailsFragment : BaseFragment() {
 
         view.findViewById<View>(R.id.btn_back).setOnClickListener {
             activity?.onBackPressedDispatcher?.onBackPressed()
+        }
+
+        // Path Policy Manager interaction
+        parentFragmentManager.setFragmentResultListener(
+            PathPolicyManagerDialogFragment.REQUEST_KEY_POLICY,
+            viewLifecycleOwner
+        ) { _, bundle ->
+            val json = bundle.getString(PathPolicyManagerDialogFragment.KEY_RESULT_JSON) ?: return@setFragmentResultListener
+            val targetTunnel = selectedTunnel ?: return@setFragmentResultListener
+            lifecycleScope.launch {
+                val saved = TunnelPolicyHelper.savePolicyJson(targetTunnel, json)
+                if (saved) {
+                    Toast.makeText(requireContext(), R.string.policy_card_saved_toast, Toast.LENGTH_SHORT).show()
+                    viewModel?.loadPaths()
+                } else {
+                    Toast.makeText(requireContext(), R.string.policy_card_save_error, Toast.LENGTH_SHORT).show()
+                }
+            }
         }
 
         val tunnel = selectedTunnel
@@ -279,12 +299,12 @@ class FlowDetailsFragment : BaseFragment() {
     }
 
     private fun openPolicyDetails() {
-        val fragment = PolicyDetailsFragment.newInstance()
-        parentFragmentManager.beginTransaction()
-            .replace(getContainerId(), fragment)
-            .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
-            .addToBackStack(null)
-            .commit()
+        val tunnel = selectedTunnel ?: return
+        lifecycleScope.launch {
+            val rawJson = TunnelPolicyHelper.getPolicyJson(tunnel)
+            val dialog = PathPolicyManagerDialogFragment.newInstance(rawJson)
+            dialog.show(parentFragmentManager, PathPolicyManagerDialogFragment.TAG)
+        }
     }
 
     private fun openPathDetails(path: PathPreviewUiModel) {

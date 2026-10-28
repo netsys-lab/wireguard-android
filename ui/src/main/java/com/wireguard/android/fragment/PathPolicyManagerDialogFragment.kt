@@ -79,6 +79,22 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
         policiesMap.clear()
         policiesMap.putAll(currentConfig.policies)
 
+        // Sanitize any previously corrupted dropdown values
+        matchersList.forEachIndexed { i, m ->
+            val cleanPolicy = sanitizeName(m.policy) ?: "default"
+            if (cleanPolicy != m.policy) {
+                matchersList[i] = m.copy(policy = cleanPolicy)
+            }
+        }
+        for ((k, v) in policiesMap.toMap()) {
+            val cleanExtends = sanitizeName(v.extends)
+            val cleanFailover = sanitizeName(v.failover)
+            val cleanSelector = sanitizeName(v.selector)
+            if (cleanExtends != v.extends || cleanFailover != v.failover || cleanSelector != v.selector) {
+                policiesMap[k] = v.copy(extends = cleanExtends, failover = cleanFailover, selector = cleanSelector)
+            }
+        }
+
         // Ensure default policy entry exists if not yet present
         if (!policiesMap.containsKey("default")) {
             policiesMap["default"] = ScitraPolicyEntry(
@@ -163,6 +179,17 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
         setupFragmentResultListeners()
 
         renderAll()
+
+        val scrollToLibrary = arguments?.getBoolean(KEY_SCROLL_TO_LIBRARY, false) ?: false
+        if (scrollToLibrary) {
+            val scrollView = root.findViewById<android.widget.ScrollView>(R.id.scroll_policy_hub)
+            val target = root.findViewById<View>(R.id.section_policy_library)
+            if (scrollView != null && target != null) {
+                scrollView.post {
+                    scrollView.smoothScrollTo(0, target.top)
+                }
+            }
+        }
 
         return root
     }
@@ -285,34 +312,38 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
             val tvRank = item.findViewById<TextView>(R.id.tv_matcher_rank)
             val tvPolicyChip = item.findViewById<TextView>(R.id.tv_matcher_target_policy)
             val tvApp = item.findViewById<TextView>(R.id.tv_matcher_app)
-            val tvCriteria = item.findViewById<TextView>(R.id.tv_matcher_criteria)
             val btnUp = item.findViewById<ImageButton>(R.id.btn_matcher_up)
             val btnDown = item.findViewById<ImageButton>(R.id.btn_matcher_down)
             val btnEdit = item.findViewById<ImageButton>(R.id.btn_matcher_edit)
             val btnDelete = item.findViewById<ImageButton>(R.id.btn_matcher_delete)
 
+            val displayPolicy = sanitizeName(m.policy) ?: m.policy
             tvRank.text = "#${i + 1}"
-            tvPolicyChip.text = "→ Policy: ${m.policy}"
+            tvPolicyChip.text = "→ Policy: $displayPolicy"
 
-            // App Filter Line
+            // Target scope line
             if (!m.appName.isNullOrBlank()) {
                 tvApp.text = "📱 App: ${m.appName}"
                 tvApp.visibility = View.VISIBLE
             } else {
-                tvApp.visibility = View.GONE
+                val criteria = mutableListOf<String>()
+                if (!m.protocol.isNullOrBlank()) criteria.add(m.protocol.uppercase())
+                if (!m.destination.isNullOrBlank()) criteria.add("To: ${m.destination}")
+                if (!m.source.isNullOrBlank()) criteria.add("From: ${m.source}")
+                if (m.trafficClass != null) criteria.add("DSCP: ${m.trafficClass}")
+
+                if (criteria.isNotEmpty()) {
+                    tvApp.text = "🌐 ${criteria.joinToString(" • ")}"
+                    tvApp.visibility = View.VISIBLE
+                } else {
+                    tvApp.visibility = View.GONE
+                }
             }
 
-            // Criteria Line
-            val criteria = mutableListOf<String>()
-            if (!m.protocol.isNullOrBlank()) criteria.add(m.protocol.uppercase())
-            if (!m.destination.isNullOrBlank()) criteria.add("To: ${m.destination}")
-            if (!m.source.isNullOrBlank()) criteria.add("From: ${m.source}")
-            if (m.trafficClass != null) criteria.add("DSCP: ${m.trafficClass}")
-
-            if (criteria.isEmpty()) {
-                criteria.add(if (m.appName != null) "All network traffic for selected app" else "All traffic matching policy scope")
+            // Clicking card opens editor
+            item.setOnClickListener {
+                btnEdit.performClick()
             }
-            tvCriteria.text = criteria.joinToString(" • ")
 
             // Reorder Up
             if (i == 0) {
@@ -388,61 +419,16 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
             val item = inflater.inflate(R.layout.item_manager_policy_entry, layoutPoliciesContainer, false)
 
             val tvName = item.findViewById<TextView>(R.id.tv_policy_entry_name)
-            val badgeExtends = item.findViewById<TextView>(R.id.badge_policy_extends)
-            val badgeFailover = item.findViewById<TextView>(R.id.badge_policy_failover)
-            val badgeSelector = item.findViewById<TextView>(R.id.badge_policy_selector)
-            val tvSummary = item.findViewById<TextView>(R.id.tv_policy_entry_summary)
             val btnDuplicate = item.findViewById<ImageButton>(R.id.btn_policy_duplicate)
             val btnEdit = item.findViewById<ImageButton>(R.id.btn_policy_edit)
             val btnDelete = item.findViewById<ImageButton>(R.id.btn_policy_delete)
 
             tvName.text = name
 
-            // Extends Badge
-            if (!entry.extends.isNullOrBlank()) {
-                badgeExtends.text = "Extends: ${entry.extends}"
-                badgeExtends.visibility = View.VISIBLE
-            } else {
-                badgeExtends.visibility = View.GONE
+            // Clicking card opens editor
+            item.setOnClickListener {
+                btnEdit.performClick()
             }
-
-            // Failover Badge
-            if (!entry.failover.isNullOrBlank()) {
-                badgeFailover.text = "Failover: ${entry.failover}"
-                badgeFailover.visibility = View.VISIBLE
-            } else {
-                badgeFailover.visibility = View.GONE
-            }
-
-            // Selector Badge
-            if (!entry.selector.isNullOrBlank()) {
-                badgeSelector.text = "Selector: ${entry.selector}"
-                badgeSelector.visibility = View.VISIBLE
-            } else {
-                badgeSelector.visibility = View.GONE
-            }
-
-            // Summary
-            val summaryParts = mutableListOf<String>()
-            if (entry.ordering.isNotEmpty()) {
-                val ordList = entry.ordering.map { keyToReadable(it) }
-                summaryParts.add("Ordering: ${ordList.joinToString(", ")}")
-            }
-            if (entry.requirements.hasConstraints) {
-                val reqs = mutableListOf<String>()
-                entry.requirements.minMtu?.let { reqs.add("MTU ≥ $it") }
-                entry.requirements.maxMetaLat?.let { reqs.add("Lat ≤ ${it}ms") }
-                entry.requirements.minMetaBw?.let { reqs.add("BW ≥ $it kbps") }
-                summaryParts.add(reqs.joinToString(", "))
-            }
-            if (entry.acl.isNotEmpty()) {
-                summaryParts.add("${entry.acl.size} ACL rule(s)")
-            }
-            if (!entry.sequence.isNullOrBlank()) {
-                summaryParts.add("Seq: ${entry.sequence}")
-            }
-
-            tvSummary.text = if (summaryParts.isNotEmpty()) summaryParts.joinToString(" • ") else "Default routing constraints"
 
             // Edit
             btnEdit.setOnClickListener {
@@ -637,6 +623,16 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
         return PathPolicyParser.parseMatcher(jsonStr)
     }
 
+    private fun sanitizeName(name: String?): String? {
+        if (name == null) return null
+        val trimmed = name.trim()
+        if (trimmed.startsWith("ScitraDropdownItem(id=")) {
+            val extracted = trimmed.substringAfter("id=").substringBefore(",").substringBefore(")")
+            return if (extracted == "(None)" || extracted == "none" || extracted.isEmpty()) null else extracted
+        }
+        return if (trimmed == "(None)" || trimmed == "none" || trimmed.isEmpty()) null else trimmed
+    }
+
     private fun keyToReadable(key: String): String {
         return when (key) {
             "meta_latency_asc" -> "Lowest Latency"
@@ -655,10 +651,12 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
         const val REQUEST_KEY_POLICY = "request_key_policy"
         const val KEY_RESULT_JSON = "key_result_json"
         const val KEY_POLICY_JSON = "key_policy_json"
+        const val KEY_SCROLL_TO_LIBRARY = "key_scroll_to_library"
 
-        fun newInstance(currentPolicyJson: String): PathPolicyManagerDialogFragment {
+        fun newInstance(currentPolicyJson: String, scrollToLibrary: Boolean = false): PathPolicyManagerDialogFragment {
             val args = Bundle().apply {
                 putString(KEY_POLICY_JSON, currentPolicyJson)
+                putBoolean(KEY_SCROLL_TO_LIBRARY, scrollToLibrary)
             }
             return PathPolicyManagerDialogFragment().apply { arguments = args }
         }

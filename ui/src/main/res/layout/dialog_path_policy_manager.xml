@@ -86,6 +86,7 @@
 
     <!-- ===== SCROLLABLE HUB CONTENT ===== -->
     <ScrollView
+        android:id="@+id/scroll_policy_hub"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -254,6 +255,7 @@
             <!-- 3. POLICY LIBRARY SECTION -->
             <!-- ============================================== -->
             <LinearLayout
+                android:id="@+id/section_policy_library"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"

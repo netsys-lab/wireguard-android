@@ -20,7 +20,9 @@ data class ScitraDropdownItem(
     val subtitle: String? = null,
     val iconRes: Int = R.drawable.ic_policy_shield,
     val badgeText: String? = null,
-)
+) {
+    override fun toString(): String = id
+}
 
 object PolicySemanticInference {
     fun inferIcon(name: String?): Int {
