@@ -90,4 +90,8 @@ public interface Backend {
     default String getScionStatus() {
         return "{}";
     }
+
+    default String reloadPolicy(Tunnel tunnel, String policyJson) {
+        return "";
+    }
 }

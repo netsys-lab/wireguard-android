@@ -477,6 +477,11 @@ func wgInitScionWithBootstrapRetry(
 		LogConfig:     &logCfg,
 	}
 
+	policyFile := filepath.Join(configDir, "policy.json")
+	if _, err := os.Stat(policyFile); err == nil {
+		scionConfig.PolicyFile = policyFile
+	}
+
 	if localIPv4 != "" {
 		if addr, err := netip.ParseAddr(localIPv4); err == nil {
 			scionConfig.LocalIPv4 = addr
@@ -662,6 +667,23 @@ func wgClearFlowPathOverride(tunnelHandle int32, flowID int64) *C.char {
 		return C.CString(`{"error":"invalid_flow_id"}`)
 	}
 	handle.device.ClearFlowPathOverride(flow.ID(flowID))
+	return C.CString("")
+}
+
+//export wgReloadPolicy
+func wgReloadPolicy(tunnelHandle int32, policyJSON string) *C.char {
+	policyJSON = strings.Clone(policyJSON)
+	if mockModeEnabled.Load() {
+		return C.CString("")
+	}
+	handle, ok := tunnelHandles[tunnelHandle]
+	if !ok || handle.device == nil {
+		return C.CString("device_not_found")
+	}
+	err := handle.device.LoadPolicyJSON(policyJSON)
+	if err != nil {
+		return C.CString(err.Error())
+	}
 	return C.CString("")
 }
 

@@ -17,6 +17,7 @@ import androidx.core.content.ContextCompat
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.FragmentTransaction
 import androidx.lifecycle.lifecycleScope
+import com.wireguard.android.Application
 import com.wireguard.android.R
 import com.wireguard.android.backend.GoBackend
 import com.wireguard.android.backend.Tunnel
@@ -125,6 +126,7 @@ class TunnelDetailFragment : BaseFragment() {
             lifecycleScope.launch {
                 val saved = TunnelPolicyHelper.savePolicyJson(tunnel, json)
                 if (saved) {
+                    Application.getBackend().reloadPolicy(tunnel, json)
                     Toast.makeText(requireContext(), R.string.policy_card_saved_toast, Toast.LENGTH_SHORT).show()
                     updatePolicyOverview(tunnel)
                     updateFlows()

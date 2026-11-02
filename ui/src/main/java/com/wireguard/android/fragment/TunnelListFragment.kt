@@ -178,6 +178,7 @@ class TunnelListFragment : BaseFragment() {
             lifecycleScope.launch {
                 val saved = TunnelPolicyHelper.savePolicyJson(targetTunnel, json)
                 if (saved) {
+                    Application.getBackend().reloadPolicy(targetTunnel, json)
                     Toast.makeText(requireContext(), R.string.policy_card_saved_toast, Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(requireContext(), R.string.policy_card_save_error, Toast.LENGTH_SHORT).show()

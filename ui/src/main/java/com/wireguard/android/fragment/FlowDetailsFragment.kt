@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.fragment.app.FragmentTransaction
+import com.wireguard.android.Application
 import com.wireguard.android.R
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -62,6 +63,7 @@ class FlowDetailsFragment : BaseFragment() {
             lifecycleScope.launch {
                 val saved = TunnelPolicyHelper.savePolicyJson(targetTunnel, json)
                 if (saved) {
+                    Application.getBackend().reloadPolicy(targetTunnel, json)
                     Toast.makeText(requireContext(), R.string.policy_card_saved_toast, Toast.LENGTH_SHORT).show()
                     viewModel?.loadPaths()
                 } else {

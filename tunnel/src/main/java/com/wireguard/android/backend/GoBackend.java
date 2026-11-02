@@ -131,6 +131,7 @@ public final class GoBackend implements Backend {
     @Nullable private static native String wgGetFlowPaths(int handle, long flowId);
     @Nullable private static native String wgSetFlowPathOverride(int handle, long flowId, String fingerprint);
     @Nullable private static native String wgClearFlowPathOverride(int handle, long flowId);
+    @Nullable private static native String wgReloadPolicy(int handle, String policyJSON);
     private static native String wgInitScionWithBootstrapRetry(
         int tunnelHandle,
         String configDir,
@@ -207,6 +208,44 @@ public final class GoBackend implements Backend {
         if (flowId < 0)
             return "{\"error\":\"invalid_flow_id\"}";
         return wgClearFlowPathOverride(currentTunnelHandle, flowId);
+    }
+    @Override
+    @Nullable
+    public String reloadPolicy(final Tunnel tunnel, final String policyJson) {
+        if (tunnel != currentTunnel || currentTunnelHandle == -1)
+            return "{\"error\":\"tunnel_not_running\"}";
+        final String configDir = getScionConfigDir();
+        final File policyFile = new File(configDir, "policy.json");
+        try {
+            if (policyJson != null && !policyJson.trim().isEmpty()) {
+                java.nio.file.Files.write(policyFile.toPath(), policyJson.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                Log.i(TAG_SCION, "Wrote path policy to " + policyFile.getAbsolutePath());
+            } else if (policyFile.exists()) {
+                policyFile.delete();
+                Log.i(TAG_SCION, "Deleted path policy file " + policyFile.getAbsolutePath());
+            }
+        } catch (final Exception e) {
+            Log.e(TAG_SCION, "Failed to write path policy file on reload: " + e.getMessage(), e);
+        }
+        return wgReloadPolicy(currentTunnelHandle, policyJson != null ? policyJson : "");
+    }
+    private static boolean isOnlyPolicyChange(final Config oldConfig, final Config newConfig) {
+        if (oldConfig == newConfig)
+            return false;
+        final com.wireguard.config.Interface oldIface = oldConfig.getInterface();
+        final com.wireguard.config.Interface newIface = newConfig.getInterface();
+        if (!oldIface.getKeyPair().equals(newIface.getKeyPair())) return false;
+        if (!oldIface.getAddresses().equals(newIface.getAddresses())) return false;
+        if (!oldIface.getDnsServers().equals(newIface.getDnsServers())) return false;
+        if (!oldIface.getDnsSearchDomains().equals(newIface.getDnsSearchDomains())) return false;
+        if (oldIface.getListenPort().orElse(0) != newIface.getListenPort().orElse(0)) return false;
+        if (oldIface.getMtu().orElse(0) != newIface.getMtu().orElse(0)) return false;
+        if (!oldIface.getExcludedApplications().equals(newIface.getExcludedApplications())) return false;
+        if (!oldIface.getIncludedApplications().equals(newIface.getIncludedApplications())) return false;
+        if (oldIface.getTunnelMode() != newIface.getTunnelMode()) return false;
+        if (!oldIface.getBootstrapUrl().equals(newIface.getBootstrapUrl())) return false;
+        if (!oldConfig.getPeers().equals(newConfig.getPeers())) return false;
+        return !oldIface.getPathPolicy().equals(newIface.getPathPolicy());
     }
     private String initScionWithBootstrapRetry(
             final int tunnelHandle,
@@ -384,6 +423,12 @@ public final class GoBackend implements Backend {
             state = originalState == State.UP ? State.DOWN : State.UP;
         if (state == originalState && tunnel == currentTunnel && config == currentConfig)
             return originalState;
+        if (state == State.UP && tunnel == currentTunnel && currentTunnelHandle != -1 && currentConfig != null && config != null && isOnlyPolicyChange(currentConfig, config)) {
+            Log.i(TAG_SCION, "Dynamic path policy reload requested on running tunnel");
+            reloadPolicy(tunnel, config.getInterface().getPathPolicy());
+            currentConfig = config;
+            return State.UP;
+        }
         if (state == State.UP) {
             final Config originalConfig = currentConfig;
             final Tunnel originalTunnel = currentTunnel;
@@ -518,6 +563,18 @@ public final class GoBackend implements Backend {
                 final String bootstrapUrl = config.getInterface().getBootstrapUrl();
                 if (bootstrapUrl != null && !bootstrapUrl.isEmpty()) {
                     final String configDir = getScionConfigDir();
+                    final String pathPolicy = config.getInterface().getPathPolicy();
+                    final File policyFile = new File(configDir, "policy.json");
+                    try {
+                        if (pathPolicy != null && !pathPolicy.trim().isEmpty()) {
+                            java.nio.file.Files.write(policyFile.toPath(), pathPolicy.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                            Log.i(TAG_SCION, "Wrote initial path policy to " + policyFile.getAbsolutePath());
+                        } else if (policyFile.exists()) {
+                            policyFile.delete();
+                        }
+                    } catch (final Exception e) {
+                        Log.e(TAG_SCION, "Failed to write initial path policy file: " + e.getMessage(), e);
+                    }
 
                     // Extract local addresses from the tunnel config for the Go backend.
                     // These bypass net.InterfaceByName which is unavailable on Android.

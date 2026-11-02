@@ -36,6 +36,7 @@ extern char *wgGetFlows(int handle);
 extern char *wgGetFlowPaths(int handle, long long flowId);
 extern char *wgSetFlowPathOverride(int handle, long long flowId, struct go_string fingerprint);
 extern char *wgClearFlowPathOverride(int handle, long long flowId);
+extern char *wgReloadPolicy(int handle, struct go_string policyJSON);
 extern void wgSetCoreLogLevel(int level);
 
 JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgInitScionWithBootstrapRetry(
@@ -227,6 +228,23 @@ JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgSetFlow
 JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgClearFlowPathOverride(JNIEnv *env, jclass c, jint handle, jlong flowId)
 {
 	char *result = wgClearFlowPathOverride(handle, (long long)flowId);
+	if (!result)
+		return NULL;
+	jstring ret = (*env)->NewStringUTF(env, result);
+	free(result);
+	return ret;
+}
+
+JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgReloadPolicy(JNIEnv *env, jclass c, jint handle, jstring policyJSON)
+{
+	const char *policyJSON_str = policyJSON ? (*env)->GetStringUTFChars(env, policyJSON, 0) : "";
+	size_t policyJSON_len = policyJSON ? (*env)->GetStringUTFLength(env, policyJSON) : 0;
+	char *result = wgReloadPolicy(handle, (struct go_string){
+		.str = policyJSON_str,
+		.n = policyJSON_len
+	});
+	if (policyJSON)
+		(*env)->ReleaseStringUTFChars(env, policyJSON, policyJSON_str);
 	if (!result)
 		return NULL;
 	jstring ret = (*env)->NewStringUTF(env, result);
