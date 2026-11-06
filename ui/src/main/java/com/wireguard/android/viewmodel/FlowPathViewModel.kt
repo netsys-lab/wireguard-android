@@ -9,6 +9,7 @@ import com.wireguard.android.model.FlowDto
 import com.wireguard.android.model.FlowPathDomain
 import com.wireguard.android.model.FlowPathState
 import com.wireguard.android.model.OverrideState
+import com.wireguard.android.model.PathBadge
 import com.wireguard.android.model.PathDetailsUiModel
 import com.wireguard.android.model.PathSectionState
 import com.wireguard.android.util.CandidateSelector
@@ -142,9 +143,15 @@ class FlowPathViewModel(
     }
 
     fun selectPathDetails(fingerprint: String) {
-        val domain = lastDomainState?.paths?.find { it.fingerprint == fingerprint } ?: return
-        val allDomains = lastDomainState?.paths ?: return
-        val badges = CandidateSelector.deriveBadges(domain, allDomains)
+        val state = lastDomainState ?: return
+        val domain = state.paths.find { it.fingerprint == fingerprint } ?: return
+        val allDomains = state.paths
+        val badges = CandidateSelector.deriveBadges(domain, allDomains).toMutableList()
+        if (state.overrideFingerprint == fingerprint && state.overrideState == OverrideState.ACTIVE) {
+            if (!badges.contains(PathBadge.OVERRIDE)) {
+                badges.add(PathBadge.OVERRIDE)
+            }
+        }
         val source = deriveSelectionSource(fingerprint)
         _selectedPathDetails.value = FlowPathUiMapper.toPathDetails(domain, badges, source)
     }
@@ -201,12 +208,17 @@ class FlowPathViewModel(
     }
 
     private fun deriveSelectionSource(fingerprint: String): String {
-        val section = _pathSection.value as? PathSectionState.Ready ?: return ""
+        val state = lastDomainState
+        val overrideFp = state?.overrideFingerprint ?: (_pathSection.value as? PathSectionState.Ready)?.overrideFingerprint
+        val overrideState = state?.overrideState ?: (_pathSection.value as? PathSectionState.Ready)?.overrideState
+        val effectiveFp = state?.effectiveFingerprint ?: (_pathSection.value as? PathSectionState.Ready)?.effectiveFingerprint
+        val policyName = state?.policyName ?: (_pathSection.value as? PathSectionState.Ready)?.policyName
+
         return when {
-            section.overrideFingerprint == fingerprint && section.overrideState == OverrideState.ACTIVE ->
+            overrideFp == fingerprint && overrideState == OverrideState.ACTIVE ->
                 "Selected by manual override"
-            section.effectiveFingerprint == fingerprint -> {
-                val name = section.policyName ?: "automatic"
+            effectiveFp == fingerprint -> {
+                val name = policyName ?: "automatic"
                 "Selected automatically by the \"$name\" policy"
             }
             else -> ""
