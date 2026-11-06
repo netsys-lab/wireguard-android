@@ -19,7 +19,7 @@ class DebugFlowPathRepositoryProvider(
         return if (useFake) {
             FakeFlowRepository(context)
         } else {
-            RealFlowRepository(Application.getBackend() as GoBackend)
+            RealFlowRepository(Application.getBackend())
         }
     }
 
@@ -27,7 +27,7 @@ class DebugFlowPathRepositoryProvider(
         return if (useFake) {
             FakeFlowPathRepository(context, fakeState)
         } else {
-            val backend = Application.getBackend() as GoBackend
+            val backend = Application.getBackend()
             RealFlowPathRepository(FlowPathProviderImpl(backend))
         }
     }

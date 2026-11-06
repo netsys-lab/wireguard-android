@@ -94,4 +94,20 @@ public interface Backend {
     default String reloadPolicy(Tunnel tunnel, String policyJson) {
         return "";
     }
+
+    default String getFlows(Tunnel tunnel) {
+        return "{\"flows\":[]}";
+    }
+
+    default String getFlowPaths(Tunnel tunnel, long flowId) {
+        return "{}";
+    }
+
+    default String setFlowPathOverride(Tunnel tunnel, long flowId, String fingerprint) {
+        return "";
+    }
+
+    default String clearFlowPathOverride(Tunnel tunnel, long flowId) {
+        return "";
+    }
 }

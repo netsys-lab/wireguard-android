@@ -180,19 +180,23 @@ class FlowPathViewModel(
         }
     }
 
-    fun applyOverride(fingerprint: String) {
+    fun applyOverride(fingerprint: String, onComplete: ((Result<Unit>) -> Unit)? = null) {
         viewModelScope.launch {
-            flowPathRepository.setOverride(_tunnel, _flowId, fingerprint).onSuccess {
+            val result = flowPathRepository.setOverride(_tunnel, _flowId, fingerprint)
+            result.onSuccess {
                 loadPaths()
             }
+            onComplete?.invoke(result)
         }
     }
 
-    fun restoreOverrideFlow() {
+    fun restoreOverrideFlow(onComplete: ((Result<Unit>) -> Unit)? = null) {
         viewModelScope.launch {
-            flowPathRepository.clearOverride(_tunnel, _flowId).onSuccess {
+            val result = flowPathRepository.clearOverride(_tunnel, _flowId)
+            result.onSuccess {
                 loadPaths()
             }
+            onComplete?.invoke(result)
         }
     }
 

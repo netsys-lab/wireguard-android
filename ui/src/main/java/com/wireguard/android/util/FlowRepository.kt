@@ -1,7 +1,7 @@
 package com.wireguard.android.util
 
+import com.wireguard.android.backend.Backend
 import com.wireguard.android.backend.BackendException
-import com.wireguard.android.backend.GoBackend
 import com.wireguard.android.backend.Tunnel
 import com.wireguard.android.model.FlowDto
 import com.wireguard.android.model.FlowListResponseDto
@@ -17,7 +17,7 @@ interface FlowRepository {
     suspend fun getFlowPaths(tunnel: Tunnel, flowId: Long): Result<com.wireguard.android.model.FlowPathsResponseDto>
 }
 
-class RealFlowRepository(private val backend: GoBackend) : FlowRepository {
+class RealFlowRepository(private val backend: Backend) : FlowRepository {
 
     override suspend fun getFlows(tunnel: Tunnel): Result<List<FlowDto>> = withContext(Dispatchers.IO) {
         try {

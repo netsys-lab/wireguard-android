@@ -293,7 +293,17 @@ class FlowDetailsFragment : BaseFragment() {
         }
 
         restoreBtn.setOnClickListener {
-            viewModel?.restoreOverrideFlow()
+            viewModel?.restoreOverrideFlow { result ->
+                if (result.isFailure) {
+                    context?.let { ctx ->
+                        android.widget.Toast.makeText(
+                            ctx,
+                            "Failed to clear override: " + result.exceptionOrNull()?.message,
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
         }
 
         v.findViewById<View>(R.id.override_notice).visibility =

@@ -7,4 +7,4 @@
 [submodule "tunnel/tools/libwg-go/wireguard-go"]
 	path = tunnel/tools/libwg-go/wireguard-go
 	url = https://github.com/netsys-lab/wireguard-go.git
-	branch = feature/dynamic-policy-reload
+	branch = feature/manual-path-override
