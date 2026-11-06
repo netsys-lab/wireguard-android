@@ -672,18 +672,24 @@ func wgClearFlowPathOverride(tunnelHandle int32, flowID int64) *C.char {
 
 //export wgReloadPolicy
 func wgReloadPolicy(tunnelHandle int32, policyJSON string) *C.char {
-	policyJSON = strings.Clone(policyJSON)
+	policyJSON = strings.TrimSpace(policyJSON)
 	if mockModeEnabled.Load() {
 		return C.CString("")
 	}
 	handle, ok := tunnelHandles[tunnelHandle]
 	if !ok || handle.device == nil {
-		return C.CString("device_not_found")
+		return C.CString(`{"error":"device_not_found"}`)
 	}
-	err := handle.device.LoadPolicyJSON(policyJSON)
+	var err error
+	if len(policyJSON) == 0 {
+		err = handle.device.ReloadPathPolicyFromJSON(nil)
+	} else {
+		err = handle.device.ReloadPathPolicyFromJSON([]byte(policyJSON))
+	}
 	if err != nil {
-		return C.CString(err.Error())
+		return C.CString(`{"error":"` + err.Error() + `"}`)
 	}
+	_ = handle.device.RefreshActivePaths()
 	return C.CString("")
 }
 
