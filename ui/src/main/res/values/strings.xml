@@ -15,6 +15,14 @@
         <item quantity="one">%d tunnel selected</item>
         <item quantity="other">%d tunnels selected</item>
     </plurals>
+    <plurals name="delete_confirm_title">
+        <item quantity="one">Delete tunnel?</item>
+        <item quantity="other">Delete %d tunnels?</item>
+    </plurals>
+    <plurals name="delete_confirm_message">
+        <item quantity="one">Are you sure you want to delete "%s"? This action cannot be undone.</item>
+        <item quantity="other">Are you sure you want to delete %d tunnels? This action cannot be undone.</item>
+    </plurals>
     <plurals name="import_partial_success">
         <item quantity="one">Imported %1$d of %2$d tunnels</item>
         <item quantity="other">Imported %1$d of %2$d tunnels</item>

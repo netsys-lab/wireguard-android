@@ -49,6 +49,8 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 
 import com.wireguard.android.BR
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.wireguard.android.activity.BaseActivity
 
 /**
  * Fragment containing a list of known WireGuard tunnels. It allows creating and deleting tunnels.
@@ -96,27 +98,36 @@ class TunnelListFragment : BaseFragment() {
     }
 
     private fun syncTunnels() {
-        val allTunnels = binding?.tunnels ?: return
+        val binding = binding ?: return
+        val action = Runnable {
+            val allTunnels = binding.tunnels ?: return@Runnable
 
-        val scionList = allTunnels.filter { it.isScion }
-        val standardList = allTunnels.filter { !it.isScion }
+            val scionList = allTunnels.filter { it.isScion }
+            val standardList = allTunnels.filter { !it.isScion }
 
-        // Update scionTunnels
-        val scionNames = scionList.map { it.name }.toSet()
-        scionTunnels.removeAll { it.name !in scionNames }
-        for (item in scionList) {
-            if (!scionTunnels.containsKey(item.name)) {
-                scionTunnels.add(item)
+            // Update scionTunnels
+            val scionNames = scionList.map { it.name }.toSet()
+            scionTunnels.removeAll { it.name !in scionNames }
+            for (item in scionList) {
+                if (!scionTunnels.containsKey(item.name)) {
+                    scionTunnels.add(item)
+                }
+            }
+
+            // Update standardTunnels
+            val standardNames = standardList.map { it.name }.toSet()
+            standardTunnels.removeAll { it.name !in standardNames }
+            for (item in standardList) {
+                if (!standardTunnels.containsKey(item.name)) {
+                    standardTunnels.add(item)
+                }
             }
         }
 
-        // Update standardTunnels
-        val standardNames = standardList.map { it.name }.toSet()
-        standardTunnels.removeAll { it.name !in standardNames }
-        for (item in standardList) {
-            if (!standardTunnels.containsKey(item.name)) {
-                standardTunnels.add(item)
-            }
+        if (binding.scionTunnelList.isComputingLayout || binding.tunnelList.isComputingLayout) {
+            binding.root.post(action)
+        } else {
+            action.run()
         }
     }
 
@@ -261,6 +272,33 @@ class TunnelListFragment : BaseFragment() {
         }
     }
 
+    private fun performDeleteTunnels(activity: androidx.fragment.app.FragmentActivity, tunnelsToDelete: Collection<ObservableTunnel>) {
+        activity.lifecycleScope.launch {
+            val baseActivity = activity as? BaseActivity
+            val wasSelectedDeleted = tunnelsToDelete.contains(baseActivity?.selectedTunnel)
+            if (wasSelectedDeleted) {
+                baseActivity?.selectedTunnel = null
+            }
+
+            var deletedCount = 0
+            var firstThrowable: Throwable? = null
+
+            for (tunnel in tunnelsToDelete) {
+                try {
+                    tunnel.deleteAsync()
+                    deletedCount++
+                } catch (e: Throwable) {
+                    Log.e(TAG, "Failed to delete tunnel ${tunnel.name}", e)
+                    if (firstThrowable == null) {
+                        firstThrowable = e
+                    }
+                }
+            }
+
+            onTunnelDeletionFinished(deletedCount, firstThrowable)
+        }
+    }
+
     private fun onTunnelDeletionFinished(count: Int, throwable: Throwable?) {
         val message: String
         val ctx = activity ?: Application.get()
@@ -321,10 +359,18 @@ class TunnelListFragment : BaseFragment() {
                     actionModeListener.toggleTunnelChecked(item)
                     true
                 }
-                if (actionMode != null)
-                    (binding.root as MultiselectableRelativeLayout).setMultiSelected(actionModeListener.checkedTunnels.contains(item))
-                else
+                val inActionMode = actionMode != null
+                if (inActionMode) {
+                    val isChecked = actionModeListener.checkedTunnels.contains(item)
+                    (binding.root as MultiselectableRelativeLayout).setMultiSelected(isChecked)
+                    binding.tunnelSwitch.visibility = View.GONE
+                    binding.tunnelCheckbox.visibility = View.VISIBLE
+                    binding.tunnelCheckbox.isChecked = isChecked
+                } else {
                     (binding.root as MultiselectableRelativeLayout).setSingleSelected(selectedTunnel == item)
+                    binding.tunnelSwitch.visibility = View.VISIBLE
+                    binding.tunnelCheckbox.visibility = View.GONE
+                }
             }
         }
     }
@@ -371,21 +417,44 @@ class TunnelListFragment : BaseFragment() {
             return list
         }
 
+        private fun notifyAdapters() {
+            val binding = binding ?: return
+            val action = Runnable {
+                binding.scionTunnelList.adapter?.notifyDataSetChanged()
+                binding.tunnelList.adapter?.notifyDataSetChanged()
+            }
+            if (binding.scionTunnelList.isComputingLayout || binding.tunnelList.isComputingLayout) {
+                binding.root.post(action)
+            } else {
+                action.run()
+            }
+        }
+
         override fun onActionItemClicked(mode: ActionMode, item: MenuItem): Boolean {
             return when (item.itemId) {
                 R.id.menu_action_delete -> {
                     val activity = activity ?: return true
-                    val copyCheckedTunnels = HashSet(checkedTunnels)
-                    activity.lifecycleScope.launch {
-                        try {
-                            val futures = copyCheckedTunnels.map { async(SupervisorJob()) { it.deleteAsync() } }
-                            onTunnelDeletionFinished(futures.awaitAll().size, null)
-                        } catch (e: Throwable) {
-                            onTunnelDeletionFinished(0, e)
-                        }
+                    if (checkedTunnels.isEmpty()) return true
+                    val count = checkedTunnels.size
+                    val title = activity.resources.getQuantityString(R.plurals.delete_confirm_title, count, count)
+                    val message = if (count == 1) {
+                        val name = checkedTunnels.first().name
+                        activity.resources.getQuantityString(R.plurals.delete_confirm_message, 1, name)
+                    } else {
+                        activity.resources.getQuantityString(R.plurals.delete_confirm_message, count, count)
                     }
-                    checkedTunnels.clear()
-                    mode.finish()
+
+                    MaterialAlertDialogBuilder(activity)
+                        .setTitle(title)
+                        .setMessage(message)
+                        .setPositiveButton(R.string.delete) { _, _ ->
+                            val copyCheckedTunnels = ArrayList(checkedTunnels)
+                            checkedTunnels.clear()
+                            mode.finish()
+                            performDeleteTunnels(activity, copyCheckedTunnels)
+                        }
+                        .setNegativeButton(R.string.cancel, null)
+                        .show()
                     true
                 }
 
@@ -410,8 +479,7 @@ class TunnelListFragment : BaseFragment() {
                 resources = activity!!.resources
             }
             mode.menuInflater.inflate(R.menu.tunnel_list_action_mode, menu)
-            binding?.scionTunnelList?.adapter?.notifyDataSetChanged()
-            binding?.tunnelList?.adapter?.notifyDataSetChanged()
+            notifyAdapters()
             return true
         }
 
@@ -420,8 +488,7 @@ class TunnelListFragment : BaseFragment() {
             backPressedCallback?.isEnabled = false
             resources = null
             checkedTunnels.clear()
-            binding?.scionTunnelList?.adapter?.notifyDataSetChanged()
-            binding?.tunnelList?.adapter?.notifyDataSetChanged()
+            notifyAdapters()
         }
 
         override fun onPrepareActionMode(mode: ActionMode, menu: Menu): Boolean {
@@ -440,8 +507,7 @@ class TunnelListFragment : BaseFragment() {
             } else if (actionMode != null && checkedTunnels.isEmpty()) {
                 actionMode!!.finish()
             }
-            binding?.scionTunnelList?.adapter?.notifyDataSetChanged()
-            binding?.tunnelList?.adapter?.notifyDataSetChanged()
+            notifyAdapters()
             updateTitle(actionMode)
         }
 

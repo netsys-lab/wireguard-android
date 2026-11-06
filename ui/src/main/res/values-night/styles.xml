@@ -8,6 +8,9 @@
         <item name="android:statusBarColor">@color/scitra_background</item>
         <item name="android:navigationBarColor">@color/scitra_background</item>
         <item name="android:windowLightStatusBar">false</item>
+        <item name="windowActionModeOverlay">true</item>
+        <item name="actionModeStyle">@style/ScitraActionModeStyle</item>
+        <item name="actionModeCloseDrawable">@drawable/ic_close</item>
     </style>
 
     <style name="Theme.App.Starting" parent="Theme.SplashScreen">
@@ -17,5 +20,8 @@
         <item name="android:statusBarColor">@color/scitra_background</item>
         <item name="android:navigationBarColor">@color/scitra_background</item>
         <item name="android:windowLightStatusBar">false</item>
+        <item name="windowActionModeOverlay">true</item>
+        <item name="actionModeStyle">@style/ScitraActionModeStyle</item>
+        <item name="actionModeCloseDrawable">@drawable/ic_close</item>
     </style>
 </resources>
