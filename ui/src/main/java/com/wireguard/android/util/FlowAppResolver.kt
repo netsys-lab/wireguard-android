@@ -72,6 +72,7 @@ class FlowAppResolver(private val context: Context) {
                 AppFlowInfo("com.wireguard.android", "SCIONtra", null)
             )
             initialized = true
+            FlowLog.d("[FLOW-DEBUG] [AppResolver] initialized with ${candidateApps.size} apps: ${candidateApps.map { it.appName }}")
         }
     }
 
@@ -103,6 +104,7 @@ class FlowAppResolver(private val context: Context) {
         statusColorMap: Map<String, Int>
     ): List<FlowAppGroup> {
         ensureInitialized()
+        FlowLog.d("[FLOW-DEBUG] [AppResolver] groupFlowsByApp called with ${flows.size} flows")
         if (flows.isEmpty()) return emptyList()
 
         val rowDataList = FlowSortFilter.computeRowData(flows, calculator, statusColorMap)
@@ -111,11 +113,12 @@ class FlowAppResolver(private val context: Context) {
         val grouped = mutableMapOf<String, Pair<AppFlowInfo, MutableList<FlowDto>>>()
         flows.forEachIndexed { index, flow ->
             val app = resolveAppForFlow(flow, index)
+            FlowLog.d("[FLOW-DEBUG] [AppResolver]   flow id=${flow.id} (pkg=${flow.packageName}, egress=${flow.egressKind}, isSCION=${flow.isSCION}) -> app '${app.appName}' (${app.packageName})")
             val entry = grouped.getOrPut(app.packageName) { Pair(app, mutableListOf()) }
             entry.second.add(flow)
         }
 
-        return grouped.values.map { (app, appFlows) ->
+        val groups = grouped.values.map { (app, appFlows) ->
             val appRowData = appFlows.mapNotNull { rowDataByFlowId[it.id] }
             val txBytes = appFlows.sumOf { it.txBytes }
             val rxBytes = appFlows.sumOf { it.rxBytes }
@@ -134,6 +137,9 @@ class FlowAppResolver(private val context: Context) {
                 combinedBitsPerSec = combined
             )
         }.sortedByDescending { it.combinedBitsPerSec }
+
+        FlowLog.d("[FLOW-DEBUG] [AppResolver] groupFlowsByApp result: ${groups.size} app groups: ${groups.map { "${it.appInfo.appName}(${it.flows.size} flows)" }}")
+        return groups
     }
 
     private fun formatRate(bitsPerSec: Double): String {

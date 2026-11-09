@@ -18,6 +18,7 @@ import com.wireguard.android.model.PathSectionState
 import com.wireguard.android.model.PolicyState
 import android.widget.Toast
 import com.wireguard.android.util.PathPreviewCardBinder
+import com.wireguard.android.util.FlowLog
 import com.wireguard.android.util.TunnelPolicyHelper
 import com.wireguard.android.util.createFlowPathRepositoryProvider
 import com.wireguard.android.viewmodel.FlowPathViewModel
@@ -74,7 +75,9 @@ class FlowDetailsFragment : BaseFragment() {
 
         val tunnel = selectedTunnel
         val flowId = arguments?.getLong(ARG_FLOW_ID, -1L) ?: -1L
+        FlowLog.d("[FLOW-DEBUG] [FlowDetails] onViewCreated: flowId=$flowId, tunnel=${tunnel?.name}")
         if (tunnel == null || flowId < 0) {
+            FlowLog.w("[FLOW-DEBUG] [FlowDetails] onViewCreated: Invalid tunnel or flowId! tunnel=$tunnel, flowId=$flowId")
             showState("error")
             return
         }

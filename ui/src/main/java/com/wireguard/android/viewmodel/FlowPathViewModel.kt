@@ -16,6 +16,7 @@ import com.wireguard.android.util.CandidateSelector
 import com.wireguard.android.util.FlowPathRepository
 import com.wireguard.android.util.FlowPathUiMapper
 import com.wireguard.android.util.FlowRepository
+import com.wireguard.android.util.FlowLog
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -86,6 +87,7 @@ class FlowPathViewModel(
         viewModelScope.launch {
             if (!flowContextLoaded) _flowContext.value = FlowContextState.Loading
             flowRepository.getFlowById(_tunnel, _flowId).onSuccess { flow ->
+                FlowLog.d("[FLOW-DEBUG] [FlowPathVM] loadFlowContext: loaded flowId=${flow.id}, egressKind=${flow.egressKind}, txBytes=${flow.txBytes}, rxBytes=${flow.rxBytes}")
                 val now = System.currentTimeMillis()
                 val prev = previousFlowDto
                 val prevTime = previousPollTime
@@ -105,6 +107,7 @@ class FlowPathViewModel(
                 flowContextLoaded = true
                 _flowContext.value = state
             }.onFailure { e ->
+                FlowLog.w("[FLOW-DEBUG] [FlowPathVM] loadFlowContext: FAILED for flowId=$_flowId: ${e.message}")
                 _flowContext.value = FlowContextState.Error(e.message ?: "Failed to load flow")
             }
         }
@@ -114,6 +117,7 @@ class FlowPathViewModel(
         viewModelScope.launch {
             if (!pathsLoaded) _pathSection.value = PathSectionState.Loading
             flowPathRepository.getFlowPathState(_tunnel, _flowId).onSuccess { state ->
+                FlowLog.d("[FLOW-DEBUG] [FlowPathVM] loadPaths: loaded ${state.paths.size} paths for flowId=$_flowId (effectiveFingerprint=${state.effectiveFingerprint})")
                 lastDomainState = state
                 val effectiveDomain = state.effectiveFingerprint?.let { fp ->
                     state.paths.find { it.fingerprint == fp }
@@ -137,6 +141,7 @@ class FlowPathViewModel(
 
                 _pathSection.value = FlowPathUiMapper.toPathSection(updatedState, effectiveDomain)
             }.onFailure { e ->
+                FlowLog.w("[FLOW-DEBUG] [FlowPathVM] loadPaths: FAILED for flowId=$_flowId: ${e.message}")
                 _pathSection.value = PathSectionState.Error(e.message ?: "Failed to load paths")
             }
         }

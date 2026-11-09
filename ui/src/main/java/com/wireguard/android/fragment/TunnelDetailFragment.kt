@@ -37,6 +37,7 @@ import com.wireguard.android.util.FlowRowBinder
 import com.wireguard.android.util.FlowRowData
 import com.wireguard.android.util.FlowSortFilter
 import com.wireguard.android.util.FlowAppResolver
+import com.wireguard.android.util.FlowLog
 import com.wireguard.android.util.TunnelPolicyHelper
 import com.wireguard.config.Config
 import com.wireguard.config.Interface
@@ -232,6 +233,7 @@ class TunnelDetailFragment : BaseFragment() {
 
     fun onSeeAllFlows(@Suppress("UNUSED_PARAMETER") view: View) {
         showAllFlows = !showAllFlows
+        FlowLog.d("[FLOW-DEBUG] [TunnelDetail] onSeeAllFlows clicked: showAllFlows is now $showAllFlows")
         renderFilteredFlows(lastAllFlows)
     }
 
@@ -261,14 +263,22 @@ class TunnelDetailFragment : BaseFragment() {
     }
 
     fun onFlowItemClicked(flow: FlowDto) {
-        if (flow.egressKindEnum != FlowEgressKind.SCION) return
-        val tunnel = binding?.tunnel ?: return
+        FlowLog.d("[FLOW-DEBUG] [TunnelDetail] onFlowItemClicked: flow id=${flow.id}, egressKind='${flow.egressKind}', enum=${flow.egressKindEnum}, isSCION=${flow.isSCION}")
+        if (flow.egressKindEnum != FlowEgressKind.SCION) {
+            FlowLog.w("[FLOW-DEBUG] [TunnelDetail] onFlowItemClicked: IGNORED because flow is NOT SCION (${flow.egressKindEnum})")
+            return
+        }
+        val tunnel = binding?.tunnel ?: run {
+            FlowLog.w("[FLOW-DEBUG] [TunnelDetail] onFlowItemClicked: binding.tunnel is null")
+            return
+        }
         val parentFm = parentFragmentManager
         val containerId = if (parentFm.findFragmentById(R.id.detail_container) != null) {
             R.id.detail_container
         } else {
             R.id.list_detail_container
         }
+        FlowLog.d("[FLOW-DEBUG] [TunnelDetail] Navigating to FlowDetailsFragment for flowId=${flow.id}")
         parentFm.beginTransaction()
             .replace(containerId, FlowDetailsFragment.newInstance(flow.id))
             .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
@@ -278,6 +288,7 @@ class TunnelDetailFragment : BaseFragment() {
 
     fun onToggleFlowFilter(view: View) {
         showAllFlows = !showAllFlows
+        FlowLog.d("[FLOW-DEBUG] [TunnelDetail] onToggleFlowFilter clicked: showAllFlows is now $showAllFlows")
         renderFilteredFlows(lastAllFlows)
     }
 
@@ -396,6 +407,7 @@ class TunnelDetailFragment : BaseFragment() {
         val tunnel = binding.tunnel ?: return
         if (!isResumed) return
         if (tunnel.state != Tunnel.State.UP) {
+            FlowLog.d("[FLOW-DEBUG] [TunnelDetail] updateFlows: tunnel state is ${tunnel.state} (not UP)")
             if (lastFlowCount != -1) {
                 updateFilterButton(binding)
                 showFlowEmptyState(binding, R.string.tunnel_not_running)
@@ -406,6 +418,7 @@ class TunnelDetailFragment : BaseFragment() {
 
         val backend = resolveBackend()
         if (backend == null) {
+            FlowLog.w("[FLOW-DEBUG] [TunnelDetail] updateFlows: resolveBackend() returned null")
             if (lastFlowCount != -1) {
                 updateFilterButton(binding)
                 showFlowEmptyState(binding, R.string.tunnel_not_running)
@@ -419,14 +432,18 @@ class TunnelDetailFragment : BaseFragment() {
             val result = repo.getFlows(tunnel)
             val flows = result.getOrNull()
             if (flows == null) {
+                val err = result.exceptionOrNull()
+                FlowLog.w("[FLOW-DEBUG] [TunnelDetail] updateFlows: repo.getFlows returned NULL/FAILURE: ${err?.message}", err)
                 showFlowEmptyState(binding, R.string.no_active_flows)
                 lastFlowCount = -1
                 return
             }
+            FlowLog.d("[FLOW-DEBUG] [TunnelDetail] updateFlows: received ${flows.size} flows from repo")
             lastAllFlows = flows
             renderFilteredFlows(flows)
             lastFlowPollTime = System.currentTimeMillis()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            FlowLog.e("[FLOW-DEBUG] [TunnelDetail] updateFlows: EXCEPTION caught: ${e.message}", e)
             showFlowEmptyState(binding, R.string.no_active_flows)
             lastFlowCount = -1
         }
@@ -438,6 +455,7 @@ class TunnelDetailFragment : BaseFragment() {
         updateFilterButton(binding)
 
         val filtered = if (showAllFlows) flows else FlowSortFilter.filterSCIONOnly(flows)
+        FlowLog.d("[FLOW-DEBUG] [TunnelDetail] renderFilteredFlows: totalInput=${flows.size}, showAllFlows=$showAllFlows, filtered=${filtered.size}, selectedApp=$selectedAppPackage")
 
         if (filtered.isEmpty()) {
             val msgRes = when {
@@ -445,6 +463,8 @@ class TunnelDetailFragment : BaseFragment() {
                 !showAllFlows -> R.string.no_active_scion_flows
                 else -> R.string.no_active_flows
             }
+            val msgStr = if (msgRes == R.string.no_active_scion_flows) "no_active_scion_flows" else "no_active_flows"
+            FlowLog.d("[FLOW-DEBUG] [TunnelDetail] renderFilteredFlows: filtered list is EMPTY! Showing empty state: '$msgStr'")
             showFlowEmptyState(binding, msgRes)
             lastFlowCount = -1
             return
@@ -469,11 +489,13 @@ class TunnelDetailFragment : BaseFragment() {
                 appsContainer.removeAllViews()
 
                 if (appGroups.isEmpty()) {
+                    FlowLog.w("[FLOW-DEBUG] [TunnelDetail] Level 1 (App View): appGroups is EMPTY after grouping!")
                     showFlowEmptyState(binding, R.string.no_active_flows)
                     lastFlowCount = 0
                     return@launch
                 }
 
+                FlowLog.d("[FLOW-DEBUG] [TunnelDetail] Level 1 (App View): displaying ${appGroups.size} app groups")
                 val inflater = LayoutInflater.from(appsContainer.context)
                 val ctx = appsContainer.context
                 val defaultIcon = ContextCompat.getDrawable(ctx, R.drawable.ic_globe)
@@ -494,6 +516,7 @@ class TunnelDetailFragment : BaseFragment() {
                     rxView.text = group.rxRateText
 
                     rowView.setOnClickListener {
+                        FlowLog.d("[FLOW-DEBUG] [TunnelDetail] App group clicked: ${group.appInfo.packageName}")
                         selectedAppPackage = group.appInfo.packageName
                         renderFilteredFlows(lastAllFlows)
                     }
@@ -516,11 +539,13 @@ class TunnelDetailFragment : BaseFragment() {
                 val matchedFlows = filtered.filter { flow ->
                     resolver.resolveAppForFlow(flow).packageName == currentSelectedApp
                 }
+                FlowLog.d("[FLOW-DEBUG] [TunnelDetail] Level 2 (DrillDown): selectedApp=$currentSelectedApp, matchedFlows=${matchedFlows.size} (of ${filtered.size} filtered flows)")
 
                 val flowsContainer = binding.flowsContainer
                 flowsContainer.removeAllViews()
 
                 if (matchedFlows.isEmpty()) {
+                    FlowLog.w("[FLOW-DEBUG] [TunnelDetail] Level 2 (DrillDown): NO flows matched app '$currentSelectedApp'!")
                     showFlowEmptyState(binding, R.string.no_active_app_flows)
                     lastFlowCount = 0
                     return@launch

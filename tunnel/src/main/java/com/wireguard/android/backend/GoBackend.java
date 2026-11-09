@@ -180,28 +180,45 @@ public final class GoBackend implements Backend {
     @Override
     @Nullable
     public String getFlows(final Tunnel tunnel) {
-        if (tunnel != currentTunnel || currentTunnelHandle == -1)
+        if (tunnel != currentTunnel || currentTunnelHandle == -1) {
+            android.util.Log.w(TAG, "[FLOW-DEBUG] [GoBackend] getFlows: tunnel inactive or mismatch! requested=" +
+                    (tunnel != null ? tunnel.getName() : "null") + ", current=" +
+                    (currentTunnel != null ? currentTunnel.getName() : "null") + ", handle=" + currentTunnelHandle);
             return "{\"flows\":[],\"error\":\"tunnel_not_running\"}";
-        return wgGetFlows(currentTunnelHandle);
+        }
+        final String json = wgGetFlows(currentTunnelHandle);
+        final int len = json != null ? json.length() : 0;
+        final String preview = (json != null && json.length() > 200) ? json.substring(0, 200) + "..." : json;
+        android.util.Log.d(TAG, "[FLOW-DEBUG] [GoBackend] getFlows(handle=" + currentTunnelHandle + ") returned len=" + len + ": " + preview);
+        return json;
     }
     @Override
     @Nullable
     public String getFlowPaths(final Tunnel tunnel, final long flowId) {
-        if (tunnel != currentTunnel || currentTunnelHandle == -1)
+        if (tunnel != currentTunnel || currentTunnelHandle == -1) {
+            android.util.Log.w(TAG, "[FLOW-DEBUG] [GoBackend] getFlowPaths: tunnel inactive or mismatch! handle=" + currentTunnelHandle);
             return "{\"error\":\"tunnel_not_running\"}";
-        if (flowId < 0)
+        }
+        if (flowId < 0) {
+            android.util.Log.w(TAG, "[FLOW-DEBUG] [GoBackend] getFlowPaths: invalid flowId=" + flowId);
             return "{\"error\":\"invalid_flow_id\"}";
-        return wgGetFlowPaths(currentTunnelHandle, flowId);
+        }
+        final String json = wgGetFlowPaths(currentTunnelHandle, flowId);
+        android.util.Log.d(TAG, "[FLOW-DEBUG] [GoBackend] getFlowPaths(flowId=" + flowId + ") returned: " + json);
+        return json;
     }
     @Override
     @Nullable
     public String setFlowPathOverride(final Tunnel tunnel, final long flowId, final String fingerprint) {
-        if (tunnel != currentTunnel || currentTunnelHandle == -1)
+        if (tunnel != currentTunnel || currentTunnelHandle == -1) {
+            android.util.Log.w(TAG, "[FLOW-DEBUG] [GoBackend] setFlowPathOverride: tunnel inactive or mismatch! handle=" + currentTunnelHandle);
             return "{\"error\":\"tunnel_not_running\"}";
+        }
         if (flowId < 0)
             return "{\"error\":\"invalid_flow_id\"}";
         if (fingerprint == null || fingerprint.isEmpty())
             return "{\"error\":\"empty_fingerprint\"}";
+        android.util.Log.d(TAG, "[FLOW-DEBUG] [GoBackend] setFlowPathOverride: flowId=" + flowId + ", fingerprint=" + fingerprint);
         return wgSetFlowPathOverride(currentTunnelHandle, flowId, fingerprint);
     }
     @Override

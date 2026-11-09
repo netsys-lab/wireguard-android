@@ -553,29 +553,45 @@ func wgGetSCIONInfo(tunnelHandle int32) *C.char {
 //export wgGetFlows
 func wgGetFlows(tunnelHandle int32) *C.char {
 	if mockModeEnabled.Load() {
+		log.Printf("[FLOW-DEBUG] [GoBackend] wgGetFlows: mock mode active (handle=%d)", tunnelHandle)
 		handle, ok := tunnelHandles[tunnelHandle]
 		if ok && handle.mockDevice != nil {
-			return C.CString(handle.mockDevice.FlowSnapshotsJSON())
+			raw := handle.mockDevice.FlowSnapshotsJSON()
+			log.Printf("[FLOW-DEBUG] [GoBackend] wgGetFlows: returning mockDevice flows (%d bytes)", len(raw))
+			return C.CString(raw)
 		}
 		if globalMockDevice != nil {
-			return C.CString(globalMockDevice.FlowSnapshotsJSON())
+			raw := globalMockDevice.FlowSnapshotsJSON()
+			log.Printf("[FLOW-DEBUG] [GoBackend] wgGetFlows: returning globalMockDevice flows (%d bytes)", len(raw))
+			return C.CString(raw)
 		}
 	}
 	handle, ok := tunnelHandles[tunnelHandle]
 	if !ok || handle.device == nil {
+		log.Printf("[FLOW-DEBUG] [GoBackend] wgGetFlows: device not found for handle=%d", tunnelHandle)
 		resp, _ := json.Marshal(flow.FlowListResponse{Error: "device_not_found"})
 		return C.CString(string(resp))
 	}
 	snapshots := handle.device.FlowSnapshots()
+	log.Printf("[FLOW-DEBUG] [GoBackend] wgGetFlows: handle=%d captured %d flow snapshots", tunnelHandle, len(snapshots))
 	dtos := make([]flow.FlowDTO, len(snapshots))
 	for i, s := range snapshots {
 		dtos[i] = flow.MapSnapshotToDTO(s)
+		log.Printf("[FLOW-DEBUG] [GoBackend]   snapshot[%d]: id=%d egressKind='%s' class=%d proto=%d srcIA='%s' dstIA='%s' scionDstIP='%s' txPkts=%d rxPkts=%d txBytes=%d rxBytes=%d status='%s'",
+			i, s.ID, s.EgressKind, s.TrafficClass, s.Protocol, s.SrcIA, s.DstIA, s.SCIONDstIP, s.TxPackets, s.RxPackets, s.TxBytes, s.RxBytes, s.Status)
 	}
 	resp := flow.FlowListResponse{Flows: dtos}
 	raw, err := json.Marshal(resp)
 	if err != nil {
+		log.Printf("[FLOW-DEBUG] [GoBackend] wgGetFlows: JSON serialization failed: %v", err)
 		resp := flow.FlowListResponse{Error: "serialization_failed"}
 		raw, _ = json.Marshal(resp)
+	} else {
+		preview := string(raw)
+		if len(preview) > 300 {
+			preview = preview[:300] + "...(truncated)"
+		}
+		log.Printf("[FLOW-DEBUG] [GoBackend] wgGetFlows: returning %d bytes JSON: %s", len(raw), preview)
 	}
 	return C.CString(string(raw))
 }
