@@ -496,5 +496,14 @@
     <string name="policy_card_save_error">Failed to save path policies</string>
     <string name="policy_library_title">Policy Library</string>
     <string name="policy_library_no_tunnel">No SCION tunnel configured to manage policies</string>
+
+    <!-- Bootstrap URL QR Scanner -->
+    <string name="bootstrap_url">Bootstrap URL</string>
+    <string name="bootstrap_url_helper_text">Secure endpoint for topology maps. Type URL or scan QR code.</string>
+    <string name="scan_bootstrap_qr_code">Scan Bootstrap URL QR code</string>
+    <string name="scan_bootstrap_url_prompt">Scan QR code containing Bootstrap URL</string>
+    <string name="scan_bootstrap_url_success">Bootstrap URL updated from QR code</string>
+    <string name="scan_bootstrap_url_error">No valid Bootstrap URL found in QR code</string>
+    <string name="error_no_camera">No camera available on this device</string>
 </resources>
 
