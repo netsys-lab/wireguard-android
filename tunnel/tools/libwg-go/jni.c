@@ -36,6 +36,8 @@ extern char *wgGetFlows(int handle);
 extern char *wgGetFlowPaths(int handle, long long flowId);
 extern char *wgSetFlowPathOverride(int handle, long long flowId, struct go_string fingerprint);
 extern char *wgClearFlowPathOverride(int handle, long long flowId);
+extern int wgSetNewFlowEventsEnabled(int handle, int enabled);
+extern char *wgWaitNewFlows(int handle, int timeoutMs, int maxEvents);
 extern char *wgReloadPolicy(int handle, struct go_string policyJSON);
 extern void wgSetCoreLogLevel(int level);
 
@@ -228,6 +230,22 @@ JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgSetFlow
 JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgClearFlowPathOverride(JNIEnv *env, jclass c, jint handle, jlong flowId)
 {
 	char *result = wgClearFlowPathOverride(handle, (long long)flowId);
+	if (!result)
+		return NULL;
+	jstring ret = (*env)->NewStringUTF(env, result);
+	free(result);
+	return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wireguard_android_backend_GoBackend_wgSetNewFlowEventsEnabled(JNIEnv *env, jclass c, jint handle, jboolean enabled)
+{
+	return wgSetNewFlowEventsEnabled(handle, enabled ? 1 : 0);
+}
+
+/* Blocks in Go until new flows exist or the timeout expires; call from a worker thread only. */
+JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgWaitNewFlows(JNIEnv *env, jclass c, jint handle, jint timeoutMs, jint maxEvents)
+{
+	char *result = wgWaitNewFlows(handle, timeoutMs, maxEvents);
 	if (!result)
 		return NULL;
 	jstring ret = (*env)->NewStringUTF(env, result);

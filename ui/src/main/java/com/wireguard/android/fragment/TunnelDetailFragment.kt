@@ -71,7 +71,7 @@ class TunnelDetailFragment : BaseFragment() {
     private var lastAllFlows: List<FlowDto> = emptyList()
     private var flowRateCalculator: FlowRateCalculator = FlowRateCalculator()
     private var lastFlowPollTime: Long = 0L
-    private var selectedAppPackage: String? = null
+    private var selectedGroupKey: String? = null
     private var flowAppResolver: FlowAppResolver? = null
 
     private val statusColorMap: Map<String, Int> = mapOf(
@@ -112,7 +112,7 @@ class TunnelDetailFragment : BaseFragment() {
             true
         }
         binding.btnBackToApps.setOnClickListener {
-            selectedAppPackage = null
+            selectedGroupKey = null
             renderFilteredFlows(lastAllFlows)
         }
         updateMockToggle()
@@ -187,7 +187,7 @@ class TunnelDetailFragment : BaseFragment() {
         flowRateCalculator.reset()
         lastFlowPollTime = 0L
         showAllFlows = false
-        selectedAppPackage = null
+        selectedGroupKey = null
         lifecycleScope.launch { updateStats() }
         updatePolicyOverview(newTunnel)
     }
@@ -207,8 +207,8 @@ class TunnelDetailFragment : BaseFragment() {
     // ─── Navigation ─────────────────────────────────────────
 
     fun onBackPressed(@Suppress("UNUSED_PARAMETER") view: View) {
-        if (selectedAppPackage != null) {
-            selectedAppPackage = null
+        if (selectedGroupKey != null) {
+            selectedGroupKey = null
             renderFilteredFlows(lastAllFlows)
             return
         }
@@ -455,7 +455,7 @@ class TunnelDetailFragment : BaseFragment() {
         updateFilterButton(binding)
 
         val filtered = if (showAllFlows) flows else FlowSortFilter.filterSCIONOnly(flows)
-        FlowLog.d("[FLOW-DEBUG] [TunnelDetail] renderFilteredFlows: totalInput=${flows.size}, showAllFlows=$showAllFlows, filtered=${filtered.size}, selectedApp=$selectedAppPackage")
+        FlowLog.d("[FLOW-DEBUG] [TunnelDetail] renderFilteredFlows: totalInput=${flows.size}, showAllFlows=$showAllFlows, filtered=${filtered.size}, selectedApp=$selectedGroupKey")
 
         if (filtered.isEmpty()) {
             val msgRes = when {
@@ -470,7 +470,7 @@ class TunnelDetailFragment : BaseFragment() {
             return
         }
 
-        val currentSelectedApp = selectedAppPackage
+        val currentSelectedApp = selectedGroupKey
         val resolver = flowAppResolver ?: FlowAppResolver(requireContext()).also { flowAppResolver = it }
 
         lifecycleScope.launch {
@@ -511,13 +511,14 @@ class TunnelDetailFragment : BaseFragment() {
                     iconView.setImageDrawable(group.appInfo.icon ?: defaultIcon)
                     nameView.text = group.appInfo.appName
                     val flowPlural = if (group.flows.size == 1) "flow" else "flows"
-                    countView.text = "${group.flows.size} $flowPlural · ${group.appInfo.packageName}"
+                    val subtitle = group.appInfo.subtitle
+                    countView.text = if (subtitle.isEmpty()) "${group.flows.size} $flowPlural" else "${group.flows.size} $flowPlural · $subtitle"
                     txView.text = group.txRateText
                     rxView.text = group.rxRateText
 
                     rowView.setOnClickListener {
                         FlowLog.d("[FLOW-DEBUG] [TunnelDetail] App group clicked: ${group.appInfo.packageName}")
-                        selectedAppPackage = group.appInfo.packageName
+                        selectedGroupKey = group.appInfo.packageName
                         renderFilteredFlows(lastAllFlows)
                     }
                     appsContainer.addView(rowView)
@@ -582,7 +583,7 @@ class TunnelDetailFragment : BaseFragment() {
     }
 
     private fun updateFilterButton(binding: TunnelDetailFragmentBinding) {
-        val isAppLevel = selectedAppPackage == null
+        val isAppLevel = selectedGroupKey == null
         if (showAllFlows) {
             binding.flowFilterText.text = if (isAppLevel) getString(R.string.show_scion_apps_only) else getString(R.string.show_scion_flows_only)
             binding.tvSwitchFlowView.text = if (isAppLevel) getString(R.string.show_scion_apps_only) else getString(R.string.show_scion_flows_only)
@@ -596,7 +597,7 @@ class TunnelDetailFragment : BaseFragment() {
         binding.appsContainer.removeAllViews()
         binding.flowsContainer.removeAllViews()
         binding.tvSwitchFlowView.visibility = View.GONE
-        val activeContainer = if (selectedAppPackage == null) {
+        val activeContainer = if (selectedGroupKey == null) {
             binding.appBreadcrumbBar.visibility = View.GONE
             binding.appsContainer.visibility = View.VISIBLE
             binding.flowsContainer.visibility = View.GONE

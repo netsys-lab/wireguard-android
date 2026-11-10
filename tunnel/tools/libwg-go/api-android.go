@@ -686,6 +686,42 @@ func wgClearFlowPathOverride(tunnelHandle int32, flowID int64) *C.char {
 	return C.CString("")
 }
 
+// wgSetNewFlowEventsEnabled switches the reporting of new flows on or off
+// (see device/flow_events.go). Returns 0 on success, -1 if the tunnel has no
+// real device (unknown handle or mock tunnel).
+//
+//export wgSetNewFlowEventsEnabled
+func wgSetNewFlowEventsEnabled(tunnelHandle int32, enabled int32) int32 {
+	handle, ok := tunnelHandles[tunnelHandle]
+	if !ok || handle.device == nil {
+		return -1
+	}
+	handle.device.SetNewFlowEventsEnabled(enabled != 0)
+	return 0
+}
+
+// wgWaitNewFlows blocks until new flows were created, the timeout expires or
+// the device is closed, and returns them as JSON (see flow_events_json.go).
+// It is called in a loop by FlowOwnerTracker.java on its own thread.
+// "error":"device_not_found" tells the caller to stop.
+//
+//export wgWaitNewFlows
+func wgWaitNewFlows(tunnelHandle int32, timeoutMs int32, maxEvents int32) *C.char {
+	timeout, max := newFlowWaitParams(timeoutMs, maxEvents)
+	if mockModeEnabled.Load() {
+		// Mock flows carry their package name already; just pace the caller.
+		time.Sleep(timeout)
+		return C.CString(buildNewFlowEventsJSON(nil, 0, ""))
+	}
+	// Look the device up once; do not touch tunnelHandles while waiting.
+	handle, ok := tunnelHandles[tunnelHandle]
+	if !ok || handle.device == nil {
+		return C.CString(buildNewFlowEventsJSON(nil, 0, "device_not_found"))
+	}
+	events, dropped := handle.device.WaitNewFlowEvents(timeout, max)
+	return C.CString(buildNewFlowEventsJSON(events, dropped, ""))
+}
+
 //export wgReloadPolicy
 func wgReloadPolicy(tunnelHandle int32, policyJSON string) *C.char {
 	policyJSON = strings.TrimSpace(policyJSON)

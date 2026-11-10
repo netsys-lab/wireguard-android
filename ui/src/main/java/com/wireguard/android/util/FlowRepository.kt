@@ -38,12 +38,29 @@ class RealFlowRepository(private val backend: Backend) : FlowRepository {
             } else {
                 val scionCount = response.flows.count { it.isSCION }
                 FlowLog.d("[FLOW-DEBUG] [FlowRepo] Successfully parsed ${response.flows.size} flows ($scionCount SCION)")
-                Result.success(response.flows)
+                Result.success(attachOwners(tunnel, response.flows))
             }
         } catch (e: Exception) {
             FlowLog.e("[FLOW-DEBUG] [FlowRepo] Exception in getFlows for tunnel ${tunnel.name}: ${e.message}", e)
             Result.failure(e)
         }
+    }
+
+    /**
+     * Merges the app attribution kept by the backend's FlowOwnerTracker into the flows and
+     * drops tracker entries of flows that no longer exist.
+     */
+    private fun attachOwners(tunnel: Tunnel, flows: List<FlowDto>): List<FlowDto> {
+        val owners = backend.getFlowOwners(tunnel)
+        val tracking = backend.getFlowOwnerTrackingState()
+        val now = System.currentTimeMillis()
+        val merged = flows.map { FlowOwnerClassifier.withOwner(it, owners[it.id], tracking, now) }
+        backend.retainFlowOwners(tunnel, flows.mapTo(HashSet()) { it.id })
+        FlowLog.d(
+            "[FLOW-DEBUG] [FlowRepo] owner tracking=$tracking status=" +
+                merged.groupingBy { it.ownerStatus }.eachCount()
+        )
+        return merged
     }
 
     override suspend fun getFlowById(tunnel: Tunnel, flowId: Long): Result<FlowDto> {

@@ -374,6 +374,15 @@
     <string name="show_scion_apps_only">Show SCION apps only</string>
     <string name="show_scion_flows_only">Show SCION flows only</string>
 
+    <!-- Flow groups for app attribution -->
+    <string name="flow_group_system_dns">System (DNS)</string>
+    <string name="flow_group_network_diagnostics">Network diagnostics (ICMP/SCMP)</string>
+    <string name="flow_group_unknown">Unknown app</string>
+    <string name="flow_group_android_system">Android system</string>
+    <string name="flow_group_root">System (root)</string>
+    <string name="flow_group_uid">UID %d</string>
+    <string name="flow_group_shared_uid">%1$s (+%2$d)</string>
+
     <!-- Flow Row Column Headers -->
     <string name="flow_header_app">APP</string>
     <string name="flow_header_remote">REMOTE</string>
