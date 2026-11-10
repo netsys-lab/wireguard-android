@@ -207,7 +207,11 @@ object PathPolicyParser {
      * Parses a single ScitraPolicyEntry from a JSON string.
      */
     fun parsePolicyEntry(jsonStr: String): ScitraPolicyEntry {
-        return parsePolicyEntry(JSONObject(jsonStr))
+        return try {
+            parsePolicyEntry(JSONObject(jsonStr))
+        } catch (_: Throwable) {
+            ScitraPolicyEntry()
+        }
     }
 
     /**
@@ -241,7 +245,11 @@ object PathPolicyParser {
      * Parses a single ScitraMatcher from a JSON string.
      */
     fun parseMatcher(jsonStr: String): ScitraMatcher {
-        return parseMatcher(JSONObject(jsonStr))
+        return try {
+            parseMatcher(JSONObject(jsonStr))
+        } catch (_: Throwable) {
+            ScitraMatcher(policy = "")
+        }
     }
 
     /**

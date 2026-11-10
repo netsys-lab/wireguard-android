@@ -70,7 +70,8 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
         super.onCreate(savedInstanceState)
         setStyle(STYLE_NORMAL, R.style.PathPolicyDialogTheme)
 
-        val initialJson = arguments?.getString(KEY_POLICY_JSON)
+        val initialJson = savedInstanceState?.getString(KEY_SAVED_DRAFT_JSON)
+            ?: arguments?.getString(KEY_POLICY_JSON)
         currentConfig = PathPolicyParser.parseConfig(initialJson)
 
         // Initialize mutable state
@@ -95,13 +96,26 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
             }
         }
 
-        // Ensure default policy entry exists if not yet present
+        // Ensure default policy entry exists first in document order if not yet present
         if (!policiesMap.containsKey("default")) {
-            policiesMap["default"] = ScitraPolicyEntry(
+            val ordered = LinkedHashMap<String, ScitraPolicyEntry>()
+            ordered["default"] = ScitraPolicyEntry(
                 acl = listOf("+"),
                 ordering = listOf("meta_latency_asc", "hops_asc")
             )
+            ordered.putAll(policiesMap)
+            policiesMap.clear()
+            policiesMap.putAll(ordered)
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        val config = ScitraPolicyConfig(
+            matchers = matchersList.toList(),
+            policies = LinkedHashMap(policiesMap)
+        )
+        outState.putString(KEY_SAVED_DRAFT_JSON, PathPolicyParser.serializeConfig(config, 0))
     }
 
     override fun onCreateView(
@@ -136,6 +150,7 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
 
         // Edit Default Policy
         btnEditDefaultPolicy.setOnClickListener {
+            if (!isAdded || isStateSaved) return@setOnClickListener
             val defaultEntry = policiesMap["default"] ?: ScitraPolicyEntry()
             val dialog = PolicyEditorDialogFragment.newInstance(
                 originalPolicyName = "default",
@@ -148,10 +163,12 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
 
         // Add Matcher Button
         btnAddMatcher.setOnClickListener {
+            if (!isAdded || isStateSaved) return@setOnClickListener
             val customPolicyNames = policiesMap.keys.filter { it != "default" }
             if (customPolicyNames.isEmpty()) {
+                val ctx = context ?: return@setOnClickListener
                 Toast.makeText(
-                    requireContext(),
+                    ctx,
                     "Please create at least one custom policy in your library before adding a matcher.",
                     Toast.LENGTH_LONG
                 ).show()
@@ -167,6 +184,7 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
 
         // Add Policy Button
         btnAddPolicy.setOnClickListener {
+            if (!isAdded || isStateSaved) return@setOnClickListener
             val dialog = PolicyEditorDialogFragment.newInstance(
                 originalPolicyName = null,
                 policyEntry = null,
@@ -175,8 +193,6 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
             )
             dialog.show(childFragmentManager, PolicyEditorDialogFragment.TAG)
         }
-
-        setupFragmentResultListeners()
 
         renderAll()
 
@@ -192,6 +208,11 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
         }
 
         return root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        setupFragmentResultListeners()
     }
 
     private fun setupFragmentResultListeners() {
@@ -246,6 +267,7 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
             val jsonStr = bundle.getString(MatcherEditorDialogFragment.KEY_MATCHER_JSON) ?: return@setFragmentResultListener
 
             val matcher = parseMatcherFromJson(jsonStr)
+            if (matcher.policy.isBlank()) return@setFragmentResultListener
 
             if (index in 0 until matchersList.size) {
                 matchersList[index] = matcher
@@ -303,7 +325,8 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
         }
         tvMatchersEmpty.visibility = View.GONE
 
-        val inflater = LayoutInflater.from(context)
+        val ctx = context ?: return
+        val inflater = LayoutInflater.from(ctx)
 
         for (i in 0 until count) {
             val m = matchersList[i]
@@ -355,10 +378,12 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
                 val prev = i - 1
                 val curr = i
                 btnUp.setOnClickListener {
-                    val temp = matchersList[curr]
-                    matchersList[curr] = matchersList[prev]
-                    matchersList[prev] = temp
-                    renderMatchersList()
+                    if (curr in 1 until matchersList.size && prev == curr - 1) {
+                        val temp = matchersList[curr]
+                        matchersList[curr] = matchersList[prev]
+                        matchersList[prev] = temp
+                        renderMatchersList()
+                    }
                 }
             }
 
@@ -372,16 +397,19 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
                 val next = i + 1
                 val curr = i
                 btnDown.setOnClickListener {
-                    val temp = matchersList[curr]
-                    matchersList[curr] = matchersList[next]
-                    matchersList[next] = temp
-                    renderMatchersList()
+                    if (curr in 0 until matchersList.size - 1 && next == curr + 1) {
+                        val temp = matchersList[curr]
+                        matchersList[curr] = matchersList[next]
+                        matchersList[next] = temp
+                        renderMatchersList()
+                    }
                 }
             }
 
             // Edit
             val currentIndex = i
             btnEdit.setOnClickListener {
+                if (!isAdded || isStateSaved) return@setOnClickListener
                 val customPolicyNames = policiesMap.keys.filter { it != "default" }
                 val dialog = MatcherEditorDialogFragment.newInstance(
                     matcherIndex = currentIndex,
@@ -393,8 +421,10 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
 
             // Delete
             btnDelete.setOnClickListener {
-                matchersList.removeAt(currentIndex)
-                renderMatchersList()
+                if (currentIndex in matchersList.indices) {
+                    matchersList.removeAt(currentIndex)
+                    renderMatchersList()
+                }
             }
 
             layoutMatchersContainer.addView(item)
@@ -413,7 +443,8 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
         }
         tvPoliciesEmpty.visibility = View.GONE
 
-        val inflater = LayoutInflater.from(context)
+        val ctx = context ?: return
+        val inflater = LayoutInflater.from(ctx)
 
         for ((name, entry) in customPolicies) {
             val item = inflater.inflate(R.layout.item_manager_policy_entry, layoutPoliciesContainer, false)
@@ -432,6 +463,7 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
 
             // Edit
             btnEdit.setOnClickListener {
+                if (!isAdded || isStateSaved) return@setOnClickListener
                 val dialog = PolicyEditorDialogFragment.newInstance(
                     originalPolicyName = name,
                     policyEntry = entry,
@@ -456,6 +488,7 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
     }
 
     private fun duplicatePolicy(name: String, entry: ScitraPolicyEntry) {
+        val ctx = context ?: return
         var newName = "${name}_copy"
         var counter = 2
         while (policiesMap.containsKey(newName)) {
@@ -464,22 +497,34 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
         }
         policiesMap[newName] = entry.copy()
         renderPoliciesLibrary()
-        Toast.makeText(requireContext(), "Created duplicate policy '$newName'", Toast.LENGTH_SHORT).show()
+        Toast.makeText(ctx, "Created duplicate policy '$newName'", Toast.LENGTH_SHORT).show()
     }
 
     private fun confirmDeletePolicy(name: String) {
+        val ctx = context ?: return
         val affectedMatchers = matchersList.count { it.policy == name }
         val message = if (affectedMatchers > 0) {
-            "Policy '$name' is currently targeted by $affectedMatchers matcher(s). Deleting it may leave those matchers targeting an undefined policy.\n\nAre you sure you want to delete it?"
+            "Policy '$name' is currently targeted by $affectedMatchers matcher(s). Deleting it will also remove those matchers and clear references in other policies.\n\nAre you sure you want to delete it?"
         } else {
             "Are you sure you want to delete policy '$name'?"
         }
 
-        AlertDialog.Builder(requireContext())
+        AlertDialog.Builder(ctx)
             .setTitle("Delete Policy")
             .setMessage(message)
             .setPositiveButton("Delete") { _, _ ->
                 policiesMap.remove(name)
+                // Remove orphaned matchers targeting this policy
+                matchersList.removeAll { it.policy == name }
+                // Clear extends/failover references pointing to this policy
+                for ((k, v) in policiesMap.toMap()) {
+                    if (v.extends == name || v.failover == name) {
+                        policiesMap[k] = v.copy(
+                            extends = if (v.extends == name) null else v.extends,
+                            failover = if (v.failover == name) null else v.failover
+                        )
+                    }
+                }
                 renderAll()
             }
             .setNegativeButton("Cancel", null)
@@ -491,15 +536,16 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
     // =========================================================================
 
     private fun importPolicyFromUri(uri: Uri) {
+        val ctx = context ?: return
         try {
-            val contentResolver = requireContext().contentResolver
+            val contentResolver = ctx.contentResolver
             contentResolver.openInputStream(uri)?.use { inputStream ->
                 val reader = BufferedReader(InputStreamReader(inputStream, StandardCharsets.UTF_8))
                 val jsonContent = reader.readText()
                 val parsed = PathPolicyParser.parseConfig(jsonContent)
 
                 if (parsed.policies.isEmpty() && parsed.matchers.isEmpty()) {
-                    Toast.makeText(requireContext(), "Imported file does not contain valid scitra-policy definitions.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(ctx, "Imported file does not contain valid scitra-policy definitions.", Toast.LENGTH_LONG).show()
                     return
                 }
 
@@ -509,10 +555,14 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
                 policiesMap.clear()
                 policiesMap.putAll(parsed.policies)
                 if (!policiesMap.containsKey("default")) {
-                    policiesMap["default"] = ScitraPolicyEntry(
+                    val ordered = LinkedHashMap<String, ScitraPolicyEntry>()
+                    ordered["default"] = ScitraPolicyEntry(
                         acl = listOf("+"),
                         ordering = listOf("meta_latency_asc", "hops_asc")
                     )
+                    ordered.putAll(policiesMap)
+                    policiesMap.clear()
+                    policiesMap.putAll(ordered)
                 }
 
                 renderAll()
@@ -520,24 +570,25 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
                 val issues = PathPolicyParser.validateConfig(parsed)
                 if (issues.isNotEmpty()) {
                     Toast.makeText(
-                        requireContext(),
+                        ctx,
                         "Imported with ${issues.size} validation warning(s). Check matchers and policies.",
                         Toast.LENGTH_LONG
                     ).show()
                 } else {
                     Toast.makeText(
-                        requireContext(),
+                        ctx,
                         "Successfully imported ${parsed.matchers.size} matcher(s) and ${parsed.policies.size} policy/policies.",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
             }
         } catch (e: Exception) {
-            Toast.makeText(requireContext(), "Failed to import JSON: ${e.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(ctx, "Failed to import JSON: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
     private fun exportPolicyToUri(uri: Uri) {
+        val ctx = context ?: return
         try {
             val config = ScitraPolicyConfig(
                 matchers = matchersList.toList(),
@@ -545,44 +596,45 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
             )
             val jsonString = PathPolicyParser.serializeConfig(config, 2)
 
-            val contentResolver = requireContext().contentResolver
+            val contentResolver = ctx.contentResolver
             contentResolver.openOutputStream(uri)?.use { outputStream ->
                 outputStream.write(jsonString.toByteArray(StandardCharsets.UTF_8))
                 outputStream.flush()
             }
-            Toast.makeText(requireContext(), "scitra-policy.json exported successfully!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(ctx, "scitra-policy.json exported successfully!", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
-            Toast.makeText(requireContext(), "Failed to export JSON: ${e.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(ctx, "Failed to export JSON: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
     private fun showRawJsonDialog() {
+        val ctx = context ?: return
         val config = ScitraPolicyConfig(
             matchers = matchersList.toList(),
             policies = LinkedHashMap(policiesMap)
         )
         val jsonString = PathPolicyParser.serializeConfig(config, 2)
 
-        val textView = TextView(requireContext()).apply {
+        val textView = TextView(ctx).apply {
             text = jsonString
             typeface = android.graphics.Typeface.MONOSPACE
             textSize = 12f
             setPadding(32, 24, 32, 24)
-            setTextColor(requireContext().getColor(R.color.scitra_on_surface))
+            setTextColor(ctx.getColor(R.color.scitra_on_surface))
         }
 
-        val scrollView = android.widget.ScrollView(requireContext()).apply {
+        val scrollView = android.widget.ScrollView(ctx).apply {
             addView(textView)
         }
 
-        AlertDialog.Builder(requireContext())
+        AlertDialog.Builder(ctx)
             .setTitle("scitra-policy.json Preview")
             .setView(scrollView)
             .setPositiveButton("Copy to Clipboard") { _, _ ->
-                val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clipboard = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
                 val clip = ClipData.newPlainText("scitra-policy.json", jsonString)
-                clipboard.setPrimaryClip(clip)
-                Toast.makeText(requireContext(), "JSON copied to clipboard!", Toast.LENGTH_SHORT).show()
+                clipboard?.setPrimaryClip(clip)
+                Toast.makeText(ctx, "JSON copied to clipboard!", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Close", null)
             .show()
@@ -597,15 +649,24 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
         // Semantic validation check
         val issues = PathPolicyParser.validateConfig(config)
         if (issues.isNotEmpty()) {
-            val firstIssue = issues.first()
-            Toast.makeText(requireContext(), "Warning: $firstIssue", Toast.LENGTH_LONG).show()
+            val ctx = context ?: return
+            AlertDialog.Builder(ctx)
+                .setTitle("Invalid Policy Configuration")
+                .setMessage("Please resolve the following issue(s) before applying:\n\n• " + issues.joinToString("\n• "))
+                .setPositiveButton("OK", null)
+                .show()
+            return
         }
 
         val jsonString = PathPolicyParser.serializeConfig(config, 2)
+        val tunnelName = arguments?.getString(KEY_TUNNEL_NAME)
 
         setFragmentResult(
             REQUEST_KEY_POLICY,
-            bundleOf(KEY_RESULT_JSON to jsonString)
+            bundleOf(
+                KEY_RESULT_JSON to jsonString,
+                KEY_RESULT_TUNNEL_NAME to tunnelName
+            )
         )
 
         dismiss()
@@ -650,13 +711,21 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
         const val TAG = "PathPolicyManagerDialogFragment"
         const val REQUEST_KEY_POLICY = "request_key_policy"
         const val KEY_RESULT_JSON = "key_result_json"
+        const val KEY_RESULT_TUNNEL_NAME = "key_result_tunnel_name"
         const val KEY_POLICY_JSON = "key_policy_json"
+        const val KEY_SAVED_DRAFT_JSON = "key_saved_draft_json"
+        const val KEY_TUNNEL_NAME = "key_tunnel_name"
         const val KEY_SCROLL_TO_LIBRARY = "key_scroll_to_library"
 
-        fun newInstance(currentPolicyJson: String, scrollToLibrary: Boolean = false): PathPolicyManagerDialogFragment {
+        fun newInstance(
+            currentPolicyJson: String,
+            scrollToLibrary: Boolean = false,
+            tunnelName: String? = null
+        ): PathPolicyManagerDialogFragment {
             val args = Bundle().apply {
                 putString(KEY_POLICY_JSON, currentPolicyJson)
                 putBoolean(KEY_SCROLL_TO_LIBRARY, scrollToLibrary)
+                putString(KEY_TUNNEL_NAME, tunnelName)
             }
             return PathPolicyManagerDialogFragment().apply { arguments = args }
         }

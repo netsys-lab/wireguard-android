@@ -277,7 +277,8 @@ class PolicyEditorDialogFragment : DialogFragment() {
     // =========================================================================
 
     private fun addAclView(type: String, value: String) {
-        val inflater = LayoutInflater.from(context)
+        val ctx = context ?: return
+        val inflater = LayoutInflater.from(ctx)
         val view = inflater.inflate(R.layout.item_acl_entry, layoutAclContainer, false)
 
         val tvType = view.findViewById<TextView>(R.id.tv_acl_type)
@@ -286,18 +287,19 @@ class PolicyEditorDialogFragment : DialogFragment() {
 
         tvType.text = type
         if (type == "+") {
-            tvType.setTextColor(requireContext().getColor(R.color.scitra_success))
+            tvType.setTextColor(ctx.getColor(R.color.scitra_success))
         } else {
-            tvType.setTextColor(requireContext().getColor(R.color.md_theme_dark_error))
+            tvType.setTextColor(ctx.getColor(R.color.md_theme_dark_error))
         }
 
         tvType.setOnClickListener {
+            val c = context ?: return@setOnClickListener
             if (tvType.text == "+") {
                 tvType.text = "-"
-                tvType.setTextColor(requireContext().getColor(R.color.md_theme_dark_error))
+                tvType.setTextColor(c.getColor(R.color.md_theme_dark_error))
             } else {
                 tvType.text = "+"
-                tvType.setTextColor(requireContext().getColor(R.color.scitra_success))
+                tvType.setTextColor(c.getColor(R.color.scitra_success))
             }
         }
 
@@ -323,7 +325,8 @@ class PolicyEditorDialogFragment : DialogFragment() {
         }
         tvOrderingEmpty.visibility = View.GONE
 
-        val inflater = LayoutInflater.from(context)
+        val ctx = context ?: return
+        val inflater = LayoutInflater.from(ctx)
         val count = activeOrdering.size
 
         for (i in 0 until count) {
@@ -351,10 +354,12 @@ class PolicyEditorDialogFragment : DialogFragment() {
                 val prevIndex = i - 1
                 val currIndex = i
                 btnUp.setOnClickListener {
-                    val temp = activeOrdering[currIndex]
-                    activeOrdering[currIndex] = activeOrdering[prevIndex]
-                    activeOrdering[prevIndex] = temp
-                    renderOrderingList()
+                    if (currIndex in 1 until activeOrdering.size && prevIndex == currIndex - 1) {
+                        val temp = activeOrdering[currIndex]
+                        activeOrdering[currIndex] = activeOrdering[prevIndex]
+                        activeOrdering[prevIndex] = temp
+                        renderOrderingList()
+                    }
                 }
             }
 
@@ -368,18 +373,22 @@ class PolicyEditorDialogFragment : DialogFragment() {
                 val nextIndex = i + 1
                 val currIndex = i
                 btnDown.setOnClickListener {
-                    val temp = activeOrdering[currIndex]
-                    activeOrdering[currIndex] = activeOrdering[nextIndex]
-                    activeOrdering[nextIndex] = temp
-                    renderOrderingList()
+                    if (currIndex in 0 until activeOrdering.size - 1 && nextIndex == currIndex + 1) {
+                        val temp = activeOrdering[currIndex]
+                        activeOrdering[currIndex] = activeOrdering[nextIndex]
+                        activeOrdering[nextIndex] = temp
+                        renderOrderingList()
+                    }
                 }
             }
 
             // Delete
             val indexToDelete = i
             btnDelete.setOnClickListener {
-                activeOrdering.removeAt(indexToDelete)
-                renderOrderingList()
+                if (indexToDelete in activeOrdering.indices) {
+                    activeOrdering.removeAt(indexToDelete)
+                    renderOrderingList()
+                }
             }
 
             layoutOrderingContainer.addView(item)
@@ -387,6 +396,7 @@ class PolicyEditorDialogFragment : DialogFragment() {
     }
 
     private fun showAddOrderingDialog() {
+        val ctx = context ?: return
         val availableCriteria = listOf(
             "meta_latency_asc" to "Lowest Latency (meta_latency_asc)",
             "hops_asc" to "Fewest Hops (hops_asc)",
@@ -398,18 +408,20 @@ class PolicyEditorDialogFragment : DialogFragment() {
         ).filter { (key, _) -> !activeOrdering.contains(key) }
 
         if (availableCriteria.isEmpty()) {
-            Toast.makeText(requireContext(), "All sorting criteria have already been added.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(ctx, "All sorting criteria have already been added.", Toast.LENGTH_SHORT).show()
             return
         }
 
         val displayLabels = availableCriteria.map { it.second }.toTypedArray()
 
-        AlertDialog.Builder(requireContext())
+        AlertDialog.Builder(ctx)
             .setTitle("Add Sorting Criterion")
             .setItems(displayLabels) { _, which ->
-                val selectedKey = availableCriteria[which].first
-                activeOrdering.add(selectedKey)
-                renderOrderingList()
+                if (which in availableCriteria.indices) {
+                    val selectedKey = availableCriteria[which].first
+                    activeOrdering.add(selectedKey)
+                    renderOrderingList()
+                }
             }
             .setNegativeButton("Cancel", null)
             .show()
@@ -476,9 +488,30 @@ class PolicyEditorDialogFragment : DialogFragment() {
         val selectorVal = getCleanSpinnerId(spinnerSelector)
 
         // Requirements
-        val minMtu = etMinMtu.text.toString().trim().toIntOrNull()
-        val maxLatency = etMaxLatency.text.toString().trim().toIntOrNull()
-        val minBw = etMinBandwidth.text.toString().trim().toLongOrNull()
+        val minMtuStr = etMinMtu.text.toString().trim()
+        val minMtu = minMtuStr.toIntOrNull()
+        if (minMtuStr.isNotEmpty() && (minMtu == null || minMtu < 0)) {
+            etMinMtu.error = "Minimum MTU must be a positive integer"
+            etMinMtu.requestFocus()
+            return
+        }
+
+        val maxLatencyStr = etMaxLatency.text.toString().trim()
+        val maxLatency = maxLatencyStr.toIntOrNull()
+        if (maxLatencyStr.isNotEmpty() && (maxLatency == null || maxLatency < 0)) {
+            etMaxLatency.error = "Maximum latency must be a positive integer"
+            etMaxLatency.requestFocus()
+            return
+        }
+
+        val minBwStr = etMinBandwidth.text.toString().trim()
+        val minBw = minBwStr.toLongOrNull()
+        if (minBwStr.isNotEmpty() && (minBw == null || minBw < 0)) {
+            etMinBandwidth.error = "Minimum bandwidth must be a positive integer"
+            etMinBandwidth.requestFocus()
+            return
+        }
+
         val reqs = ScitraRequirements(minMtu = minMtu, maxMetaLat = maxLatency, minMetaBw = minBw)
 
         // Sequence

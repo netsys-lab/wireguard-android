@@ -180,19 +180,34 @@ class TunnelListFragment : BaseFragment() {
         }
 
         // Path Policy Manager interaction
-        parentFragmentManager.setFragmentResultListener(
+        childFragmentManager.setFragmentResultListener(
             PathPolicyManagerDialogFragment.REQUEST_KEY_POLICY,
             viewLifecycleOwner
         ) { _, bundle ->
             val json = bundle.getString(PathPolicyManagerDialogFragment.KEY_RESULT_JSON) ?: return@setFragmentResultListener
-            val targetTunnel = getActiveOrPrimaryScionTunnel() ?: return@setFragmentResultListener
+            val targetName = bundle.getString(PathPolicyManagerDialogFragment.KEY_RESULT_TUNNEL_NAME)
+            val targetTunnel = if (targetName != null) {
+                scionTunnels.firstOrNull { it.name == targetName } ?: getActiveOrPrimaryScionTunnel()
+            } else {
+                getActiveOrPrimaryScionTunnel()
+            } ?: return@setFragmentResultListener
+
             lifecycleScope.launch {
-                val saved = TunnelPolicyHelper.savePolicyJson(targetTunnel, json)
-                if (saved) {
-                    Application.getBackend().reloadPolicy(targetTunnel, json)
-                    Toast.makeText(requireContext(), R.string.policy_card_saved_toast, Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(requireContext(), R.string.policy_card_save_error, Toast.LENGTH_SHORT).show()
+                try {
+                    val saved = TunnelPolicyHelper.savePolicyJson(targetTunnel, json)
+                    val ctx = context ?: return@launch
+                    if (!isAdded) return@launch
+                    if (saved) {
+                        Toast.makeText(ctx, R.string.policy_card_saved_toast, Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(ctx, R.string.policy_card_save_error, Toast.LENGTH_SHORT).show()
+                    }
+                } catch (t: Throwable) {
+                    Log.e(TAG, "Error handling policy result", t)
+                    val ctx = context
+                    if (isAdded && ctx != null) {
+                        Toast.makeText(ctx, R.string.policy_card_save_error, Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }
@@ -320,13 +335,19 @@ class TunnelListFragment : BaseFragment() {
     private fun openPolicyLibrary() {
         val tunnel = getActiveOrPrimaryScionTunnel()
         if (tunnel == null) {
-            Toast.makeText(requireContext(), R.string.policy_library_no_tunnel, Toast.LENGTH_SHORT).show()
+            val ctx = context ?: return
+            Toast.makeText(ctx, R.string.policy_library_no_tunnel, Toast.LENGTH_SHORT).show()
             return
         }
         lifecycleScope.launch {
             val rawJson = TunnelPolicyHelper.getPolicyJson(tunnel)
-            val dialog = PathPolicyManagerDialogFragment.newInstance(rawJson, scrollToLibrary = true)
-            dialog.show(parentFragmentManager, PathPolicyManagerDialogFragment.TAG)
+            if (!isAdded || isStateSaved) return@launch
+            val dialog = PathPolicyManagerDialogFragment.newInstance(
+                rawJson,
+                scrollToLibrary = true,
+                tunnelName = tunnel.name
+            )
+            dialog.show(childFragmentManager, PathPolicyManagerDialogFragment.TAG)
         }
     }
 

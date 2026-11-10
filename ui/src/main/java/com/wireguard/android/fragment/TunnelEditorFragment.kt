@@ -211,6 +211,20 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         requireActivity().addMenuProvider(this, viewLifecycleOwner, Lifecycle.State.RESUMED)
+
+        childFragmentManager.setFragmentResultListener(
+            PathPolicyManagerDialogFragment.REQUEST_KEY_POLICY,
+            viewLifecycleOwner
+        ) { _, bundle ->
+            val resultJson = bundle.getString(PathPolicyManagerDialogFragment.KEY_RESULT_JSON) ?: return@setFragmentResultListener
+            pathPolicyJson = resultJson
+            binding?.config?.`interface`?.pathPolicy = resultJson
+            updatePathPolicyStatus()
+            val ctx = context
+            if (isAdded && ctx != null) {
+                Toast.makeText(ctx, "Path Policies updated successfully!", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     override fun onDestroyView() {
@@ -336,16 +350,8 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
 
     @Suppress("UNUSED_PARAMETER")
     fun onRequestConfigurePathPolicy(view: View?) {
+        if (!isAdded || isStateSaved) return
         val dialog = PathPolicyManagerDialogFragment.newInstance(pathPolicyJson)
-        childFragmentManager.setFragmentResultListener(PathPolicyManagerDialogFragment.REQUEST_KEY_POLICY, viewLifecycleOwner) { _, bundle ->
-            val resultJson = bundle.getString(PathPolicyManagerDialogFragment.KEY_RESULT_JSON)
-            if (resultJson != null) {
-                pathPolicyJson = resultJson
-                binding?.config?.`interface`?.pathPolicy = resultJson
-                updatePathPolicyStatus()
-                Toast.makeText(context, "Path Policies updated successfully!", Toast.LENGTH_SHORT).show()
-            }
-        }
         dialog.show(childFragmentManager, PathPolicyManagerDialogFragment.TAG)
     }
 

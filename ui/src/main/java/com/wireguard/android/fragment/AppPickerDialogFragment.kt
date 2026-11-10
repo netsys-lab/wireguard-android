@@ -84,39 +84,49 @@ class AppPickerDialogFragment : DialogFragment() {
     }
 
     private fun loadApps() {
+        val appCtx = context?.applicationContext ?: return
         pbLoading.visibility = View.VISIBLE
         rvApps.visibility = View.GONE
         tvEmpty.visibility = View.GONE
 
         lifecycleScope.launch(Dispatchers.IO) {
-            val pm = requireContext().packageManager
-            val packages = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                pm.getInstalledPackages(PackageManager.PackageInfoFlags.of(0))
-            } else {
-                pm.getInstalledPackages(0)
-            }
-
-            val entries = mutableListOf<AppPickerEntry>()
-            for (pkg in packages) {
-                val appInfo = pkg.applicationInfo ?: continue
-                val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-                val hasLaunch = pm.getLaunchIntentForPackage(pkg.packageName) != null
-                // Show non-system apps and system apps with launcher icons
-                if (!isSystem || hasLaunch) {
-                    val label = pm.getApplicationLabel(appInfo).toString()
-                    val icon = pm.getApplicationIcon(appInfo)
-                    entries.add(AppPickerEntry(icon, label, pkg.packageName, appInfo.uid))
+            try {
+                val pm = appCtx.packageManager
+                val packages = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    pm.getInstalledPackages(PackageManager.PackageInfoFlags.of(0))
+                } else {
+                    pm.getInstalledPackages(0)
                 }
-            }
 
-            entries.sortWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+                val entries = mutableListOf<AppPickerEntry>()
+                for (pkg in packages) {
+                    val appInfo = pkg.applicationInfo ?: continue
+                    val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                    val hasLaunch = pm.getLaunchIntentForPackage(pkg.packageName) != null
+                    // Show non-system apps and system apps with launcher icons
+                    if (!isSystem || hasLaunch) {
+                        val label = pm.getApplicationLabel(appInfo).toString()
+                        val icon = pm.getApplicationIcon(appInfo)
+                        entries.add(AppPickerEntry(icon, label, pkg.packageName, appInfo.uid))
+                    }
+                }
 
-            withContext(Dispatchers.Main) {
-                allApps.clear()
-                allApps.addAll(entries)
-                filterApps(etSearch.text.toString())
-                pbLoading.visibility = View.GONE
-                rvApps.visibility = View.VISIBLE
+                entries.sortWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+
+                withContext(Dispatchers.Main) {
+                    if (!isAdded || view == null) return@withContext
+                    allApps.clear()
+                    allApps.addAll(entries)
+                    filterApps(etSearch.text.toString())
+                    pbLoading.visibility = View.GONE
+                    rvApps.visibility = View.VISIBLE
+                }
+            } catch (t: Throwable) {
+                withContext(Dispatchers.Main) {
+                    if (!isAdded || view == null) return@withContext
+                    pbLoading.visibility = View.GONE
+                    tvEmpty.visibility = View.VISIBLE
+                }
             }
         }
     }

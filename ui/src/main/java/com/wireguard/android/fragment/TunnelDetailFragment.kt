@@ -118,21 +118,32 @@ class TunnelDetailFragment : BaseFragment() {
         updateMockToggle()
 
         // Path Policy Manager interaction
-        parentFragmentManager.setFragmentResultListener(
+        childFragmentManager.setFragmentResultListener(
             PathPolicyManagerDialogFragment.REQUEST_KEY_POLICY,
             viewLifecycleOwner
         ) { _, bundle ->
             val json = bundle.getString(PathPolicyManagerDialogFragment.KEY_RESULT_JSON) ?: return@setFragmentResultListener
+            val targetName = bundle.getString(PathPolicyManagerDialogFragment.KEY_RESULT_TUNNEL_NAME)
             val tunnel = selectedTunnel ?: return@setFragmentResultListener
+            if (targetName != null && targetName != tunnel.name) return@setFragmentResultListener
             lifecycleScope.launch {
-                val saved = TunnelPolicyHelper.savePolicyJson(tunnel, json)
-                if (saved) {
-                    Application.getBackend().reloadPolicy(tunnel, json)
-                    Toast.makeText(requireContext(), R.string.policy_card_saved_toast, Toast.LENGTH_SHORT).show()
-                    updatePolicyOverview(tunnel)
-                    updateFlows()
-                } else {
-                    Toast.makeText(requireContext(), R.string.policy_card_save_error, Toast.LENGTH_SHORT).show()
+                try {
+                    val saved = TunnelPolicyHelper.savePolicyJson(tunnel, json)
+                    val ctx = context ?: return@launch
+                    if (!isAdded) return@launch
+                    if (saved) {
+                        Toast.makeText(ctx, R.string.policy_card_saved_toast, Toast.LENGTH_SHORT).show()
+                        updatePolicyOverview(tunnel)
+                        updateFlows()
+                    } else {
+                        Toast.makeText(ctx, R.string.policy_card_save_error, Toast.LENGTH_SHORT).show()
+                    }
+                } catch (t: Throwable) {
+                    android.util.Log.e(TAG, "Error handling policy result", t)
+                    val ctx = context
+                    if (isAdded && ctx != null) {
+                        Toast.makeText(ctx, R.string.policy_card_save_error, Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }
@@ -241,8 +252,9 @@ class TunnelDetailFragment : BaseFragment() {
         val tunnel = selectedTunnel ?: return
         lifecycleScope.launch {
             val rawJson = TunnelPolicyHelper.getPolicyJson(tunnel)
-            val dialog = PathPolicyManagerDialogFragment.newInstance(rawJson)
-            dialog.show(parentFragmentManager, PathPolicyManagerDialogFragment.TAG)
+            if (!isAdded || isStateSaved) return@launch
+            val dialog = PathPolicyManagerDialogFragment.newInstance(rawJson, tunnelName = tunnel.name)
+            dialog.show(childFragmentManager, PathPolicyManagerDialogFragment.TAG)
         }
     }
 
@@ -786,6 +798,10 @@ class TunnelDetailFragment : BaseFragment() {
             binding.tabMock.background = null
             binding.tabMock.setTextColor(ContextCompat.getColor(context, R.color.scitra_on_surface_variant))
         }
+    }
+
+    companion object {
+        private const val TAG = "WireGuard/TunnelDetailFragment"
     }
 }
 
