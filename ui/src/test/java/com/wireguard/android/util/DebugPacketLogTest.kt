@@ -5,13 +5,13 @@
 
 package com.wireguard.android.util
 
-private typealias LogEntry = DebugPacketLogModels.LogEntry
-
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+
+private typealias LogEntry = DebugPacketLogModels.LogEntry
 
 class DebugPacketLogParserTest {
 
@@ -77,7 +77,7 @@ class DebugPacketLogParserTest {
     }
 
     @Test
-    fun `display time uses HH:mm:ss_SSS without full date`() {
+    fun `display time uses HH_mm_ss_SSS without full date`() {
         val raw = "07-16 12:24:32.418  1234  1234 D WireGuard/Scion: event=complete"
         val parsed = DebugPacketLogParser.parseLine(raw, year)
         assertEquals("12:24:32.418", parsed.displayTime)

@@ -27,6 +27,7 @@
             android:contentDescription="Go back" />
 
         <TextView
+            android:id="@+id/tv_dialog_header_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
@@ -819,11 +820,22 @@
             android:textColor="@color/scitra_on_surface" />
 
         <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_wizard_save"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/scitra_btn_primary"
+            android:text="Save"
+            android:textAllCaps="false"
+            android:textColor="@color/scitra_on_primary"
+            android:visibility="gone" />
+
+        <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btn_wizard_next"
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"
-            android:layout_marginStart="8dp"
             android:background="@drawable/scitra_btn_primary"
             android:text="Next →"
             android:textAllCaps="false"

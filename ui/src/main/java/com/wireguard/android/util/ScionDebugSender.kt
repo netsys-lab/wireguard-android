@@ -30,30 +30,56 @@ object ScionDebugSender {
         data class Failure(val message: String, val exception: Throwable?) : SendResult()
     }
 
+    private var cachedUdpSocket: DatagramSocket? = null
+    private val socketLock = Any()
+
+    /**
+     * Returns a reusable DatagramSocket.  Re-creating a socket per send causes a new
+     * ephemeral source port each time, which makes the Go backend register a separate
+     * flow entry for every single UDP packet.
+     */
+    private fun getOrCreateUdpSocket(): DatagramSocket {
+        synchronized(socketLock) {
+            cachedUdpSocket?.let { if (!it.isClosed) return it }
+            return DatagramSocket().also { cachedUdpSocket = it }
+        }
+    }
+
+    /** Explicitly close the cached socket (e.g. when tunnel goes down). */
+    fun closeUdpSocket() {
+        synchronized(socketLock) {
+            cachedUdpSocket?.close()
+            cachedUdpSocket = null
+        }
+    }
+
     suspend fun sendUdp(payload: String): SendResult = withContext(Dispatchers.IO) {
         val payloadBytes = payload.toByteArray(Charsets.UTF_8)
         Log.d(TAG, "UDP send started: dst=$TARGET_HOST:$TARGET_PORT chars=${payload.length} bytes=${payloadBytes.size}")
         TrafficStats.setThreadStatsTag(DEBUG_PACKET_TRAFFIC_TAG)
         try {
-            DatagramSocket().use { socket ->
-                Log.d(TAG, "UDP socket created")
-                val address = InetSocketAddress(TARGET_HOST, TARGET_PORT)
-                val packet = DatagramPacket(payloadBytes, payloadBytes.size, address)
-                socket.send(packet)
-                Log.d(TAG, "UDP datagram sent successfully")
-                SendResult.Success("Sent")
-            }
+            val socket = getOrCreateUdpSocket()
+            Log.d(TAG, "UDP socket ready (port=${socket.localPort})")
+            val address = InetSocketAddress(TARGET_HOST, TARGET_PORT)
+            val packet = DatagramPacket(payloadBytes, payloadBytes.size, address)
+            socket.send(packet)
+            Log.d(TAG, "UDP datagram sent successfully")
+            SendResult.Success("Sent")
         } catch (e: UnknownHostException) {
             Log.e(TAG, "UDP send failed: UnknownHost", e)
+            closeUdpSocket()
             SendResult.Failure("Could not send the packet. Make sure the SCION tunnel is ready.", e)
         } catch (e: SocketException) {
             Log.e(TAG, "UDP send failed: SocketException", e)
+            closeUdpSocket()
             SendResult.Failure("Could not send the packet. Make sure the SCION tunnel is ready.", e)
         } catch (e: IOException) {
             Log.e(TAG, "UDP send failed: IOException", e)
+            closeUdpSocket()
             SendResult.Failure("Could not send the packet. Make sure the SCION tunnel is ready.", e)
         } catch (e: Exception) {
             Log.e(TAG, "UDP send failed: unexpected error", e)
+            closeUdpSocket()
             SendResult.Failure("Could not send the packet. Make sure the SCION tunnel is ready.", e)
         } finally {
             TrafficStats.clearThreadStatsTag()

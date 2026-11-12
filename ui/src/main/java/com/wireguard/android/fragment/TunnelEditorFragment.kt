@@ -5,6 +5,7 @@
 package com.wireguard.android.fragment
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.text.InputType
 import android.util.Log
@@ -18,11 +19,15 @@ import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.os.BundleCompat
 import androidx.core.view.MenuProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
+import com.google.zxing.qrcode.QRCodeReader
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import com.wireguard.android.Application
 import com.wireguard.android.R
 import com.wireguard.android.backend.Tunnel
@@ -31,9 +36,11 @@ import com.wireguard.android.model.ObservableTunnel
 import com.wireguard.android.util.AdminKnobs
 import com.wireguard.android.util.BiometricAuthenticator
 import com.wireguard.android.util.ErrorMessages
+import com.wireguard.android.util.QrCodeFromFileScanner
 import com.wireguard.android.viewmodel.ConfigProxy
 import com.wireguard.config.Config
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 /**
  * Fragment for editing a WireGuard configuration.
@@ -42,6 +49,62 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
     private var haveShownKeys = false
     private var binding: TunnelEditorFragmentBinding? = null
     private var tunnel: ObservableTunnel? = null
+
+    private val qrScanLauncher = registerForActivityResult(ScanContract()) { result ->
+        val rawContents = result.contents
+        if (rawContents != null) {
+            val extracted = extractBootstrapUrl(rawContents)
+            if (extracted.isNotEmpty()) {
+                binding?.config?.`interface`?.bootstrapUrl = extracted
+                binding?.bootstrapUrlText?.setText(extracted)
+                val ctx = context ?: Application.get()
+                Toast.makeText(ctx, R.string.scan_bootstrap_url_success, Toast.LENGTH_SHORT).show()
+            } else {
+                val ctx = context ?: Application.get()
+                Toast.makeText(ctx, R.string.scan_bootstrap_url_error, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private val imageFileScanLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri == null) return@registerForActivityResult
+        lifecycleScope.launch {
+            val contentResolver = context?.contentResolver ?: return@launch
+            try {
+                val scanner = QrCodeFromFileScanner(contentResolver, QRCodeReader())
+                val result = scanner.scan(uri)
+                val extracted = extractBootstrapUrl(result.text)
+                if (extracted.isNotEmpty()) {
+                    binding?.config?.`interface`?.bootstrapUrl = extracted
+                    binding?.bootstrapUrlText?.setText(extracted)
+                    val ctx = context ?: Application.get()
+                    Toast.makeText(ctx, R.string.scan_bootstrap_url_success, Toast.LENGTH_SHORT).show()
+                } else {
+                    val ctx = context ?: Application.get()
+                    Toast.makeText(ctx, R.string.scan_bootstrap_url_error, Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to decode QR code from image", e)
+                val ctx = context ?: Application.get()
+                Toast.makeText(ctx, R.string.error_no_qr_found, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun startQrScan() {
+        val ctx = context ?: return
+        if (ctx.packageManager?.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY) != true) {
+            Toast.makeText(ctx, R.string.error_no_camera, Toast.LENGTH_SHORT).show()
+            imageFileScanLauncher.launch("image/*")
+            return
+        }
+        val options = ScanOptions()
+            .setOrientationLocked(false)
+            .setBeepEnabled(false)
+            .setPrompt(getString(R.string.scan_bootstrap_url_prompt))
+            .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+        qrScanLauncher.launch(options)
+    }
 
     var advancedMode: Boolean = false
         private set
@@ -83,13 +146,14 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
             binding.tabIp.setTextColor(context.getColor(R.color.scitra_on_surface_variant))
             binding.bootstrapUrlLayout.visibility = View.VISIBLE
             binding.pathPolicyCard.visibility = View.VISIBLE
+            binding.btnConfigurePathPolicy.visibility = View.VISIBLE
         } else {
             binding.tabScion.setBackgroundResource(android.R.color.transparent)
             binding.tabScion.setTextColor(context.getColor(R.color.scitra_on_surface_variant))
             binding.tabIp.setBackgroundResource(R.drawable.scitra_tab_selected_bg)
             binding.tabIp.setTextColor(context.getColor(R.color.scitra_on_primary))
             binding.bootstrapUrlLayout.visibility = View.GONE
-            binding.btnConfigurePathPolicy.visibility = View.GONE
+            binding.pathPolicyCard.visibility = View.GONE
         }
         // Wichtig: bootstrapUrl und pathPolicy NICHT löschen!
     }
@@ -100,6 +164,7 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
         pathPolicyJson = proxy.`interface`.pathPolicy
         // TunnelMode als Quelle der Wahrheit verwenden
         setScionMode(proxy.`interface`.tunnelMode == "SCION")
+        updatePathPolicyStatus()
     }
 
     private fun onConfigSaved(savedTunnel: Tunnel, throwable: Throwable?) {
@@ -134,6 +199,11 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
         binding?.apply {
             executePendingBindings()
             privateKeyTextLayout.setEndIconOnClickListener { config?.`interface`?.generateKeyPair() }
+            bootstrapUrlLayout.setEndIconOnClickListener { startQrScan() }
+            bootstrapUrlLayout.setEndIconOnLongClickListener {
+                imageFileScanLauncher.launch("image/*")
+                true
+            }
         }
         return binding?.root
     }
@@ -141,6 +211,20 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         requireActivity().addMenuProvider(this, viewLifecycleOwner, Lifecycle.State.RESUMED)
+
+        childFragmentManager.setFragmentResultListener(
+            PathPolicyManagerDialogFragment.REQUEST_KEY_POLICY,
+            viewLifecycleOwner
+        ) { _, bundle ->
+            val resultJson = bundle.getString(PathPolicyManagerDialogFragment.KEY_RESULT_JSON) ?: return@setFragmentResultListener
+            pathPolicyJson = resultJson
+            binding?.config?.`interface`?.pathPolicy = resultJson
+            updatePathPolicyStatus()
+            val ctx = context
+            if (isAdded && ctx != null) {
+                Toast.makeText(ctx, "Path Policies updated successfully!", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     override fun onDestroyView() {
@@ -266,17 +350,9 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
 
     @Suppress("UNUSED_PARAMETER")
     fun onRequestConfigurePathPolicy(view: View?) {
-        val dialog = PathPolicyDialogFragment.newInstance(pathPolicyJson)
-        childFragmentManager.setFragmentResultListener(PathPolicyDialogFragment.REQUEST_KEY_POLICY, viewLifecycleOwner) { _, bundle ->
-            val resultJson = bundle.getString(PathPolicyDialogFragment.KEY_RESULT_JSON)
-            if (resultJson != null) {
-                pathPolicyJson = resultJson
-                binding?.config?.`interface`?.pathPolicy = resultJson
-                updatePathPolicyStatus()
-                Toast.makeText(context, "Path Policy configured successfully!", Toast.LENGTH_SHORT).show()
-            }
-        }
-        dialog.show(childFragmentManager, null)
+        if (!isAdded || isStateSaved) return
+        val dialog = PathPolicyManagerDialogFragment.newInstance(pathPolicyJson)
+        dialog.show(childFragmentManager, PathPolicyManagerDialogFragment.TAG)
     }
 
     private fun updatePathPolicyStatus() {
@@ -293,33 +369,28 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
             binding.pathPolicyStatusBadge.setBackgroundResource(R.drawable.scitra_chip_selected)
             
             try {
-                val json = org.json.JSONObject(pathPolicyJson)
+                val config = com.wireguard.android.util.PathPolicyParser.parseConfig(pathPolicyJson)
                 val summaryLines = mutableListOf<String>()
                 
-                val policies = json.optJSONObject("policies")
-                if (policies != null && policies.length() > 0) {
-                    val keysList = mutableListOf<String>()
-                    val keys = policies.keys()
-                    while (keys.hasNext()) {
-                        keysList.add(keys.next())
-                    }
-                    val policyNames = keysList.joinToString(", ")
-                    summaryLines.add("Policies: $policyNames")
+                val customPolicies = config.policies.filter { it.key != "default" }
+                val policyNames = if (customPolicies.isNotEmpty()) {
+                    customPolicies.keys.joinToString(", ")
+                } else {
+                    "default"
                 }
+                summaryLines.add("Policies: $policyNames (${config.policies.size} total)")
                 
-                val matchers = json.optJSONArray("matchers")
-                if (matchers != null && matchers.length() > 0) {
-                    val firstMatcher = matchers.optJSONObject(0)
-                    val protocol = firstMatcher?.optString("protocol", "") ?: ""
-                    summaryLines.add("Matchers: ${matchers.length()}" + (if (protocol.isNotEmpty()) " ($protocol)" else ""))
+                if (config.matchers.isNotEmpty()) {
+                    val appMatchers = config.matchers.count { !it.appName.isNullOrBlank() }
+                    val appNote = if (appMatchers > 0) " ($appMatchers app-specific)" else ""
+                    summaryLines.add("Matchers: ${config.matchers.size}$appNote")
+                } else {
+                    summaryLines.add("Matchers: None (All traffic → Default policy)")
                 }
-                
-                val apps = json.optJSONObject("apps")
-                if (apps != null) {
-                    val mode = apps.optString("mode", "include")
-                    val packages = apps.optJSONArray("packages")
-                    val count = packages?.length() ?: 0
-                    summaryLines.add("Apps: $count $mode${if (count != 1) "d" else ""}")
+
+                config.legacyApps?.takeIf { it.packages.isNotEmpty() }?.let { apps ->
+                    val mode = if (apps.mode == com.wireguard.android.model.AppFilterMode.EXCLUDE) "excluded" else "included"
+                    summaryLines.add("Legacy Apps: ${apps.packages.size} $mode")
                 }
                 
                 if (summaryLines.isNotEmpty()) {
@@ -425,7 +496,9 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
                 onSelectedTunnelChanged(null, tunnel)
             } else {
                 binding!!.config = config
+                pathPolicyJson = config.`interface`.pathPolicy
                 setScionMode(config.`interface`.tunnelMode == "SCION")
+                updatePathPolicyStatus()
             }
         }
         super.onViewStateRestored(savedInstanceState)
@@ -475,5 +548,46 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
         private const val KEY_LOCAL_CONFIG = "local_config"
         private const val KEY_ORIGINAL_NAME = "original_name"
         private const val TAG = "WireGuard/TunnelEditorFragment"
+
+        fun extractBootstrapUrl(raw: String): String {
+            val trimmed = raw.trim()
+            if (trimmed.isEmpty()) return ""
+
+            // Case 1: JSON payload (e.g. {"bootstrap_url": "https://..."})
+            if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+                val regex = Regex(""""(?:bootstrap_url|bootstrapUrl|bootstrap|url|link)"\s*:\s*"([^"]+)"""", RegexOption.IGNORE_CASE)
+                val match = regex.find(trimmed)
+                if (match != null) {
+                    val candidate = match.groupValues[1].trim().trim('"', '\'')
+                    if (candidate.isNotEmpty()) return candidate
+                }
+                try {
+                    val json = JSONObject(trimmed)
+                    for (key in arrayOf("bootstrap_url", "bootstrapUrl", "bootstrap", "url", "link")) {
+                        if (json.has(key) && !json.isNull(key)) {
+                            val candidate = json.getString(key).trim().trim('"', '\'')
+                            if (candidate.isNotEmpty()) return candidate
+                        }
+                    }
+                } catch (_: Throwable) {}
+            }
+
+            // Case 2: Config file containing "BootstrapUrl = ..." or "BootstrapURL = ..."
+            for (line in trimmed.lines()) {
+                val lineTrimmed = line.trim()
+                if (lineTrimmed.startsWith("#") || lineTrimmed.startsWith(";")) continue
+                val parts = lineTrimmed.split("=", limit = 2)
+                if (parts.size == 2) {
+                    val key = parts[0].trim()
+                    if (key.equals("BootstrapUrl", ignoreCase = true) || key.equals("Bootstrap_Url", ignoreCase = true)) {
+                        val candidate = parts[1].trim().trim('"', '\'')
+                        if (candidate.isNotEmpty()) return candidate
+                    }
+                }
+            }
+
+            // Case 3: Direct URL string (strip surrounding quotes if any)
+            return trimmed.trim('"', '\'')
+        }
     }
 }

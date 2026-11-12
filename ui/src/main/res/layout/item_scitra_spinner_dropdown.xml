@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="12dp"
+    android:background="?android:attr/selectableItemBackground">
+
+    <FrameLayout
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginEnd="12dp"
+        android:background="@drawable/scitra_badge_chip_bg">
+
+        <ImageView
+            android:id="@+id/iv_dropdown_icon"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_gravity="center"
+            android:tint="@color/scitra_primary"
+            android:src="@drawable/ic_policy_shield"
+            android:contentDescription="Policy Icon" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_dropdown_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/scitra_on_surface"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            tools:text="secure_bank" />
+
+        <TextView
+            android:id="@+id/tv_dropdown_subtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/scitra_on_surface_variant"
+            android:textSize="11sp"
+            android:layout_marginTop="2dp"
+            tools:text="Latency optimized" />
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/iv_dropdown_check"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginStart="10dp"
+        android:src="@drawable/ic_check"
+        android:tint="@color/scitra_primary"
+        android:visibility="gone"
+        tools:visibility="visible"
+        android:contentDescription="Selected" />
+</LinearLayout>

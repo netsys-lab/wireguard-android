@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0
+     Copyright © 2026 SCIONtra / WireGuard Project -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingVertical="10dp"
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp"
+    android:layout_marginBottom="6dp"
+    android:background="@drawable/scitra_flow_item_bg"
+    android:foreground="?android:attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- APP column (weight 0.48) -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="0.48"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/app_row_icon"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="@null"
+            tools:src="@drawable/ic_globe" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/app_row_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/scitra_on_surface"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:ellipsize="end"
+                tools:text="Chrome" />
+
+            <TextView
+                android:id="@+id/app_row_flows_count"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/scitra_on_surface_variant"
+                android:textSize="9sp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                tools:text="2 flows · com.android.chrome" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- TX column (weight 0.22) -->
+    <TextView
+        android:id="@+id/app_row_tx"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="0.22"
+        android:textSize="10sp"
+        android:textColor="@color/scitra_on_surface"
+        android:gravity="end"
+        tools:text="3.9 Mbit/s" />
+
+    <!-- RX column (weight 0.22) -->
+    <TextView
+        android:id="@+id/app_row_rx"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="0.22"
+        android:textSize="10sp"
+        android:textColor="@color/scitra_on_surface"
+        android:gravity="end"
+        tools:text="17.5 Mbit/s" />
+
+    <!-- Chevron column (weight 0.08) -->
+    <ImageView
+        android:id="@+id/app_row_chevron"
+        android:layout_width="0dp"
+        android:layout_height="14dp"
+        android:layout_weight="0.08"
+        android:src="@drawable/ic_chevron_right"
+        android:tint="@color/scitra_on_surface_variant"
+        android:scaleType="centerInside"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no" />
+
+</LinearLayout>

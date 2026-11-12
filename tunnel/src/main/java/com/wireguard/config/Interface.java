@@ -314,8 +314,10 @@ public final class Interface {
         sb.append("# TunnelMode = ").append(tunnelMode.name()).append('\n');
         if (bootstrapUrl != null && !bootstrapUrl.isEmpty())
             sb.append("# BootstrapURL = ").append(bootstrapUrl).append('\n');
-        if (pathPolicy != null && !pathPolicy.isEmpty())
-            sb.append("# PathPolicy = ").append(pathPolicy).append('\n');
+        if (pathPolicy != null && !pathPolicy.isEmpty()) {
+            final String singleLinePolicy = pathPolicy.replace("\r", "").replace("\n", " ").trim();
+            sb.append("# PathPolicy = ").append(singleLinePolicy).append('\n');
+        }
         if (!addresses.isEmpty())
             sb.append("Address = ").append(Attribute.join(addresses)).append('\n');
         if (!dnsServers.isEmpty()) {

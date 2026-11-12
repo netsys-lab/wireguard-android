@@ -1,0 +1,77 @@
+{
+  "flowId": 1842,
+  "state": "ready",
+  "paths": [
+    {
+      "fingerprint": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
+      "display": "1-ff00:0:110 → 1-ff00:0:120 → 1-ff00:0:111",
+      "nextHop": "192.168.1.1",
+      "expiry": "2026-07-24T10:48:00Z",
+      "mtu": 1472,
+      "interfaces": ["1-ff00:0:110", "1-ff00:0:120", "1-ff00:0:111"],
+      "latencyMicros": [1200, 8400, 2400],
+      "bandwidthKbps": [40000000, 10000000, 100000000],
+      "totalLatencyMicros": 12000,
+      "latencyComplete": true,
+      "bottleneckKbps": 10000000,
+      "bandwidthComplete": true,
+      "interAsLinks": 2,
+      "geo": [
+        {"latitude": 47.38, "longitude": 8.54, "address": "Zurich"},
+        {"latitude": 50.11, "longitude": 8.68, "address": "Frankfurt"},
+        {"latitude": 51.51, "longitude": -0.13, "address": "London"}
+      ],
+      "linkType": ["Direct", "Transit", "Destination"],
+      "internalHops": [1, 2, 0]
+    },
+    {
+      "fingerprint": "b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3",
+      "display": "1-ff00:0:110 → 1-ff00:0:130 → 1-ff00:0:111",
+      "nextHop": "192.168.1.2",
+      "expiry": "2026-07-24T10:41:00Z",
+      "mtu": 1500,
+      "interfaces": ["1-ff00:0:110", "1-ff00:0:130", "1-ff00:0:111"],
+      "latencyMicros": [3000, 18000, 3000],
+      "bandwidthKbps": [100000000, 40000000, 100000000],
+      "totalLatencyMicros": 24000,
+      "latencyComplete": true,
+      "bottleneckKbps": 40000000,
+      "bandwidthComplete": true,
+      "interAsLinks": 2,
+      "geo": [
+        {"latitude": 47.38, "longitude": 8.54, "address": "Zurich"},
+        {"latitude": 52.37, "longitude": 4.90, "address": "Amsterdam"},
+        {"latitude": 51.51, "longitude": -0.13, "address": "London"}
+      ],
+      "linkType": ["Direct", "Transit", "Destination"],
+      "internalHops": [1, 3, 0]
+    },
+    {
+      "fingerprint": "c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4",
+      "display": "1-ff00:0:110 → 1-ff00:0:140 → 1-ff00:0:150 → 1-ff00:0:111",
+      "expiry": "2026-07-24T10:55:00Z",
+      "mtu": 9000,
+      "interfaces": ["1-ff00:0:110", "1-ff00:0:140", "1-ff00:0:150", "1-ff00:0:111"],
+      "latencyMicros": [2000, 15000, 10000, 4000],
+      "bandwidthKbps": [20000000, 20000000, 25000000, 100000000],
+      "totalLatencyMicros": 31000,
+      "latencyComplete": true,
+      "bottleneckKbps": 20000000,
+      "bandwidthComplete": true,
+      "interAsLinks": 3,
+      "geo": [
+        {"latitude": 47.38, "longitude": 8.54, "address": "Zurich"},
+        {"latitude": 48.86, "longitude": 2.35, "address": "Paris"},
+        {"latitude": 50.85, "longitude": 4.35, "address": "Brussels"},
+        {"latitude": 51.51, "longitude": -0.13, "address": "London"}
+      ],
+      "linkType": ["Direct", "Transit", "Transit", "Destination"],
+      "internalHops": [1, 2, 2, 0]
+    }
+  ],
+  "policyName": "Lowest Latency",
+  "policyMode": "default",
+  "policyFallbackApplied": false,
+  "overrideState": "inactive",
+  "effectiveFingerprint": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
+}

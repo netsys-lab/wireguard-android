@@ -77,6 +77,9 @@ class Application : android.app.Application() {
         }
         if (backend == null) {
             backend = GoBackend(applicationContext)
+            if (BuildConfig.MOCK_BACKEND_ENABLED) {
+                GoBackend.setMockMode(true, BuildConfig.MOCK_BACKEND_SCENARIO)
+            }
             GoBackend.setAlwaysOnCallback { get().applicationScope.launch { get().tunnelManager.restoreState(true) } }
         }
         return backend

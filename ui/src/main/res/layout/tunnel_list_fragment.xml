@@ -77,18 +77,56 @@
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintWidth_max="448dp">
 
-                    <!-- SCION Networks -->
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <!-- SCION Networks Header with Policy Library Action -->
+                    <RelativeLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="SCION Tunnels"
-                        android:textColor="@color/scitra_primary"
-                        android:textSize="12sp"
-                        android:textStyle="bold"
-                        android:textAllCaps="true"
-                        android:letterSpacing="0.1"
-                        android:layout_marginBottom="12dp"
-                        android:layout_marginStart="16dp" />
+                        android:layout_marginStart="16dp"
+                        android:layout_marginEnd="16dp"
+                        android:layout_marginBottom="12dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentStart="true"
+                            android:layout_centerVertical="true"
+                            android:text="SCION Tunnels"
+                            android:textColor="@color/scitra_primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:textAllCaps="true"
+                            android:letterSpacing="0.1" />
+
+                        <LinearLayout
+                            android:id="@+id/btn_policy_library"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentEnd="true"
+                            android:layout_centerVertical="true"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:background="@drawable/scitra_btn_outline_bg"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="4dp"
+                            android:clickable="true"
+                            android:focusable="true">
+
+                            <ImageView
+                                android:layout_width="14dp"
+                                android:layout_height="14dp"
+                                android:src="@drawable/ic_policy_book"
+                                app:tint="@color/scitra_primary"
+                                android:layout_marginEnd="6dp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/policy_library_title"
+                                android:textColor="@color/scitra_primary"
+                                android:textSize="12sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                    </RelativeLayout>
 
                     <LinearLayout
                         android:id="@+id/scion_connect_button"

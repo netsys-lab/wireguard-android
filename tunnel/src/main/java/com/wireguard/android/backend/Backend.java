@@ -8,6 +8,8 @@ package com.wireguard.android.backend;
 import com.wireguard.config.Config;
 import com.wireguard.util.NonNullForAll;
 
+import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 
 import androidx.annotation.Nullable;
@@ -86,4 +88,45 @@ public interface Backend {
      * @throws Exception Exception raised while changing state.
      */
     Tunnel.State setState(Tunnel tunnel, Tunnel.State state, @Nullable Config config) throws Exception;
+
+    default String getScionStatus() {
+        return "{}";
+    }
+
+    default String reloadPolicy(Tunnel tunnel, String policyJson) {
+        return "";
+    }
+
+    default String getFlows(Tunnel tunnel) {
+        return "{\"flows\":[]}";
+    }
+
+    default String getFlowPaths(Tunnel tunnel, long flowId) {
+        return "{}";
+    }
+
+    default String setFlowPathOverride(Tunnel tunnel, long flowId, String fingerprint) {
+        return "";
+    }
+
+    default String clearFlowPathOverride(Tunnel tunnel, long flowId) {
+        return "";
+    }
+
+    /**
+     * Owners (apps) of the tunnel's flows, keyed by flow id, as far as known.
+     * Flows without an entry have not been attributed (yet).
+     */
+    default Map<Long, FlowOwner> getFlowOwners(Tunnel tunnel) {
+        return Collections.emptyMap();
+    }
+
+    /** Whether flow owners are currently tracked. */
+    default FlowOwnerTrackingState getFlowOwnerTrackingState() {
+        return FlowOwnerTrackingState.UNSUPPORTED;
+    }
+
+    /** Drops owner entries of flows that no longer exist. */
+    default void retainFlowOwners(Tunnel tunnel, Set<Long> flowIds) {
+    }
 }

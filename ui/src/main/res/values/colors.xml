@@ -72,6 +72,7 @@
     <color name="scitra_on_primary_container">#D4E3FF</color>
     <color name="scitra_primary_fixed">#D4E3FF</color>
     <color name="scitra_background">#FFFFFF</color>
+    <color name="scitra_surface">#FFFFFF</color>
     <color name="scitra_on_surface">#1A1C20</color>
     <color name="scitra_on_surface_variant">#5A6577</color>
     <color name="scitra_surface_container_lowest">#FFFFFF</color>
@@ -81,6 +82,13 @@
     <color name="scitra_outline_variant">#D1D5DB</color>
     <color name="scitra_outline">#9CA3AF</color>
     <color name="scitra_secondary">#5A6577</color>
+
+    <!-- Status Colors -->
+    <color name="status_active">#10B981</color>
+    <color name="status_initial">#F59E0B</color>
+    <color name="status_idle">#9CA3AF</color>
+    <color name="status_error">#EF4444</color>
+
 
     <!-- Wizard Colors -->
     <color name="scitra_success">#10B981</color>

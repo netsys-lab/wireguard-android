@@ -34,6 +34,11 @@ extern char *wgGetScionStatus(int handle);
 extern char *wgGetSCIONInfo(int handle);
 extern char *wgGetFlows(int handle);
 extern char *wgGetFlowPaths(int handle, long long flowId);
+extern char *wgSetFlowPathOverride(int handle, long long flowId, struct go_string fingerprint);
+extern char *wgClearFlowPathOverride(int handle, long long flowId);
+extern int wgSetNewFlowEventsEnabled(int handle, int enabled);
+extern char *wgWaitNewFlows(int handle, int timeoutMs, int maxEvents);
+extern char *wgReloadPolicy(int handle, struct go_string policyJSON);
 extern void wgSetCoreLogLevel(int level);
 
 JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgInitScionWithBootstrapRetry(
@@ -206,6 +211,65 @@ JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgGetFlow
 	return ret;
 }
 
+JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgSetFlowPathOverride(JNIEnv *env, jclass c, jint handle, jlong flowId, jstring fingerprint)
+{
+	const char *fingerprint_str = (*env)->GetStringUTFChars(env, fingerprint, 0);
+	size_t fingerprint_len = (*env)->GetStringUTFLength(env, fingerprint);
+	char *result = wgSetFlowPathOverride(handle, (long long)flowId, (struct go_string){
+		.str = fingerprint_str,
+		.n = fingerprint_len
+	});
+	(*env)->ReleaseStringUTFChars(env, fingerprint, fingerprint_str);
+	if (!result)
+		return NULL;
+	jstring ret = (*env)->NewStringUTF(env, result);
+	free(result);
+	return ret;
+}
+
+JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgClearFlowPathOverride(JNIEnv *env, jclass c, jint handle, jlong flowId)
+{
+	char *result = wgClearFlowPathOverride(handle, (long long)flowId);
+	if (!result)
+		return NULL;
+	jstring ret = (*env)->NewStringUTF(env, result);
+	free(result);
+	return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wireguard_android_backend_GoBackend_wgSetNewFlowEventsEnabled(JNIEnv *env, jclass c, jint handle, jboolean enabled)
+{
+	return wgSetNewFlowEventsEnabled(handle, enabled ? 1 : 0);
+}
+
+/* Blocks in Go until new flows exist or the timeout expires; call from a worker thread only. */
+JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgWaitNewFlows(JNIEnv *env, jclass c, jint handle, jint timeoutMs, jint maxEvents)
+{
+	char *result = wgWaitNewFlows(handle, timeoutMs, maxEvents);
+	if (!result)
+		return NULL;
+	jstring ret = (*env)->NewStringUTF(env, result);
+	free(result);
+	return ret;
+}
+
+JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgReloadPolicy(JNIEnv *env, jclass c, jint handle, jstring policyJSON)
+{
+	const char *policyJSON_str = policyJSON ? (*env)->GetStringUTFChars(env, policyJSON, 0) : "";
+	size_t policyJSON_len = policyJSON ? (*env)->GetStringUTFLength(env, policyJSON) : 0;
+	char *result = wgReloadPolicy(handle, (struct go_string){
+		.str = policyJSON_str,
+		.n = policyJSON_len
+	});
+	if (policyJSON)
+		(*env)->ReleaseStringUTFChars(env, policyJSON, policyJSON_str);
+	if (!result)
+		return NULL;
+	jstring ret = (*env)->NewStringUTF(env, result);
+	free(result);
+	return ret;
+}
+
 JNIEXPORT jint JNICALL Java_com_wireguard_android_backend_GoBackend_wgTurnOn(JNIEnv *env, jclass c, jstring ifname, jint tun_fd, jstring settings)
 {
 	const char *ifname_str = (*env)->GetStringUTFChars(env, ifname, 0);
@@ -284,3 +348,18 @@ JNIEXPORT jstring JNICALL Java_com_wireguard_android_backend_GoBackend_wgScionTe
 	free(out_str);
 	return ret;
 }
+
+extern void wgSetMockMode(int enabled, struct go_string scenario);
+
+JNIEXPORT void JNICALL Java_com_wireguard_android_backend_GoBackend_wgSetMockMode(JNIEnv *env, jclass c, jboolean enabled, jstring scenario)
+{
+	const char *scenario_str = scenario ? (*env)->GetStringUTFChars(env, scenario, 0) : "";
+	size_t scenario_len = scenario ? (*env)->GetStringUTFLength(env, scenario) : 0;
+	wgSetMockMode(enabled ? 1 : 0, (struct go_string){
+		.str = scenario_str,
+		.n = scenario_len
+	});
+	if (scenario)
+		(*env)->ReleaseStringUTFChars(env, scenario, scenario_str);
+}
+

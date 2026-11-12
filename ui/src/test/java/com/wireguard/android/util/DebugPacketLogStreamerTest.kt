@@ -12,6 +12,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -190,12 +191,12 @@ class DebugPacketLogStreamerTest {
     fun `reopening starts exactly one new stream`() = runTest(dispatcher) {
         val source1 = ControllableLineSource(listOf(wireguardLine("a")))
         val process1 = FakeProcess()
+        val process2 = FakeProcess()
+        val source2 = ControllableLineSource(listOf(wireguardLine("b")))
         val streamer = makeStreamer {
             if (process1.destroyCount.get() == 0) process1 to source1
             else process2 to source2
         }
-        val process2 = FakeProcess()
-        val source2 = ControllableLineSource(listOf(wireguardLine("b")))
 
         streamer.start(scope)
         scope.advanceUntilIdle()
@@ -294,7 +295,7 @@ class DebugPacketLogStreamerTest {
         override fun isAlive(): Boolean = alive.get()
     }
 
-    private abstract class BlockingLineSource : DebugPacketLogStreamer.LineSource {
+    private open class BlockingLineSource : DebugPacketLogStreamer.LineSource {
         private val closed = AtomicBoolean(false)
         override fun readLine(): String? {
             synchronized(this) {
