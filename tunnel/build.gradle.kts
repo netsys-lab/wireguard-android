@@ -145,6 +145,8 @@ dependencies {
     implementation(libs.androidx.collection)
     compileOnly(libs.jsr305)
     testImplementation(libs.junit)
+    // org.json is only a stub in local unit tests; FlowOwnerTrackerTest needs a real implementation.
+    testImplementation("org.json:json:20240303")
 }
 
 publishing {

@@ -10,6 +10,23 @@ enum class FlowEgressKind {
     SCION,
 }
 
+/**
+ * Whether the owning app of a flow is known. Determined in the app process by
+ * FlowOwnerTracker (tunnel module) and merged into [FlowDto] by RealFlowRepository.
+ */
+enum class FlowOwnerStatus {
+    /** [FlowDto.ownerUid] holds the owning app's UID. */
+    RESOLVED,
+    /** Lookup ran without result (socket already closed, lookup refused, event dropped). */
+    UNKNOWN,
+    /** TCP/UDP flow whose lookup has not finished yet (younger than a few seconds). */
+    PENDING,
+    /** No socket that could be looked up (ICMP, ICMPv6, mapped SCMP). */
+    NOT_APPLICABLE,
+    /** Attribution is not running (Android below 10, tunnel down, mock backend). */
+    UNSUPPORTED,
+}
+
 fun String.toFlowEgressKind(): FlowEgressKind = when (lowercase()) {
     "ip" -> FlowEgressKind.IP
     "scion" -> FlowEgressKind.SCION
@@ -44,6 +61,9 @@ data class FlowDto(
     val scionDstIP: String? = null,
     val packageName: String? = null,
     val ownerUid: Int? = null,
+    val ownerStatus: FlowOwnerStatus = FlowOwnerStatus.UNSUPPORTED,
+    /** Why the owner is unknown (e.g. "no_socket", "SecurityException"), for diagnostics. */
+    val ownerReason: String? = null,
 ) {
     val egressKindEnum: FlowEgressKind get() = egressKind.toFlowEgressKind()
 

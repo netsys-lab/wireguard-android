@@ -4,19 +4,26 @@
 
 package com.wireguard.android.util
 
-import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
-import android.os.Build
+import android.os.UserHandle
+import com.wireguard.android.R
 import com.wireguard.android.model.FlowDto
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * Display information of one flow group (an app or a special group).
+ *
+ * @param packageName stable group key (see [FlowGroup.key]); used to remember the selection
+ * @param appName label shown in the list
+ * @param subtitle secondary text, e.g. the real package name
+ */
 data class AppFlowInfo(
     val packageName: String,
     val appName: String,
     val icon: Drawable?,
+    val subtitle: String = "",
 )
 
 data class FlowAppGroup(
@@ -30,116 +37,138 @@ data class FlowAppGroup(
     val combinedBitsPerSec: Double,
 )
 
+/**
+ * Groups flows by the app that owns them.
+ *
+ * The owner (Android UID) is determined by FlowOwnerTracker in the tunnel module and merged
+ * into each [FlowDto] by RealFlowRepository. This class only classifies flows
+ * ([FlowOwnerClassifier]) and turns groups into labels and icons via [PackageManager].
+ */
 class FlowAppResolver(private val context: Context) {
 
-    private var candidateApps: List<AppFlowInfo> = emptyList()
-    private var initialized = false
+    private val labelCache = ConcurrentHashMap<String, AppFlowInfo>()
 
-    suspend fun ensureInitialized() {
-        if (initialized) return
-        withContext(Dispatchers.IO) {
-            val pm = context.packageManager
-            val installed = try {
-                val packages = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    pm.getPackagesHoldingPermissions(
-                        arrayOf(Manifest.permission.INTERNET),
-                        PackageManager.PackageInfoFlags.of(0L)
-                    )
-                } else {
-                    @Suppress("DEPRECATION")
-                    pm.getPackagesHoldingPermissions(
-                        arrayOf(Manifest.permission.INTERNET), 0
-                    )
-                }
+    /** Kept for API compatibility; labels are resolved lazily and cached. */
+    suspend fun ensureInitialized() = Unit
 
-                packages.mapNotNull { pkgInfo ->
-                    val appInfo = pkgInfo.applicationInfo ?: return@mapNotNull null
-                    // Distinguish user-installed apps from pure system apps
-                    val isSystem = (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
-                    val label = try { appInfo.loadLabel(pm).toString() } catch (_: Exception) { pkgInfo.packageName }
-                    val icon = try { appInfo.loadIcon(pm) } catch (_: Exception) { null }
-                    Pair(isSystem, AppFlowInfo(pkgInfo.packageName, label, icon))
-                }.sortedWith(compareBy({ it.first }, { it.second.appName }))
-                .map { it.second }
-            } catch (_: Exception) {
-                emptyList()
-            }
+    /** Display information for a group key previously returned in [AppFlowInfo.packageName]. */
+    fun resolveAppForPackage(packageName: String): AppFlowInfo =
+        labelCache[packageName] ?: AppFlowInfo(packageName, packageName, null)
 
-            candidateApps = installed.takeIf { it.isNotEmpty() } ?: listOf(
-                AppFlowInfo("com.android.chrome", "Chrome", null),
-                AppFlowInfo("com.google.android.youtube", "YouTube", null),
-                AppFlowInfo("org.matrix.android", "Element", null),
-                AppFlowInfo("com.wireguard.android", "SCIONtra", null)
-            )
-            initialized = true
-            FlowLog.d("[FLOW-DEBUG] [AppResolver] initialized with ${candidateApps.size} apps: ${candidateApps.map { it.appName }}")
-        }
-    }
-
-    fun resolveAppForPackage(packageName: String): AppFlowInfo {
-        val match = candidateApps.firstOrNull { it.packageName == packageName }
-        if (match != null) return match
-        return AppFlowInfo(packageName, packageName, null)
-    }
-
-    fun resolveAppForFlow(flow: FlowDto, index: Int = 0): AppFlowInfo {
-        if (!initialized && candidateApps.isEmpty()) {
-            return AppFlowInfo(flow.packageName ?: "com.android.chrome", "App ${flow.id}", null)
-        }
-
-        // Match by package name if present
-        if (!flow.packageName.isNullOrEmpty()) {
-            val match = candidateApps.firstOrNull { it.packageName == flow.packageName }
-            if (match != null) return match
-        }
-
-        // Map deterministically by index or flow ID to candidate apps
-        val slot = ((if (flow.id > 0) flow.id.toInt() - 1 else index) % candidateApps.size).coerceAtLeast(0)
-        return candidateApps[slot]
-    }
+    /** Display information of the group a flow belongs to. */
+    @Suppress("UNUSED_PARAMETER")
+    fun resolveAppForFlow(flow: FlowDto, index: Int = 0): AppFlowInfo =
+        resolveGroup(FlowOwnerClassifier.classify(flow))
 
     suspend fun groupFlowsByApp(
         flows: List<FlowDto>,
         calculator: FlowRateCalculator,
         statusColorMap: Map<String, Int>
     ): List<FlowAppGroup> {
-        ensureInitialized()
         FlowLog.d("[FLOW-DEBUG] [AppResolver] groupFlowsByApp called with ${flows.size} flows")
         if (flows.isEmpty()) return emptyList()
 
         val rowDataList = FlowSortFilter.computeRowData(flows, calculator, statusColorMap)
         val rowDataByFlowId = rowDataList.associateBy { it.flow.id }
 
-        val grouped = mutableMapOf<String, Pair<AppFlowInfo, MutableList<FlowDto>>>()
-        flows.forEachIndexed { index, flow ->
-            val app = resolveAppForFlow(flow, index)
-            FlowLog.d("[FLOW-DEBUG] [AppResolver]   flow id=${flow.id} (pkg=${flow.packageName}, egress=${flow.egressKind}, isSCION=${flow.isSCION}) -> app '${app.appName}' (${app.packageName})")
+        val grouped = linkedMapOf<String, Pair<AppFlowInfo, MutableList<FlowDto>>>()
+        for (flow in flows) {
+            val app = resolveAppForFlow(flow)
             val entry = grouped.getOrPut(app.packageName) { Pair(app, mutableListOf()) }
             entry.second.add(flow)
         }
 
         val groups = grouped.values.map { (app, appFlows) ->
             val appRowData = appFlows.mapNotNull { rowDataByFlowId[it.id] }
-            val txBytes = appFlows.sumOf { it.txBytes }
-            val rxBytes = appFlows.sumOf { it.rxBytes }
             val txBitsPerSec = appRowData.sumOf { it.rates.txBitsPerSec }
             val rxBitsPerSec = appRowData.sumOf { it.rates.rxBitsPerSec }
-            val combined = txBitsPerSec + rxBitsPerSec
-
             FlowAppGroup(
                 appInfo = app,
                 flows = appFlows,
                 rowDataList = appRowData,
-                txBytes = txBytes,
-                rxBytes = rxBytes,
+                txBytes = appFlows.sumOf { it.txBytes },
+                rxBytes = appFlows.sumOf { it.rxBytes },
                 txRateText = formatRate(txBitsPerSec),
                 rxRateText = formatRate(rxBitsPerSec),
-                combinedBitsPerSec = combined
+                combinedBitsPerSec = txBitsPerSec + rxBitsPerSec,
             )
         }.sortedByDescending { it.combinedBitsPerSec }
 
-        FlowLog.d("[FLOW-DEBUG] [AppResolver] groupFlowsByApp result: ${groups.size} app groups: ${groups.map { "${it.appInfo.appName}(${it.flows.size} flows)" }}")
+        FlowLog.d("[FLOW-DEBUG] [AppResolver] groupFlowsByApp result: ${groups.map { "${it.appInfo.packageName}(${it.flows.size})" }}")
         return groups
+    }
+
+    private fun resolveGroup(group: FlowGroup): AppFlowInfo =
+        labelCache.getOrPut(group.key) {
+            when (group) {
+                is FlowGroup.App -> resolveUid(group)
+                is FlowGroup.Package -> resolvePackage(group)
+                FlowGroup.SystemDns -> special(group, R.string.flow_group_system_dns)
+                FlowGroup.NetworkDiagnostics -> special(group, R.string.flow_group_network_diagnostics)
+                FlowGroup.Unknown -> special(group, R.string.flow_group_unknown)
+            }
+        }
+
+    private fun special(group: FlowGroup, labelRes: Int): AppFlowInfo =
+        AppFlowInfo(group.key, context.getString(labelRes), null)
+
+    /** UID → app label and icon. Shared UIDs show the first app plus the number of others. */
+    private fun resolveUid(group: FlowGroup.App): AppFlowInfo {
+        val pm = context.packageManager
+        val packages = try {
+            pm.getPackagesForUid(group.uid)?.sorted()
+        } catch (_: Exception) {
+            null
+        }
+        if (packages.isNullOrEmpty()) {
+            val name = try {
+                pm.getNameForUid(group.uid)
+            } catch (_: Exception) {
+                null
+            }
+            val label = when {
+                group.uid == ROOT_UID -> context.getString(R.string.flow_group_root)
+                group.uid == SYSTEM_UID -> context.getString(R.string.flow_group_android_system)
+                !name.isNullOrEmpty() -> name
+                else -> context.getString(R.string.flow_group_uid, group.uid)
+            }
+            return AppFlowInfo(group.key, label, null, context.getString(R.string.flow_group_uid, group.uid))
+        }
+        val first = packages.first()
+        val (label, icon) = loadLabelAndIcon(pm, first, group.uid)
+        val shownLabel = when {
+            group.uid == SYSTEM_UID -> context.getString(R.string.flow_group_android_system)
+            packages.size > 1 -> context.getString(R.string.flow_group_shared_uid, label, packages.size - 1)
+            else -> label
+        }
+        return AppFlowInfo(group.key, shownLabel, icon, first)
+    }
+
+    /** Mock backend: the flow already carries a package name. */
+    private fun resolvePackage(group: FlowGroup.Package): AppFlowInfo {
+        val pm = context.packageManager
+        val (label, icon) = loadLabelAndIcon(pm, group.packageName, null)
+        return AppFlowInfo(group.key, label, icon, group.packageName)
+    }
+
+    private fun loadLabelAndIcon(pm: PackageManager, packageName: String, uid: Int?): Pair<String, Drawable?> {
+        return try {
+            val info = pm.getApplicationInfo(packageName, 0)
+            val label = info.loadLabel(pm).toString()
+            var icon: Drawable? = info.loadIcon(pm)
+            if (icon != null && uid != null) {
+                // Adds the work-profile badge for apps of another Android user/profile.
+                icon = pm.getUserBadgedIcon(icon, UserHandle.getUserHandleForUid(uid))
+            }
+            Pair(label, icon)
+        } catch (_: Exception) {
+            Pair(packageName, null)
+        }
+    }
+
+    private companion object {
+        const val ROOT_UID = 0
+        const val SYSTEM_UID = 1000
     }
 
     private fun formatRate(bitsPerSec: Double): String {
