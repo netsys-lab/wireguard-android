@@ -4,6 +4,9 @@
  */
 package com.wireguard.android.util
 
+import android.util.Log
+import com.wireguard.android.Application
+import com.wireguard.android.backend.Tunnel
 import com.wireguard.android.model.ObservableTunnel
 import com.wireguard.android.model.ScitraPolicyConfig
 import com.wireguard.config.Config
@@ -93,9 +96,16 @@ object TunnelPolicyHelper {
                 .addPeers(currentConfig.peers)
                 .build()
 
-            tunnel.setConfigAsync(newConfig)
+            if (newConfig != currentConfig) {
+                // setConfigAsync invokes TunnelManager.setTunnelConfig -> GoBackend.setState,
+                // which already invokes reloadPolicy on Dispatchers.IO when the tunnel is UP.
+                tunnel.setConfigAsync(newConfig)
+            } else if (tunnel.state == Tunnel.State.UP) {
+                Application.getBackend().reloadPolicy(tunnel, newJson)
+            }
             true
-        } catch (_: Exception) {
+        } catch (t: Throwable) {
+            Log.e("TunnelPolicyHelper", "Failed to save policy JSON", t)
             false
         }
     }

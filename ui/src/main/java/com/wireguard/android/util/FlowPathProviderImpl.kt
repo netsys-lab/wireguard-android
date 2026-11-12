@@ -1,8 +1,8 @@
 package com.wireguard.android.util
 
 import com.wireguard.android.BuildConfig
+import com.wireguard.android.backend.Backend
 import com.wireguard.android.backend.BackendException
-import com.wireguard.android.backend.GoBackend
 import com.wireguard.android.backend.Tunnel
 import com.wireguard.android.model.FlowDto
 import com.wireguard.android.model.FlowListResponseDto
@@ -13,7 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
-class FlowPathProviderImpl(private val backend: GoBackend) : FlowPathProvider {
+class FlowPathProviderImpl(private val backend: Backend) : FlowPathProvider {
 
     override suspend fun getFlows(tunnel: Tunnel): Result<List<FlowDto>> {
         return withContext(Dispatchers.IO) {

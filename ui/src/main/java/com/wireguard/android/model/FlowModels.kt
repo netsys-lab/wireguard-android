@@ -1,5 +1,6 @@
 package com.wireguard.android.model
 
+import com.wireguard.android.util.FlowLog
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -7,6 +8,23 @@ enum class FlowEgressKind {
     UNKNOWN,
     IP,
     SCION,
+}
+
+/**
+ * Whether the owning app of a flow is known. Determined in the app process by
+ * FlowOwnerTracker (tunnel module) and merged into [FlowDto] by RealFlowRepository.
+ */
+enum class FlowOwnerStatus {
+    /** [FlowDto.ownerUid] holds the owning app's UID. */
+    RESOLVED,
+    /** Lookup ran without result (socket already closed, lookup refused, event dropped). */
+    UNKNOWN,
+    /** TCP/UDP flow whose lookup has not finished yet (younger than a few seconds). */
+    PENDING,
+    /** No socket that could be looked up (ICMP, ICMPv6, mapped SCMP). */
+    NOT_APPLICABLE,
+    /** Attribution is not running (Android below 10, tunnel down, mock backend). */
+    UNSUPPORTED,
 }
 
 fun String.toFlowEgressKind(): FlowEgressKind = when (lowercase()) {
@@ -43,6 +61,9 @@ data class FlowDto(
     val scionDstIP: String? = null,
     val packageName: String? = null,
     val ownerUid: Int? = null,
+    val ownerStatus: FlowOwnerStatus = FlowOwnerStatus.UNSUPPORTED,
+    /** Why the owner is unknown (e.g. "no_socket", "SecurityException"), for diagnostics. */
+    val ownerReason: String? = null,
 ) {
     val egressKindEnum: FlowEgressKind get() = egressKind.toFlowEgressKind()
 
@@ -82,40 +103,47 @@ data class FlowListResponseDto(
 )
 
 fun parseFlowListResponse(json: String): FlowListResponseDto {
-    val obj = JSONObject(json)
-    val error = obj.optString("error", null) ?: obj.optString("error", null)
-    val errorVal = if (obj.has("error") && !obj.isNull("error")) obj.getString("error") else null
-    val flowsArray = obj.optJSONArray("flows") ?: JSONArray()
-    val flows = (0 until flowsArray.length()).map { i ->
-        val f = flowsArray.getJSONObject(i)
-        val egressKind = parseEgressKind(f)
-        FlowDto(
-            id = f.optLong("id", 0),
-            ipVersion = f.optInt("ipVersion", 0),
-            protocol = f.optInt("protocol", 0),
-            endpointA = parseEndpoint(f.getJSONObject("endpointA")),
-            endpointB = parseEndpoint(f.getJSONObject("endpointB")),
-            status = f.optString("status", ""),
-            txPackets = f.optLong("txPackets", 0),
-            txBytes = f.optLong("txBytes", 0),
-            rxPackets = f.optLong("rxPackets", 0),
-            rxBytes = f.optLong("rxBytes", 0),
-            egressKind = egressKind,
-            srcIA = f.optString("srcIA", null)?.takeIf { it.isNotEmpty() },
-            dstIA = f.optString("dstIA", null)?.takeIf { it.isNotEmpty() },
-            createdAt = f.optString("createdAt", null),
-            lastSeen = f.optString("lastSeen", null),
-            localIP = f.optString("localIP", null)?.takeIf { it.isNotEmpty() },
-            localPort = if (f.has("localPort") && !f.isNull("localPort")) f.optInt("localPort", 0) else null,
-            remoteIP = f.optString("remoteIP", null)?.takeIf { it.isNotEmpty() },
-            remotePort = if (f.has("remotePort") && !f.isNull("remotePort")) f.optInt("remotePort", 0) else null,
-            scionDstIP = f.optString("scionDstIP", null)?.takeIf { it.isNotEmpty() },
-            packageName = f.optString("packageName", null)?.takeIf { it.isNotEmpty() },
-            ownerUid = if (f.has("ownerUid") && !f.isNull("ownerUid")) f.optInt("ownerUid", 0) else null,
-        )
+    try {
+        val obj = JSONObject(json)
+        val errorVal = if (obj.has("error") && !obj.isNull("error")) obj.getString("error") else null
+        val flowsArray = obj.optJSONArray("flows") ?: JSONArray()
+        FlowLog.d("[FLOW-DEBUG] [FlowParser] parseFlowListResponse: jsonLength=${json.length}, rawFlowsCount=${flowsArray.length()}, error=$errorVal")
+        val flows = (0 until flowsArray.length()).map { i ->
+            val f = flowsArray.getJSONObject(i)
+            val egressKind = parseEgressKind(f)
+            val flow = FlowDto(
+                id = f.optLong("id", 0),
+                ipVersion = f.optInt("ipVersion", 0),
+                protocol = f.optInt("protocol", 0),
+                endpointA = parseEndpoint(f.getJSONObject("endpointA")),
+                endpointB = parseEndpoint(f.getJSONObject("endpointB")),
+                status = f.optString("status", ""),
+                txPackets = f.optLong("txPackets", 0),
+                txBytes = f.optLong("txBytes", 0),
+                rxPackets = f.optLong("rxPackets", 0),
+                rxBytes = f.optLong("rxBytes", 0),
+                egressKind = egressKind,
+                srcIA = f.optString("srcIA", null)?.takeIf { it.isNotEmpty() },
+                dstIA = f.optString("dstIA", null)?.takeIf { it.isNotEmpty() },
+                createdAt = f.optString("createdAt", null),
+                lastSeen = f.optString("lastSeen", null),
+                localIP = f.optString("localIP", null)?.takeIf { it.isNotEmpty() },
+                localPort = if (f.has("localPort") && !f.isNull("localPort")) f.optInt("localPort", 0) else null,
+                remoteIP = f.optString("remoteIP", null)?.takeIf { it.isNotEmpty() },
+                remotePort = if (f.has("remotePort") && !f.isNull("remotePort")) f.optInt("remotePort", 0) else null,
+                scionDstIP = f.optString("scionDstIP", null)?.takeIf { it.isNotEmpty() },
+                packageName = f.optString("packageName", null)?.takeIf { it.isNotEmpty() },
+                ownerUid = if (f.has("ownerUid") && !f.isNull("ownerUid")) f.optInt("ownerUid", 0) else null,
+            )
+            FlowLog.d("[FLOW-DEBUG] [FlowParser]   parsed flow[$i]: id=${flow.id}, egressKind='${flow.egressKind}' (enum=${flow.egressKindEnum}, isSCION=${flow.isSCION}), dstIA=${flow.dstIA}, scionDstIP=${flow.scionDstIP}, remote=${flow.remoteIP}:${flow.remotePort}, txBytes=${flow.txBytes}, rxBytes=${flow.rxBytes}")
+            flow
+        }
+        val err = if (errorVal != null && errorVal.isNotEmpty()) errorVal else null
+        return FlowListResponseDto(flows = flows, error = err)
+    } catch (e: Exception) {
+        FlowLog.e("[FLOW-DEBUG] [FlowParser] parseFlowListResponse failed: ${e.message}", e)
+        throw e
     }
-    val err = if (errorVal != null && errorVal.isNotEmpty()) errorVal else null
-    return FlowListResponseDto(flows = flows, error = err)
 }
 
 private fun parseEgressKind(obj: JSONObject): String {
@@ -123,9 +151,12 @@ private fun parseEgressKind(obj: JSONObject): String {
         return obj.getString("egressKind")
     }
     // Legacy fallback: isScion == true maps to SCION
-    if (obj.has("isScion") && obj.optBoolean("isScion", false)) {
-        return "scion"
+    if (obj.has("isScion") && !obj.isNull("isScion")) {
+        val isScion = obj.optBoolean("isScion", false)
+        FlowLog.d("[FLOW-DEBUG] [FlowParser] parseEgressKind: no egressKind field, fallback isScion=$isScion")
+        return if (isScion) "scion" else "ip"
     }
+    FlowLog.w("[FLOW-DEBUG] [FlowParser] parseEgressKind: neither egressKind nor isScion found! Defaulting to 'unknown'.")
     return "unknown"
 }
 

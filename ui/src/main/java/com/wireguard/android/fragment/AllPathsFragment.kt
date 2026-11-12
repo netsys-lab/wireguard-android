@@ -102,7 +102,17 @@ class AllPathsFragment : BaseFragment() {
 
     private fun applyOverride() {
         val fingerprint = selectedFingerprint ?: return
-        ViewModelProvider(requireActivity())[FlowPathViewModel::class.java].applyOverride(fingerprint)
+        ViewModelProvider(requireActivity())[FlowPathViewModel::class.java].applyOverride(fingerprint) { result ->
+            if (result.isFailure) {
+                context?.let { ctx ->
+                    android.widget.Toast.makeText(
+                        ctx,
+                        ctx.getString(R.string.override_path) + " failed: " + result.exceptionOrNull()?.message,
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
         activity?.onBackPressedDispatcher?.onBackPressed()
     }
 

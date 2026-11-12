@@ -119,6 +119,20 @@ class MatcherEditorDialogFragment : DialogFragment() {
         return root
     }
 
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        childFragmentManager.setFragmentResultListener(
+            AppPickerDialogFragment.REQUEST_KEY_APP_SELECTED,
+            viewLifecycleOwner
+        ) { _, bundle ->
+            val pkgName = bundle.getString(AppPickerDialogFragment.KEY_PACKAGE_NAME) ?: return@setFragmentResultListener
+            val appLabel = bundle.getString(AppPickerDialogFragment.KEY_APP_LABEL) ?: pkgName
+            val uid = bundle.getInt(AppPickerDialogFragment.KEY_APP_UID, -1).takeIf { it != -1 }
+
+            updateSelectedAppUi(pkgName, appLabel, uid)
+        }
+    }
+
     private fun setupPolicySpinner() {
         val policiesToDisplay = availablePolicies.filter { it != "default" }
 
@@ -143,17 +157,8 @@ class MatcherEditorDialogFragment : DialogFragment() {
 
     private fun setupAppMatcher() {
         btnChooseApp.setOnClickListener {
+            if (!isAdded || isStateSaved) return@setOnClickListener
             val picker = AppPickerDialogFragment.newInstance()
-            childFragmentManager.setFragmentResultListener(
-                AppPickerDialogFragment.REQUEST_KEY_APP_SELECTED,
-                viewLifecycleOwner
-            ) { _, bundle ->
-                val pkgName = bundle.getString(AppPickerDialogFragment.KEY_PACKAGE_NAME) ?: return@setFragmentResultListener
-                val appLabel = bundle.getString(AppPickerDialogFragment.KEY_APP_LABEL) ?: pkgName
-                val uid = bundle.getInt(AppPickerDialogFragment.KEY_APP_UID, -1).takeIf { it != -1 }
-
-                updateSelectedAppUi(pkgName, appLabel, uid)
-            }
             picker.show(childFragmentManager, AppPickerDialogFragment.TAG)
         }
 
@@ -170,9 +175,13 @@ class MatcherEditorDialogFragment : DialogFragment() {
         btnClearApp.visibility = View.VISIBLE
 
         try {
-            val pm = requireContext().packageManager
-            val icon = pm.getApplicationIcon(pkgName)
-            ivAppIcon.setImageDrawable(icon)
+            val pm = context?.packageManager
+            if (pm != null) {
+                val icon = pm.getApplicationIcon(pkgName)
+                ivAppIcon.setImageDrawable(icon)
+            } else {
+                ivAppIcon.setImageResource(android.R.drawable.sym_def_app_icon)
+            }
         } catch (_: Exception) {
             ivAppIcon.setImageResource(android.R.drawable.sym_def_app_icon)
         }
@@ -188,7 +197,7 @@ class MatcherEditorDialogFragment : DialogFragment() {
     }
 
     private fun setupProtocolChips() {
-        val ctx = requireContext()
+        val ctx = context ?: return
 
         fun updateChips() {
             when (selectedProtocol.lowercase()) {
@@ -261,9 +270,13 @@ class MatcherEditorDialogFragment : DialogFragment() {
             val appUid = if (obj.has("app_uid")) obj.getInt("app_uid") else null
             if (appName != null) {
                 val label = try {
-                    val pm = requireContext().packageManager
-                    val info = pm.getApplicationInfo(appName, 0)
-                    pm.getApplicationLabel(info).toString()
+                    val pm = context?.packageManager
+                    if (pm != null) {
+                        val info = pm.getApplicationInfo(appName, 0)
+                        pm.getApplicationLabel(info).toString()
+                    } else {
+                        appName
+                    }
                 } catch (_: Exception) {
                     appName
                 }
@@ -300,14 +313,16 @@ class MatcherEditorDialogFragment : DialogFragment() {
             rawSelected.substringAfter("id=").substringBefore(",").substringBefore(")")
         } else rawSelected
 
+        val ctx = context ?: return
+
         if (selectedPolicy.isEmpty() || selectedPolicy.startsWith("(No custom")) {
-            Toast.makeText(requireContext(), "A valid target policy must be selected.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(ctx, "A valid target policy must be selected.", Toast.LENGTH_SHORT).show()
             return
         }
 
         if (selectedPolicy == "default") {
             Toast.makeText(
-                requireContext(),
+                ctx,
                 "Directly targeting 'default' is not allowed. 'default' is applied automatically when no matcher matches.",
                 Toast.LENGTH_LONG
             ).show()

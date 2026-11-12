@@ -15,6 +15,20 @@
         <item name="android:statusBarColor">@color/scitra_background</item>
         <item name="android:navigationBarColor">@color/scitra_background</item>
         <item name="android:windowLightStatusBar">true</item>
+        <item name="windowActionModeOverlay">true</item>
+        <item name="actionModeStyle">@style/ScitraActionModeStyle</item>
+        <item name="actionModeCloseDrawable">@drawable/ic_close</item>
+    </style>
+
+    <style name="ScitraActionModeStyle" parent="Widget.AppCompat.ActionMode">
+        <item name="background">@color/scitra_background</item>
+        <item name="titleTextStyle">@style/ScitraActionModeTitle</item>
+    </style>
+
+    <style name="ScitraActionModeTitle" parent="TextAppearance.AppCompat.Widget.ActionMode.Title">
+        <item name="android:textColor">@color/scitra_on_surface</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:textStyle">bold</item>
     </style>
 
     <!-- Various additional API-specific features in values-v*/styles.xml -->

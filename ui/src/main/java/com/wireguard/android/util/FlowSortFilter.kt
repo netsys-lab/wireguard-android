@@ -21,8 +21,16 @@ data class FlowRowData(
 
 object FlowSortFilter {
 
-    fun filterSCIONOnly(flows: List<FlowDto>): List<FlowDto> =
-        flows.filter { it.egressKindEnum == FlowEgressKind.SCION }
+    fun filterSCIONOnly(flows: List<FlowDto>): List<FlowDto> {
+        val scionFlows = flows.filter { it.egressKindEnum == FlowEgressKind.SCION }
+        val ipCount = flows.count { it.egressKindEnum == FlowEgressKind.IP }
+        val unknownCount = flows.count { it.egressKindEnum == FlowEgressKind.UNKNOWN }
+        FlowLog.d("[FLOW-DEBUG] [FlowSortFilter] filterSCIONOnly: total=${flows.size} -> SCION=${scionFlows.size}, IP=$ipCount, UNKNOWN=$unknownCount")
+        if (flows.isNotEmpty() && scionFlows.isEmpty()) {
+            FlowLog.w("[FLOW-DEBUG] [FlowSortFilter] filterSCIONOnly: ALL ${flows.size} flows filtered out! EgressKinds: ${flows.map { "id=${it.id}:kind=${it.egressKind}:enum=${it.egressKindEnum}" }}")
+        }
+        return scionFlows
+    }
 
     suspend fun computeRowData(
         flows: List<FlowDto>,

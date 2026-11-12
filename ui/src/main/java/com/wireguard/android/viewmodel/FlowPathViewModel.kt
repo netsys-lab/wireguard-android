@@ -9,12 +9,14 @@ import com.wireguard.android.model.FlowDto
 import com.wireguard.android.model.FlowPathDomain
 import com.wireguard.android.model.FlowPathState
 import com.wireguard.android.model.OverrideState
+import com.wireguard.android.model.PathBadge
 import com.wireguard.android.model.PathDetailsUiModel
 import com.wireguard.android.model.PathSectionState
 import com.wireguard.android.util.CandidateSelector
 import com.wireguard.android.util.FlowPathRepository
 import com.wireguard.android.util.FlowPathUiMapper
 import com.wireguard.android.util.FlowRepository
+import com.wireguard.android.util.FlowLog
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -85,6 +87,7 @@ class FlowPathViewModel(
         viewModelScope.launch {
             if (!flowContextLoaded) _flowContext.value = FlowContextState.Loading
             flowRepository.getFlowById(_tunnel, _flowId).onSuccess { flow ->
+                FlowLog.d("[FLOW-DEBUG] [FlowPathVM] loadFlowContext: loaded flowId=${flow.id}, egressKind=${flow.egressKind}, txBytes=${flow.txBytes}, rxBytes=${flow.rxBytes}")
                 val now = System.currentTimeMillis()
                 val prev = previousFlowDto
                 val prevTime = previousPollTime
@@ -104,6 +107,7 @@ class FlowPathViewModel(
                 flowContextLoaded = true
                 _flowContext.value = state
             }.onFailure { e ->
+                FlowLog.w("[FLOW-DEBUG] [FlowPathVM] loadFlowContext: FAILED for flowId=$_flowId: ${e.message}")
                 _flowContext.value = FlowContextState.Error(e.message ?: "Failed to load flow")
             }
         }
@@ -113,6 +117,7 @@ class FlowPathViewModel(
         viewModelScope.launch {
             if (!pathsLoaded) _pathSection.value = PathSectionState.Loading
             flowPathRepository.getFlowPathState(_tunnel, _flowId).onSuccess { state ->
+                FlowLog.d("[FLOW-DEBUG] [FlowPathVM] loadPaths: loaded ${state.paths.size} paths for flowId=$_flowId (effectiveFingerprint=${state.effectiveFingerprint})")
                 lastDomainState = state
                 val effectiveDomain = state.effectiveFingerprint?.let { fp ->
                     state.paths.find { it.fingerprint == fp }
@@ -136,15 +141,22 @@ class FlowPathViewModel(
 
                 _pathSection.value = FlowPathUiMapper.toPathSection(updatedState, effectiveDomain)
             }.onFailure { e ->
+                FlowLog.w("[FLOW-DEBUG] [FlowPathVM] loadPaths: FAILED for flowId=$_flowId: ${e.message}")
                 _pathSection.value = PathSectionState.Error(e.message ?: "Failed to load paths")
             }
         }
     }
 
     fun selectPathDetails(fingerprint: String) {
-        val domain = lastDomainState?.paths?.find { it.fingerprint == fingerprint } ?: return
-        val allDomains = lastDomainState?.paths ?: return
-        val badges = CandidateSelector.deriveBadges(domain, allDomains)
+        val state = lastDomainState ?: return
+        val domain = state.paths.find { it.fingerprint == fingerprint } ?: return
+        val allDomains = state.paths
+        val badges = CandidateSelector.deriveBadges(domain, allDomains).toMutableList()
+        if (state.overrideFingerprint == fingerprint && state.overrideState == OverrideState.ACTIVE) {
+            if (!badges.contains(PathBadge.OVERRIDE)) {
+                badges.add(PathBadge.OVERRIDE)
+            }
+        }
         val source = deriveSelectionSource(fingerprint)
         _selectedPathDetails.value = FlowPathUiMapper.toPathDetails(domain, badges, source)
     }
@@ -180,29 +192,38 @@ class FlowPathViewModel(
         }
     }
 
-    fun applyOverride(fingerprint: String) {
+    fun applyOverride(fingerprint: String, onComplete: ((Result<Unit>) -> Unit)? = null) {
         viewModelScope.launch {
-            flowPathRepository.setOverride(_tunnel, _flowId, fingerprint).onSuccess {
+            val result = flowPathRepository.setOverride(_tunnel, _flowId, fingerprint)
+            result.onSuccess {
                 loadPaths()
             }
+            onComplete?.invoke(result)
         }
     }
 
-    fun restoreOverrideFlow() {
+    fun restoreOverrideFlow(onComplete: ((Result<Unit>) -> Unit)? = null) {
         viewModelScope.launch {
-            flowPathRepository.clearOverride(_tunnel, _flowId).onSuccess {
+            val result = flowPathRepository.clearOverride(_tunnel, _flowId)
+            result.onSuccess {
                 loadPaths()
             }
+            onComplete?.invoke(result)
         }
     }
 
     private fun deriveSelectionSource(fingerprint: String): String {
-        val section = _pathSection.value as? PathSectionState.Ready ?: return ""
+        val state = lastDomainState
+        val overrideFp = state?.overrideFingerprint ?: (_pathSection.value as? PathSectionState.Ready)?.overrideFingerprint
+        val overrideState = state?.overrideState ?: (_pathSection.value as? PathSectionState.Ready)?.overrideState
+        val effectiveFp = state?.effectiveFingerprint ?: (_pathSection.value as? PathSectionState.Ready)?.effectiveFingerprint
+        val policyName = state?.policyName ?: (_pathSection.value as? PathSectionState.Ready)?.policyName
+
         return when {
-            section.overrideFingerprint == fingerprint && section.overrideState == OverrideState.ACTIVE ->
+            overrideFp == fingerprint && overrideState == OverrideState.ACTIVE ->
                 "Selected by manual override"
-            section.effectiveFingerprint == fingerprint -> {
-                val name = section.policyName ?: "automatic"
+            effectiveFp == fingerprint -> {
+                val name = policyName ?: "automatic"
                 "Selected automatically by the \"$name\" policy"
             }
             else -> ""

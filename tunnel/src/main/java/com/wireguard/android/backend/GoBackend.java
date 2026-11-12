@@ -27,6 +27,7 @@ import com.wireguard.util.NonNullForAll;
 import java.io.File;
 import java.net.InetAddress;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -63,6 +64,8 @@ public final class GoBackend implements Backend {
     @Nullable private Config currentConfig;
     @Nullable private Tunnel currentTunnel;
     private int currentTunnelHandle = -1;
+    /** Attributes flows to apps; {@code null} below Android 10 (no lookup API). */
+    @Nullable private final FlowOwnerTracker flowOwnerTracker;
 
     /**
      * Public constructor for GoBackend.
@@ -72,6 +75,22 @@ public final class GoBackend implements Backend {
     public GoBackend(final Context context) {
         SharedLibraryLoader.loadSharedLibrary(context, "wg-go");
         this.context = context;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            flowOwnerTracker = new FlowOwnerTracker(new FlowOwnerTracker.NativeBridge() {
+                @Override
+                public int setNewFlowEventsEnabled(final int tunnelHandle, final boolean enabled) {
+                    return wgSetNewFlowEventsEnabled(tunnelHandle, enabled);
+                }
+
+                @Override
+                @Nullable
+                public String waitNewFlows(final int tunnelHandle, final int timeoutMs, final int maxEvents) {
+                    return wgWaitNewFlows(tunnelHandle, timeoutMs, maxEvents);
+                }
+            }, new ConnectivityOwnerLookup(context));
+        } else {
+            flowOwnerTracker = null;
+        }
     }
 
     /**
@@ -131,6 +150,10 @@ public final class GoBackend implements Backend {
     @Nullable private static native String wgGetFlowPaths(int handle, long flowId);
     @Nullable private static native String wgSetFlowPathOverride(int handle, long flowId, String fingerprint);
     @Nullable private static native String wgClearFlowPathOverride(int handle, long flowId);
+    private static native int wgSetNewFlowEventsEnabled(int handle, boolean enabled);
+    /** Blocks up to timeoutMs; only call from {@link FlowOwnerTracker}'s worker thread. */
+    @Nullable private static native String wgWaitNewFlows(int handle, int timeoutMs, int maxEvents);
+    @Nullable private static native String wgReloadPolicy(int handle, String policyJSON);
     private static native String wgInitScionWithBootstrapRetry(
         int tunnelHandle,
         String configDir,
@@ -176,30 +199,51 @@ public final class GoBackend implements Backend {
             return "{}";
         return wgGetSCIONInfo(currentTunnelHandle);
     }
+    @Override
     @Nullable
     public String getFlows(final Tunnel tunnel) {
-        if (tunnel != currentTunnel || currentTunnelHandle == -1)
+        if (tunnel != currentTunnel || currentTunnelHandle == -1) {
+            android.util.Log.w(TAG, "[FLOW-DEBUG] [GoBackend] getFlows: tunnel inactive or mismatch! requested=" +
+                    (tunnel != null ? tunnel.getName() : "null") + ", current=" +
+                    (currentTunnel != null ? currentTunnel.getName() : "null") + ", handle=" + currentTunnelHandle);
             return "{\"flows\":[],\"error\":\"tunnel_not_running\"}";
-        return wgGetFlows(currentTunnelHandle);
+        }
+        final String json = wgGetFlows(currentTunnelHandle);
+        final int len = json != null ? json.length() : 0;
+        final String preview = (json != null && json.length() > 200) ? json.substring(0, 200) + "..." : json;
+        android.util.Log.d(TAG, "[FLOW-DEBUG] [GoBackend] getFlows(handle=" + currentTunnelHandle + ") returned len=" + len + ": " + preview);
+        return json;
     }
+    @Override
     @Nullable
     public String getFlowPaths(final Tunnel tunnel, final long flowId) {
-        if (tunnel != currentTunnel || currentTunnelHandle == -1)
+        if (tunnel != currentTunnel || currentTunnelHandle == -1) {
+            android.util.Log.w(TAG, "[FLOW-DEBUG] [GoBackend] getFlowPaths: tunnel inactive or mismatch! handle=" + currentTunnelHandle);
             return "{\"error\":\"tunnel_not_running\"}";
-        if (flowId < 0)
+        }
+        if (flowId < 0) {
+            android.util.Log.w(TAG, "[FLOW-DEBUG] [GoBackend] getFlowPaths: invalid flowId=" + flowId);
             return "{\"error\":\"invalid_flow_id\"}";
-        return wgGetFlowPaths(currentTunnelHandle, flowId);
+        }
+        final String json = wgGetFlowPaths(currentTunnelHandle, flowId);
+        android.util.Log.d(TAG, "[FLOW-DEBUG] [GoBackend] getFlowPaths(flowId=" + flowId + ") returned: " + json);
+        return json;
     }
+    @Override
     @Nullable
     public String setFlowPathOverride(final Tunnel tunnel, final long flowId, final String fingerprint) {
-        if (tunnel != currentTunnel || currentTunnelHandle == -1)
+        if (tunnel != currentTunnel || currentTunnelHandle == -1) {
+            android.util.Log.w(TAG, "[FLOW-DEBUG] [GoBackend] setFlowPathOverride: tunnel inactive or mismatch! handle=" + currentTunnelHandle);
             return "{\"error\":\"tunnel_not_running\"}";
+        }
         if (flowId < 0)
             return "{\"error\":\"invalid_flow_id\"}";
         if (fingerprint == null || fingerprint.isEmpty())
             return "{\"error\":\"empty_fingerprint\"}";
+        android.util.Log.d(TAG, "[FLOW-DEBUG] [GoBackend] setFlowPathOverride: flowId=" + flowId + ", fingerprint=" + fingerprint);
         return wgSetFlowPathOverride(currentTunnelHandle, flowId, fingerprint);
     }
+    @Override
     @Nullable
     public String clearFlowPathOverride(final Tunnel tunnel, final long flowId) {
         if (tunnel != currentTunnel || currentTunnelHandle == -1)
@@ -207,6 +251,82 @@ public final class GoBackend implements Backend {
         if (flowId < 0)
             return "{\"error\":\"invalid_flow_id\"}";
         return wgClearFlowPathOverride(currentTunnelHandle, flowId);
+    }
+
+    @Override
+    public Map<Long, FlowOwner> getFlowOwners(final Tunnel tunnel) {
+        if (flowOwnerTracker == null || tunnel != currentTunnel || currentTunnelHandle == -1)
+            return Collections.emptyMap();
+        return flowOwnerTracker.getOwners();
+    }
+
+    @Override
+    public FlowOwnerTrackingState getFlowOwnerTrackingState() {
+        if (flowOwnerTracker == null)
+            return FlowOwnerTrackingState.UNSUPPORTED;
+        return flowOwnerTracker.isActive() ? FlowOwnerTrackingState.ACTIVE : FlowOwnerTrackingState.INACTIVE;
+    }
+
+    @Override
+    public void retainFlowOwners(final Tunnel tunnel, final Set<Long> flowIds) {
+        if (flowOwnerTracker != null && tunnel == currentTunnel)
+            flowOwnerTracker.retainOnly(flowIds);
+    }
+
+    /** Starts app attribution for the freshly started tunnel (Android 10+, real backend only). */
+    private void startFlowOwnerTracking(final int tunnelHandle) {
+        if (flowOwnerTracker == null) {
+            Log.i(TAG, "Flow owner tracking unsupported below Android 10");
+            return;
+        }
+        if (isMockMode) {
+            Log.d(TAG, "Flow owner tracking skipped in mock mode");
+            return;
+        }
+        try {
+            flowOwnerTracker.start(tunnelHandle);
+        } catch (final Throwable t) {
+            Log.e(TAG, "Failed to start flow owner tracking", t);
+        }
+    }
+
+    @Override
+    @Nullable
+    public String reloadPolicy(final Tunnel tunnel, final String policyJson) {
+        if (tunnel != currentTunnel || currentTunnelHandle == -1)
+            return "{\"error\":\"tunnel_not_running\"}";
+        final String configDir = getScionConfigDir();
+        final File policyFile = new File(configDir, "policy.json");
+        try {
+            if (policyJson != null && !policyJson.trim().isEmpty()) {
+                java.nio.file.Files.write(policyFile.toPath(), policyJson.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                Log.i(TAG_SCION, "Wrote path policy to " + policyFile.getAbsolutePath());
+            } else if (policyFile.exists()) {
+                policyFile.delete();
+                Log.i(TAG_SCION, "Deleted path policy file " + policyFile.getAbsolutePath());
+            }
+        } catch (final Exception e) {
+            Log.e(TAG_SCION, "Failed to write path policy file on reload: " + e.getMessage(), e);
+        }
+        return wgReloadPolicy(currentTunnelHandle, policyJson != null ? policyJson : "");
+    }
+    private static boolean isOnlyPolicyChange(final Config oldConfig, final Config newConfig) {
+        if (oldConfig == newConfig)
+            return false;
+        final com.wireguard.config.Interface oldIface = oldConfig.getInterface();
+        final com.wireguard.config.Interface newIface = newConfig.getInterface();
+        if (!oldIface.getKeyPair().equals(newIface.getKeyPair())) return false;
+        if (!oldIface.getAddresses().equals(newIface.getAddresses())) return false;
+        if (!oldIface.getDnsServers().equals(newIface.getDnsServers())) return false;
+        if (!oldIface.getDnsSearchDomains().equals(newIface.getDnsSearchDomains())) return false;
+        if (oldIface.getListenPort().orElse(0) != newIface.getListenPort().orElse(0)) return false;
+        if (oldIface.getMtu().orElse(0) != newIface.getMtu().orElse(0)) return false;
+        if (!oldIface.getExcludedApplications().equals(newIface.getExcludedApplications())) return false;
+        if (!oldIface.getIncludedApplications().equals(newIface.getIncludedApplications())) return false;
+        if (oldIface.getTunnelMode() != newIface.getTunnelMode()) return false;
+        if (!oldIface.getBootstrapUrl().equals(newIface.getBootstrapUrl())) return false;
+        if (!oldConfig.getPeers().equals(newConfig.getPeers())) return false;
+        return !oldIface.getPathPolicy().equals(newIface.getPathPolicy());
     }
     private String initScionWithBootstrapRetry(
             final int tunnelHandle,
@@ -384,6 +504,12 @@ public final class GoBackend implements Backend {
             state = originalState == State.UP ? State.DOWN : State.UP;
         if (state == originalState && tunnel == currentTunnel && config == currentConfig)
             return originalState;
+        if (state == State.UP && tunnel == currentTunnel && currentTunnelHandle != -1 && currentConfig != null && config != null && isOnlyPolicyChange(currentConfig, config)) {
+            Log.i(TAG_SCION, "Dynamic path policy reload requested on running tunnel");
+            reloadPolicy(tunnel, config.getInterface().getPathPolicy());
+            currentConfig = config;
+            return State.UP;
+        }
         if (state == State.UP) {
             final Config originalConfig = currentConfig;
             final Tunnel originalTunnel = currentTunnel;
@@ -513,11 +639,25 @@ public final class GoBackend implements Backend {
             service.protect(wgGetSocketV4(currentTunnelHandle));
             service.protect(wgGetSocketV6(currentTunnelHandle));
 
+            startFlowOwnerTracking(currentTunnelHandle);
+
             // === SCION Init (Schritt 2) ===
             if (config.getInterface().isScionEnabled()) {
                 final String bootstrapUrl = config.getInterface().getBootstrapUrl();
                 if (bootstrapUrl != null && !bootstrapUrl.isEmpty()) {
                     final String configDir = getScionConfigDir();
+                    final String pathPolicy = config.getInterface().getPathPolicy();
+                    final File policyFile = new File(configDir, "policy.json");
+                    try {
+                        if (pathPolicy != null && !pathPolicy.trim().isEmpty()) {
+                            java.nio.file.Files.write(policyFile.toPath(), pathPolicy.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                            Log.i(TAG_SCION, "Wrote initial path policy to " + policyFile.getAbsolutePath());
+                        } else if (policyFile.exists()) {
+                            policyFile.delete();
+                        }
+                    } catch (final Exception e) {
+                        Log.e(TAG_SCION, "Failed to write initial path policy file: " + e.getMessage(), e);
+                    }
 
                     // Extract local addresses from the tunnel config for the Go backend.
                     // These bypass net.InterfaceByName which is unavailable on Android.
@@ -589,6 +729,9 @@ public final class GoBackend implements Backend {
             currentTunnel = null;
             currentTunnelHandle = -1;
             currentConfig = null;
+            // Stop app attribution while the backend device still exists.
+            if (flowOwnerTracker != null)
+                flowOwnerTracker.stop();
             wgTurnOff(handleToClose);
             try {
                 vpnService.get(0, TimeUnit.NANOSECONDS).stopSelf();
@@ -648,6 +791,8 @@ public final class GoBackend implements Backend {
             if (owner != null) {
                 final Tunnel tunnel = owner.currentTunnel;
                 if (tunnel != null) {
+                    if (owner.flowOwnerTracker != null)
+                        owner.flowOwnerTracker.stop();
                     if (owner.currentTunnelHandle != -1)
                         wgTurnOff(owner.currentTunnelHandle);
                     owner.currentTunnel = null;

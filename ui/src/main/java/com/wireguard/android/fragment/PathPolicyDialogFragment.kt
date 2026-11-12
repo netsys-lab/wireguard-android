@@ -1026,7 +1026,7 @@ class PathPolicyDialogFragment : DialogFragment() {
             when (key) {
                 "random" -> ordArr.put("random")
                 "latency" -> ordArr.put("meta_latency_$dir")
-                "bandwidth" -> ordArr.put("meta_bw_$dir")
+                "bandwidth" -> ordArr.put("meta_bandwidth_$dir")
                 "hops" -> ordArr.put("hops_$dir")
             }
         }
