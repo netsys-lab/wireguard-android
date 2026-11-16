@@ -37,6 +37,7 @@ import com.wireguard.android.util.AdminKnobs
 import com.wireguard.android.util.BiometricAuthenticator
 import com.wireguard.android.util.ErrorMessages
 import com.wireguard.android.util.QrCodeFromFileScanner
+import com.wireguard.android.util.ScionTunnelHelper
 import com.wireguard.android.viewmodel.ConfigProxy
 import com.wireguard.config.Config
 import kotlinx.coroutines.launch
@@ -108,11 +109,16 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
 
     var advancedMode: Boolean = false
         private set
-    private var isScionMode = true
+    var isScionMode: Boolean = true
+        private set
 
     fun toggleAdvancedMode() {
         advancedMode = !advancedMode
         updateEyeIcon()
+        refreshPeerBindings()
+    }
+
+    private fun refreshPeerBindings() {
         binding?.peersLayout?.let { peersLayout ->
             for (i in 0 until peersLayout.childCount) {
                 val child = peersLayout.getChildAt(i)
@@ -132,6 +138,10 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
     }
 
     fun setScionMode(scion: Boolean) {
+        setScionMode(scion, notifyIfAdded = true)
+    }
+
+    fun setScionMode(scion: Boolean, notifyIfAdded: Boolean) {
         isScionMode = scion
         val binding = binding ?: return
         val context = context ?: return
@@ -147,6 +157,19 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
             binding.bootstrapUrlLayout.visibility = View.VISIBLE
             binding.pathPolicyCard.visibility = View.VISIBLE
             binding.btnConfigurePathPolicy.visibility = View.VISIBLE
+
+            // Automatically ensure all existing peers contain fc00::/8 in SCION mode
+            var anyAdded = false
+            binding.config?.peers?.forEach { peer ->
+                val (updated, added) = ScionTunnelHelper.ensureScionAllowedIp(peer.allowedIps)
+                if (added) {
+                    peer.allowedIps = updated
+                    anyAdded = true
+                }
+            }
+            if (anyAdded && notifyIfAdded) {
+                Snackbar.make(binding.mainContainer, R.string.scion_allowed_ips_auto_added, Snackbar.LENGTH_LONG).show()
+            }
         } else {
             binding.tabScion.setBackgroundResource(android.R.color.transparent)
             binding.tabScion.setTextColor(context.getColor(R.color.scitra_on_surface_variant))
@@ -156,6 +179,7 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
             binding.pathPolicyCard.visibility = View.GONE
         }
         // Wichtig: bootstrapUrl und pathPolicy NICHT löschen!
+        refreshPeerBindings()
     }
 
     private fun onConfigLoaded(config: Config) {
@@ -256,6 +280,13 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
         // PathPolicy-JSON vom Dialog übernehmen (SCION-Modus)
         if (isScionMode) {
             binding!!.config?.`interface`?.pathPolicy = pathPolicyJson
+            // Ensure all peers contain fc00::/8 in SCION mode before resolving
+            binding!!.config?.peers?.forEach { peer ->
+                val (updated, added) = ScionTunnelHelper.ensureScionAllowedIp(peer.allowedIps)
+                if (added) {
+                    peer.allowedIps = updated
+                }
+            }
         }
         // tunnelMode wurde bereits in setScionMode() gesetzt.
         // bootstrapUrl und pathPolicy bleiben erhalten (auch bei IP-Modus).

@@ -81,12 +81,15 @@ object TunnelImporter {
                             null
                         }?.let {
                             val nameCopy = name
-                            futureTunnels.add(async(SupervisorJob()) { Application.getTunnelManager().create(nameCopy, it) })
+                            val configWithScion = ScionTunnelHelper.ensureScionConfig(it)
+                            futureTunnels.add(async(SupervisorJob()) { Application.getTunnelManager().create(nameCopy, configWithScion) })
                         }
                     }
                 }
             } else {
-                futureTunnels.add(async(SupervisorJob()) { Application.getTunnelManager().create(name, Config.parse(contentResolver.openInputStream(uri)!!)) })
+                val parsed = Config.parse(contentResolver.openInputStream(uri)!!)
+                val configWithScion = ScionTunnelHelper.ensureScionConfig(parsed)
+                futureTunnels.add(async(SupervisorJob()) { Application.getTunnelManager().create(name, configWithScion) })
             }
 
             if (futureTunnels.isEmpty()) {

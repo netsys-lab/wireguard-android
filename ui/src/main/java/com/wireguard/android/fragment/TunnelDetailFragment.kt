@@ -38,6 +38,7 @@ import com.wireguard.android.util.FlowRowData
 import com.wireguard.android.util.FlowSortFilter
 import com.wireguard.android.util.FlowAppResolver
 import com.wireguard.android.util.FlowLog
+import com.wireguard.android.util.ScionTunnelHelper
 import com.wireguard.android.util.TunnelPolicyHelper
 import com.wireguard.config.Config
 import com.wireguard.config.Interface
@@ -728,14 +729,27 @@ class TunnelDetailFragment : BaseFragment() {
                 currentConfig.`interface`.listenPort.ifPresent { newInterfaceBuilder.setListenPort(it) }
                 currentConfig.`interface`.mtu.ifPresent { newInterfaceBuilder.setMtu(it) }
 
+                val (peersToSave, addedAllowedIps) = if (scion) {
+                    ScionTunnelHelper.ensureScionPeers(currentConfig.peers)
+                } else {
+                    currentConfig.peers.toList() to false
+                }
+
                 val newConfig = Config.Builder()
                     .setInterface(newInterfaceBuilder.build())
-                    .addPeers(currentConfig.peers)
+                    .addPeers(peersToSave)
                     .build()
 
                 tunnel.setConfigAsync(newConfig)
                 binding?.config = newConfig
-                Toast.makeText(context, "Switched to $newMode mode", Toast.LENGTH_SHORT).show()
+                val message = if (scion && addedAllowedIps) {
+                    getString(R.string.tunnel_mode_switched_scion_with_allowed_ips)
+                } else if (scion) {
+                    getString(R.string.tunnel_mode_switched_scion)
+                } else {
+                    getString(R.string.tunnel_mode_switched_ip)
+                }
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             } catch (e: Throwable) {
                 Toast.makeText(context, "Error switching mode: ${e.message}", Toast.LENGTH_LONG).show()
             }

@@ -43,6 +43,9 @@ class ConfigProxy : Parcelable {
 
     fun addPeer(): PeerProxy {
         val proxy = PeerProxy()
+        if (`interface`.tunnelMode == "SCION") {
+            proxy.allowedIps = com.wireguard.android.util.ScionTunnelHelper.SCION_ALLOWED_IP_STRING
+        }
         peers.add(proxy)
         proxy.bind(this)
         return proxy

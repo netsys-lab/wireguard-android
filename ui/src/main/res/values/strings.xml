@@ -514,5 +514,12 @@
     <string name="scan_bootstrap_url_success">Bootstrap URL updated from QR code</string>
     <string name="scan_bootstrap_url_error">No valid Bootstrap URL found in QR code</string>
     <string name="error_no_camera">No camera available on this device</string>
+
+    <!-- SCION Allowed IPs Automation -->
+    <string name="scion_allowed_ips_auto_added">Added fc00::/8 to Allowed IPs for SCION routing</string>
+    <string name="allowed_ips_scion_helper">SCION tunnels include fc00::/8 for traffic routing</string>
+    <string name="tunnel_mode_switched_scion_with_allowed_ips">Switched to SCION mode (fc00::/8 added to Allowed IPs)</string>
+    <string name="tunnel_mode_switched_scion">Switched to SCION mode</string>
+    <string name="tunnel_mode_switched_ip">Switched to IP mode</string>
 </resources>
 

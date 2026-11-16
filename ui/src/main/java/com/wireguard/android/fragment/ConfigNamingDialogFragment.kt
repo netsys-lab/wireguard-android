@@ -43,7 +43,8 @@ class ConfigNamingDialogFragment : DialogFragment() {
         val configText = requireArguments().getString(KEY_CONFIG_TEXT)
         val configBytes = configText!!.toByteArray(StandardCharsets.UTF_8)
         config = try {
-            Config.parse(ByteArrayInputStream(configBytes))
+            val parsed = Config.parse(ByteArrayInputStream(configBytes))
+            com.wireguard.android.util.ScionTunnelHelper.ensureScionConfig(parsed)
         } catch (e: Throwable) {
             when (e) {
                 is BadConfigException, is IOException -> throw IllegalArgumentException("Invalid config passed to ${javaClass.simpleName}", e)
