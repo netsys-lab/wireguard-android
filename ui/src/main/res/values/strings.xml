@@ -521,5 +521,6 @@
     <string name="tunnel_mode_switched_scion_with_allowed_ips">Switched to SCION mode (fc00::/8 added to Allowed IPs)</string>
     <string name="tunnel_mode_switched_scion">Switched to SCION mode</string>
     <string name="tunnel_mode_switched_ip">Switched to IP mode</string>
+    <string name="error_bootstrap_url_required">Please add a Bootstrap URL for SCION mode</string>
 </resources>
 

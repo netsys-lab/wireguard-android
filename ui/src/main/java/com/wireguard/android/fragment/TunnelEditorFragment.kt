@@ -22,6 +22,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.os.BundleCompat
 import androidx.core.view.MenuProvider
+import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
@@ -58,6 +59,7 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
             if (extracted.isNotEmpty()) {
                 binding?.config?.`interface`?.bootstrapUrl = extracted
                 binding?.bootstrapUrlText?.setText(extracted)
+                binding?.bootstrapUrlLayout?.error = null
                 val ctx = context ?: Application.get()
                 Toast.makeText(ctx, R.string.scan_bootstrap_url_success, Toast.LENGTH_SHORT).show()
             } else {
@@ -78,6 +80,7 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
                 if (extracted.isNotEmpty()) {
                     binding?.config?.`interface`?.bootstrapUrl = extracted
                     binding?.bootstrapUrlText?.setText(extracted)
+                    binding?.bootstrapUrlLayout?.error = null
                     val ctx = context ?: Application.get()
                     Toast.makeText(ctx, R.string.scan_bootstrap_url_success, Toast.LENGTH_SHORT).show()
                 } else {
@@ -175,6 +178,7 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
             binding.tabScion.setTextColor(context.getColor(R.color.scitra_on_surface_variant))
             binding.tabIp.setBackgroundResource(R.drawable.scitra_tab_selected_bg)
             binding.tabIp.setTextColor(context.getColor(R.color.scitra_on_primary))
+            binding.bootstrapUrlLayout.error = null
             binding.bootstrapUrlLayout.visibility = View.GONE
             binding.pathPolicyCard.visibility = View.GONE
         }
@@ -228,6 +232,11 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
                 imageFileScanLauncher.launch("image/*")
                 true
             }
+            bootstrapUrlText.doAfterTextChanged {
+                if (!it.isNullOrBlank()) {
+                    bootstrapUrlLayout.error = null
+                }
+            }
         }
         return binding?.root
     }
@@ -276,12 +285,24 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
     }
 
     fun onSaveClick() {
-        binding ?: return
-        // PathPolicy-JSON vom Dialog übernehmen (SCION-Modus)
-        if (isScionMode) {
-            binding!!.config?.`interface`?.pathPolicy = pathPolicyJson
+        val binding = binding ?: return
+
+        // In SCION mode, validate that Bootstrap URL is not empty
+        if (isScionMode || binding.config?.`interface`?.tunnelMode == "SCION") {
+            val bootstrapUrl = binding.bootstrapUrlText.text?.toString()?.trim().orEmpty()
+            if (bootstrapUrl.isEmpty()) {
+                binding.bootstrapUrlLayout.error = getString(R.string.error_bootstrap_url_required)
+                binding.bootstrapUrlText.requestFocus()
+                Snackbar.make(binding.mainContainer, R.string.error_bootstrap_url_required, Snackbar.LENGTH_LONG).show()
+                return
+            } else {
+                binding.bootstrapUrlLayout.error = null
+            }
+
+            // PathPolicy-JSON vom Dialog übernehmen (SCION-Modus)
+            binding.config?.`interface`?.pathPolicy = pathPolicyJson
             // Ensure all peers contain fc00::/8 in SCION mode before resolving
-            binding!!.config?.peers?.forEach { peer ->
+            binding.config?.peers?.forEach { peer ->
                 val (updated, added) = ScionTunnelHelper.ensureScionAllowedIp(peer.allowedIps)
                 if (added) {
                     peer.allowedIps = updated

@@ -107,7 +107,8 @@ class TunnelListFragment : BaseFragment() {
 
             // Update scionTunnels
             val scionNames = scionList.map { it.name }.toSet()
-            scionTunnels.removeAll { it.name !in scionNames }
+            val scionToRemove = scionTunnels.filter { it.name !in scionNames }
+            scionToRemove.forEach { scionTunnels.remove(it) }
             for (item in scionList) {
                 if (!scionTunnels.containsKey(item.name)) {
                     scionTunnels.add(item)
@@ -116,7 +117,8 @@ class TunnelListFragment : BaseFragment() {
 
             // Update standardTunnels
             val standardNames = standardList.map { it.name }.toSet()
-            standardTunnels.removeAll { it.name !in standardNames }
+            val standardToRemove = standardTunnels.filter { it.name !in standardNames }
+            standardToRemove.forEach { standardTunnels.remove(it) }
             for (item in standardList) {
                 if (!standardTunnels.containsKey(item.name)) {
                     standardTunnels.add(item)

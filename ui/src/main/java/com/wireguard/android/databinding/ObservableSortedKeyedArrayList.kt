@@ -71,6 +71,22 @@ class ObservableSortedKeyedArrayList<K, E : Keyed<out K>>(private val comparator
         return super.set(index, element)
     }
 
+    /**
+     * Safely removes all elements matching [predicate] using an iterator, avoiding in-place set()
+     * operations that violate the sorted-key invariant.
+     */
+    fun removeAll(predicate: (E) -> Boolean): Boolean {
+        var modified = false
+        val it = iterator()
+        while (it.hasNext()) {
+            if (predicate(it.next())) {
+                it.remove()
+                modified = true
+            }
+        }
+        return modified
+    }
+
     private class KeyList<K, E : Keyed<out K>>(private val list: ObservableSortedKeyedArrayList<K, E>) : AbstractList<K>(), Set<K> {
         override fun get(index: Int): K = list[index].key
 

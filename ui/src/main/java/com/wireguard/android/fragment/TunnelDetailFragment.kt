@@ -705,61 +705,6 @@ class TunnelDetailFragment : BaseFragment() {
         }
     }
 
-    // ─── SCION Toggle ───────────────────────────────────────
-
-    fun setScionMode(scion: Boolean) {
-        val tunnel = binding?.tunnel ?: return
-        val newMode = if (scion) "SCION" else "IP"
-        lifecycleScope.launch {
-            try {
-                val currentConfig = tunnel.getConfigAsync()
-                if (currentConfig.`interface`.tunnelMode.name == newMode) return@launch
-
-                val newInterfaceBuilder = Interface.Builder()
-                    .addAddresses(currentConfig.`interface`.addresses)
-                    .addDnsServers(currentConfig.`interface`.dnsServers)
-                    .addDnsSearchDomains(currentConfig.`interface`.dnsSearchDomains)
-                    .excludeApplications(currentConfig.`interface`.excludedApplications)
-                    .includeApplications(currentConfig.`interface`.includedApplications)
-                    .setKeyPair(currentConfig.`interface`.keyPair)
-                    .setBootstrapUrl(currentConfig.`interface`.bootstrapUrl)
-                    .setPathPolicy(currentConfig.`interface`.pathPolicy)
-                    .setTunnelMode(Interface.TunnelMode.valueOf(newMode))
-
-                currentConfig.`interface`.listenPort.ifPresent { newInterfaceBuilder.setListenPort(it) }
-                currentConfig.`interface`.mtu.ifPresent { newInterfaceBuilder.setMtu(it) }
-
-                val (peersToSave, addedAllowedIps) = if (scion) {
-                    ScionTunnelHelper.ensureScionPeers(currentConfig.peers)
-                } else {
-                    currentConfig.peers.toList() to false
-                }
-
-                val newConfig = Config.Builder()
-                    .setInterface(newInterfaceBuilder.build())
-                    .addPeers(peersToSave)
-                    .build()
-
-                tunnel.setConfigAsync(newConfig)
-                binding?.config = newConfig
-                val message = if (scion && addedAllowedIps) {
-                    getString(R.string.tunnel_mode_switched_scion_with_allowed_ips)
-                } else if (scion) {
-                    getString(R.string.tunnel_mode_switched_scion)
-                } else {
-                    getString(R.string.tunnel_mode_switched_ip)
-                }
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-            } catch (e: Throwable) {
-                Toast.makeText(context, "Error switching mode: ${e.message}", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-
-    fun toggleScionMode(view: View, checked: Boolean) {
-        setScionMode(checked)
-    }
-
     // ─── Mock / Live Mode Toggle ─────────────────────────────
 
     fun setMockMode(enableMock: Boolean) {
