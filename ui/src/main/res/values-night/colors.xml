@@ -25,5 +25,11 @@
     <color name="scitra_warning">#FBBF24</color>
     <color name="scitra_error">#FF6B6B</color>
     <color name="scitra_code_bg">#1A1C20</color>
+
+    <!-- Scitra Notification Bento Colors -->
+    <color name="scitra_notification_bg">#22252C</color>
+    <color name="scitra_notification_border">#454B5C</color>
+    <color name="scitra_notification_title">#E2E2E6</color>
+    <color name="scitra_notification_message">#C4C6D0</color>
 </resources>
 

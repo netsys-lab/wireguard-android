@@ -35,13 +35,13 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textview.MaterialTextView
 import com.wireguard.android.BuildConfig
 import com.wireguard.android.R
 import com.wireguard.android.databinding.LogViewerActivityBinding
 import com.wireguard.android.util.DownloadsFileSaver
 import com.wireguard.android.util.ErrorMessages
+import com.wireguard.android.util.ScitraNotify
 import com.wireguard.android.util.resolveAttribute
 import com.wireguard.crypto.KeyPair
 import kotlinx.coroutines.Dispatchers
@@ -189,13 +189,11 @@ class LogViewerActivity : AppCompatActivity() {
         saveButton?.isEnabled = true
         if (outputFile == null)
             return
-        Snackbar.make(
-            findViewById(android.R.id.content),
-            if (exception == null) getString(R.string.log_export_success, outputFile.fileName)
-            else getString(R.string.log_export_error, ErrorMessages[exception]),
-            if (exception == null) Snackbar.LENGTH_SHORT else Snackbar.LENGTH_LONG
-        )
-            .show()
+        if (exception == null) {
+            ScitraNotify.success(binding.root, getString(R.string.log_export_success, outputFile.fileName))
+        } else {
+            ScitraNotify.error(binding.root, getString(R.string.log_export_error, ErrorMessages[exception]))
+        }
     }
 
     private fun clearLog() {
@@ -207,7 +205,7 @@ class LogViewerActivity : AppCompatActivity() {
         logLines.clear()
         rawLogLines.clear()
         logAdapter.notifyDataSetChanged()
-        Snackbar.make(binding.root, getString(R.string.log_clear_title), Snackbar.LENGTH_SHORT).show()
+        ScitraNotify.info(binding.root, getString(R.string.log_clear_title))
     }
 
     private suspend fun streamingLog() = withContext(Dispatchers.IO) {

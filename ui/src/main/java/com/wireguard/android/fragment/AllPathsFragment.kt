@@ -15,6 +15,7 @@ import com.wireguard.android.model.PathPreviewUiModel
 import com.wireguard.android.viewmodel.FlowPathViewModel
 import com.wireguard.android.util.PathPreviewCardBinder
 import kotlinx.coroutines.launch
+import com.wireguard.android.util.ScitraNotify
 
 class AllPathsFragment : BaseFragment() {
 
@@ -57,7 +58,7 @@ class AllPathsFragment : BaseFragment() {
         val view = view ?: return
         val ctx = ViewModelProvider(requireActivity())[FlowPathViewModel::class.java].flowContext.value
         val destination = if (ctx is com.wireguard.android.model.FlowContextState.Ready) {
-            "${ctx.destinationIA ?: ""} · ${ctx.remoteEndpoint}"
+            "${ctx.destinationIA ?: ""} Â· ${ctx.remoteEndpoint}"
         } else ""
         view.findViewById<TextView>(R.id.ap_context_destination).text = destination
         view.findViewById<TextView>(R.id.ap_context_policy).text = section.policyName ?: section.policyState.name
@@ -105,11 +106,7 @@ class AllPathsFragment : BaseFragment() {
         ViewModelProvider(requireActivity())[FlowPathViewModel::class.java].applyOverride(fingerprint) { result ->
             if (result.isFailure) {
                 context?.let { ctx ->
-                    android.widget.Toast.makeText(
-                        ctx,
-                        ctx.getString(R.string.override_path) + " failed: " + result.exceptionOrNull()?.message,
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
+                    ScitraNotify.error(ctx, ctx.getString(R.string.override_path) + " failed: " + result.exceptionOrNull()?.message)
                 }
             }
         }

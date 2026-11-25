@@ -19,7 +19,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.appcompat.widget.AppCompatEditText
@@ -31,7 +30,6 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.snackbar.Snackbar
 import com.wireguard.android.R
 import com.wireguard.android.databinding.DebugPacketActivityBinding
 import com.wireguard.android.util.AutoscrollTracker
@@ -42,6 +40,7 @@ import com.wireguard.android.util.DebugPacketLogStreamer
 import com.wireguard.android.util.DownloadsFileSaver
 import com.wireguard.android.util.ErrorMessages
 import com.wireguard.android.util.ScionDebugSender
+import com.wireguard.android.util.ScitraNotify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
@@ -106,11 +105,10 @@ class DebugPacketActivity : AppCompatActivity() {
 
         logStreamer.onFailure = { throwable ->
             runOnUiThread {
-                Toast.makeText(
-                    this@DebugPacketActivity,
-                    getString(R.string.debug_packet_log_error, throwable.message ?: "unknown"),
-                    Toast.LENGTH_LONG
-                ).show()
+                ScitraNotify.error(
+                    binding.root,
+                    getString(R.string.debug_packet_log_error, throwable.message ?: "unknown")
+                )
             }
         }
 
@@ -332,7 +330,7 @@ class DebugPacketActivity : AppCompatActivity() {
     private fun showComponentFilter() {
         val components = DebugPacketLogFilter.distinctComponents(allEntries)
         if (components.isEmpty()) {
-            Snackbar.make(binding.root, R.string.debug_packet_log_empty, Snackbar.LENGTH_SHORT).show()
+            ScitraNotify.info(binding.root, R.string.debug_packet_log_empty)
             return
         }
         val checked = components.map { filterCriteria.components.contains(it) }.toBooleanArray()
@@ -423,7 +421,7 @@ class DebugPacketActivity : AppCompatActivity() {
     private suspend fun saveLog() {
         val lines = logStreamer.getRawLines()
         if (lines.isEmpty()) {
-            Snackbar.make(binding.root, "No log entries to save", Snackbar.LENGTH_SHORT).show()
+            ScitraNotify.info(binding.root, "No log entries to save")
             return
         }
         val logContent = lines.joinToString("\n").toByteArray(Charsets.UTF_8)
@@ -439,12 +437,11 @@ class DebugPacketActivity : AppCompatActivity() {
             }
         }
         if (outputFile == null) return
-        Snackbar.make(
-            binding.root,
-            if (exception == null) getString(R.string.log_export_success, outputFile.fileName)
-            else getString(R.string.log_export_error, ErrorMessages[exception]),
-            if (exception == null) Snackbar.LENGTH_SHORT else Snackbar.LENGTH_LONG
-        ).show()
+        if (exception == null) {
+            ScitraNotify.success(binding.root, getString(R.string.log_export_success, outputFile.fileName))
+        } else {
+            ScitraNotify.error(binding.root, getString(R.string.log_export_error, ErrorMessages[exception]))
+        }
     }
 
     private fun updateCharCount() {
@@ -576,12 +573,12 @@ class DebugPacketActivity : AppCompatActivity() {
                 if (packetId != null) {
                     val trace = DebugPacketLogFilter.collectPacketTrace(entries, packetId)
                     copyToClipboard("packet-trace", trace.joinToString("\n"))
-                    Snackbar.make(binding.root,
-                        getString(R.string.debug_packet_log_trace_copied, trace.size),
-                        Snackbar.LENGTH_SHORT).show()
+                    ScitraNotify.info(
+                        binding.root,
+                        getString(R.string.debug_packet_log_trace_copied, trace.size)
+                    )
                 } else {
-                    Snackbar.make(binding.root,
-                        R.string.debug_packet_log_copied, Snackbar.LENGTH_SHORT).show()
+                    ScitraNotify.info(binding.root, R.string.debug_packet_log_copied)
                 }
                 true
             }

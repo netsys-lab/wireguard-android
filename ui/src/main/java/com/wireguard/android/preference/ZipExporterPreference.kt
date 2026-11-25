@@ -8,13 +8,13 @@ import android.content.Context
 import android.util.AttributeSet
 import android.util.Log
 import androidx.preference.Preference
-import com.google.android.material.snackbar.Snackbar
 import com.wireguard.android.Application
 import com.wireguard.android.R
 import com.wireguard.android.util.AdminKnobs
 import com.wireguard.android.util.BiometricAuthenticator
 import com.wireguard.android.util.DownloadsFileSaver
 import com.wireguard.android.util.ErrorMessages
+import com.wireguard.android.util.ScitraNotify
 import com.wireguard.android.util.activity
 import com.wireguard.android.util.lifecycleScope
 import kotlinx.coroutines.Dispatchers
@@ -69,10 +69,10 @@ class ZipExporterPreference(context: Context, attrs: AttributeSet?) : Preference
                 val error = ErrorMessages[e]
                 val message = context.getString(R.string.zip_export_error, error)
                 Log.e(TAG, message, e)
-                Snackbar.make(
+                ScitraNotify.error(
                     activity.findViewById(android.R.id.content),
-                    message, Snackbar.LENGTH_LONG
-                ).show()
+                    message
+                )
                 isEnabled = true
             }
         }
@@ -95,11 +95,10 @@ class ZipExporterPreference(context: Context, attrs: AttributeSet?) : Preference
                 }
 
                 is BiometricAuthenticator.Result.Failure -> {
-                    Snackbar.make(
+                    ScitraNotify.error(
                         activity.findViewById(android.R.id.content),
-                        it.message,
-                        Snackbar.LENGTH_SHORT
-                    ).show()
+                        it.message
+                    )
                 }
 
                 is BiometricAuthenticator.Result.Cancelled -> {}

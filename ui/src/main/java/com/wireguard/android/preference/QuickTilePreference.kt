@@ -11,11 +11,11 @@ import android.content.Context
 import android.graphics.drawable.Icon
 import android.os.Build
 import android.util.AttributeSet
-import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.preference.Preference
 import com.wireguard.android.QuickTileService
 import com.wireguard.android.R
+import com.wireguard.android.util.ScitraNotify
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 class QuickTilePreference(context: Context, attrs: AttributeSet?) : Preference(context, attrs) {
@@ -43,7 +43,7 @@ class QuickTilePreference(context: Context, attrs: AttributeSet?) : Preference(c
                 StatusBarManager.TILE_ADD_REQUEST_ERROR_NOT_CURRENT_USER,
                 StatusBarManager.TILE_ADD_REQUEST_ERROR_APP_NOT_IN_FOREGROUND,
                 StatusBarManager.TILE_ADD_REQUEST_ERROR_NO_STATUS_BAR_SERVICE ->
-                    Toast.makeText(context, context.getString(R.string.quick_settings_tile_add_failure, it), Toast.LENGTH_SHORT).show()
+                    ScitraNotify.error(context, context.getString(R.string.quick_settings_tile_add_failure, it))
             }
         }
     }

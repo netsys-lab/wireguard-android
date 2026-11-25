@@ -16,6 +16,7 @@ import com.wireguard.android.model.ObservableTunnel
 import com.wireguard.android.model.PathPreviewUiModel
 import com.wireguard.android.util.PathPreviewCardBinder
 import kotlinx.coroutines.launch
+import com.wireguard.android.util.ScitraNotify
 
 class PathOverrideFragment : BaseFragment() {
 
@@ -127,11 +128,7 @@ class PathOverrideFragment : BaseFragment() {
         vm.applyOverride(fingerprint) { result ->
             if (result.isFailure) {
                 context?.let { ctx ->
-                    android.widget.Toast.makeText(
-                        ctx,
-                        ctx.getString(R.string.override_path) + " failed: " + result.exceptionOrNull()?.message,
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
+                    ScitraNotify.error(requireActivity().findViewById(android.R.id.content), ctx.getString(R.string.override_path) + " failed: " + result.exceptionOrNull()?.message)
                 }
             }
         }

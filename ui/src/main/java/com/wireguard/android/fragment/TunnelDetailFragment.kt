@@ -12,7 +12,6 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.FragmentTransaction
@@ -38,6 +37,7 @@ import com.wireguard.android.util.FlowRowData
 import com.wireguard.android.util.FlowSortFilter
 import com.wireguard.android.util.FlowAppResolver
 import com.wireguard.android.util.FlowLog
+import com.wireguard.android.util.ScitraNotify
 import com.wireguard.android.util.ScionTunnelHelper
 import com.wireguard.android.util.TunnelPolicyHelper
 import com.wireguard.config.Config
@@ -132,18 +132,30 @@ class TunnelDetailFragment : BaseFragment() {
                     val saved = TunnelPolicyHelper.savePolicyJson(tunnel, json)
                     val ctx = context ?: return@launch
                     if (!isAdded) return@launch
+                    val v = binding?.root ?: view
                     if (saved) {
-                        Toast.makeText(ctx, R.string.policy_card_saved_toast, Toast.LENGTH_SHORT).show()
+                        if (v != null) {
+                            ScitraNotify.success(v, R.string.policy_card_saved_toast)
+                        } else {
+                            ScitraNotify.info(ctx, R.string.policy_card_saved_toast)
+                        }
                         updatePolicyOverview(tunnel)
                         updateFlows()
                     } else {
-                        Toast.makeText(ctx, R.string.policy_card_save_error, Toast.LENGTH_SHORT).show()
+                        if (v != null) {
+                            ScitraNotify.error(v, R.string.policy_card_save_error)
+                        } else {
+                            ScitraNotify.info(ctx, R.string.policy_card_save_error)
+                        }
                     }
                 } catch (t: Throwable) {
                     android.util.Log.e(TAG, "Error handling policy result", t)
                     val ctx = context
-                    if (isAdded && ctx != null) {
-                        Toast.makeText(ctx, R.string.policy_card_save_error, Toast.LENGTH_SHORT).show()
+                    val v = binding?.root ?: view
+                    if (isAdded && v != null) {
+                        ScitraNotify.error(v, R.string.policy_card_save_error)
+                    } else if (isAdded && ctx != null) {
+                        ScitraNotify.info(ctx, R.string.policy_card_save_error)
                     }
                 }
             }
@@ -314,7 +326,9 @@ class TunnelDetailFragment : BaseFragment() {
             try {
                 tunnel.setStateAsync(state)
             } catch (e: Throwable) {
-                Toast.makeText(context, com.wireguard.android.util.ErrorMessages[e], Toast.LENGTH_LONG).show()
+                val msg = com.wireguard.android.util.ErrorMessages[e]
+                (binding?.root ?: view)?.let { ScitraNotify.error(it, msg) }
+                    ?: context?.let { ScitraNotify.error(it, msg) }
             }
         }
     }
@@ -720,7 +734,12 @@ class TunnelDetailFragment : BaseFragment() {
                     updateSCIONInfo()
                     updateFlows()
                 }
-                Toast.makeText(context, "Switched to Live traffic", Toast.LENGTH_SHORT).show()
+                val v = binding?.root ?: view
+                if (v != null) {
+                    ScitraNotify.info(v, "Switched to Live traffic")
+                } else {
+                    context?.let { ScitraNotify.info(it, "Switched to Live traffic") }
+                }
             }
         }
     }
@@ -734,7 +753,12 @@ class TunnelDetailFragment : BaseFragment() {
                 updateFlows()
             }
             val msg = if (GoBackend.isMockMode()) "Mock traffic simulation enabled" else "Switched to Live traffic"
-            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            val v = binding?.root ?: view
+            if (v != null) {
+                ScitraNotify.info(v, msg)
+            } else {
+                context?.let { ScitraNotify.info(it, msg) }
+            }
         }
         dialog.onDismissCallback = {
             updateMockToggle()
@@ -764,4 +788,3 @@ class TunnelDetailFragment : BaseFragment() {
         private const val TAG = "WireGuard/TunnelDetailFragment"
     }
 }
-

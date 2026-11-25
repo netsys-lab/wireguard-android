@@ -16,7 +16,6 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.core.os.bundleOf
 import androidx.fragment.app.DialogFragment
@@ -28,6 +27,7 @@ import com.wireguard.android.widget.ScitraDropdownAdapter
 import com.wireguard.android.util.PathPolicyParser
 import org.json.JSONArray
 import org.json.JSONObject
+import com.wireguard.android.util.ScitraNotify
 
 class PolicyEditorDialogFragment : DialogFragment() {
 
@@ -408,7 +408,7 @@ class PolicyEditorDialogFragment : DialogFragment() {
         ).filter { (key, _) -> !activeOrdering.contains(key) }
 
         if (availableCriteria.isEmpty()) {
-            Toast.makeText(ctx, "All sorting criteria have already been added.", Toast.LENGTH_SHORT).show()
+            ScitraNotify.info(ctx, "All sorting criteria have already been added.")
             return
         }
 

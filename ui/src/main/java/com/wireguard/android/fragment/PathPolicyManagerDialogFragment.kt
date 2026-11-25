@@ -16,7 +16,6 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.os.bundleOf
@@ -32,6 +31,7 @@ import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.nio.charset.StandardCharsets
+import com.wireguard.android.util.ScitraNotify
 
 class PathPolicyManagerDialogFragment : DialogFragment() {
 
@@ -167,11 +167,7 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
             val customPolicyNames = policiesMap.keys.filter { it != "default" }
             if (customPolicyNames.isEmpty()) {
                 val ctx = context ?: return@setOnClickListener
-                Toast.makeText(
-                    ctx,
-                    "Please create at least one custom policy in your library before adding a matcher.",
-                    Toast.LENGTH_LONG
-                ).show()
+                ScitraNotify.warning(ctx, "Please create at least one custom policy in your library before adding a matcher.")
                 return@setOnClickListener
             }
             val dialog = MatcherEditorDialogFragment.newInstance(
@@ -298,9 +294,9 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
 
             if (defaultEntry.requirements.hasConstraints) {
                 val reqs = mutableListOf<String>()
-                defaultEntry.requirements.minMtu?.let { reqs.add("MTU ≥ $it") }
-                defaultEntry.requirements.maxMetaLat?.let { reqs.add("Lat ≤ ${it}ms") }
-                defaultEntry.requirements.minMetaBw?.let { reqs.add("BW ≥ $it kbps") }
+                defaultEntry.requirements.minMtu?.let { reqs.add("MTU â‰¥ $it") }
+                defaultEntry.requirements.maxMetaLat?.let { reqs.add("Lat â‰¤ ${it}ms") }
+                defaultEntry.requirements.minMetaBw?.let { reqs.add("BW â‰¥ $it kbps") }
                 parts.add(reqs.joinToString(", "))
             }
 
@@ -308,7 +304,7 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
                 parts.add("${defaultEntry.acl.size} ACL rule(s)")
             }
 
-            tvDefaultPolicySummary.text = parts.joinToString(" • ")
+            tvDefaultPolicySummary.text = parts.joinToString(" â€¢ ")
         } else {
             tvDefaultPolicySummary.text = "Implicit empty policy (evaluates all reachable candidate paths)"
         }
@@ -342,11 +338,11 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
 
             val displayPolicy = sanitizeName(m.policy) ?: m.policy
             tvRank.text = "#${i + 1}"
-            tvPolicyChip.text = "→ Policy: $displayPolicy"
+            tvPolicyChip.text = "â†’ Policy: $displayPolicy"
 
             // Target scope line
             if (!m.appName.isNullOrBlank()) {
-                tvApp.text = "📱 App: ${m.appName}"
+                tvApp.text = "ðŸ“± App: ${m.appName}"
                 tvApp.visibility = View.VISIBLE
             } else {
                 val criteria = mutableListOf<String>()
@@ -356,7 +352,7 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
                 if (m.trafficClass != null) criteria.add("DSCP: ${m.trafficClass}")
 
                 if (criteria.isNotEmpty()) {
-                    tvApp.text = "🌐 ${criteria.joinToString(" • ")}"
+                    tvApp.text = "ðŸŒ ${criteria.joinToString(" â€¢ ")}"
                     tvApp.visibility = View.VISIBLE
                 } else {
                     tvApp.visibility = View.GONE
@@ -497,7 +493,7 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
         }
         policiesMap[newName] = entry.copy()
         renderPoliciesLibrary()
-        Toast.makeText(ctx, "Created duplicate policy '$newName'", Toast.LENGTH_SHORT).show()
+        ScitraNotify.info(ctx, "Created duplicate policy '$newName'")
     }
 
     private fun confirmDeletePolicy(name: String) {
@@ -545,7 +541,7 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
                 val parsed = PathPolicyParser.parseConfig(jsonContent)
 
                 if (parsed.policies.isEmpty() && parsed.matchers.isEmpty()) {
-                    Toast.makeText(ctx, "Imported file does not contain valid scitra-policy definitions.", Toast.LENGTH_LONG).show()
+                    ScitraNotify.info(ctx, "Imported file does not contain valid scitra-policy definitions.")
                     return
                 }
 
@@ -569,21 +565,13 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
 
                 val issues = PathPolicyParser.validateConfig(parsed)
                 if (issues.isNotEmpty()) {
-                    Toast.makeText(
-                        ctx,
-                        "Imported with ${issues.size} validation warning(s). Check matchers and policies.",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    ScitraNotify.warning(ctx, "Imported with ${issues.size} validation warning(s). Check matchers and policies.")
                 } else {
-                    Toast.makeText(
-                        ctx,
-                        "Successfully imported ${parsed.matchers.size} matcher(s) and ${parsed.policies.size} policy/policies.",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    ScitraNotify.success(ctx, "Successfully imported ${parsed.matchers.size} matcher(s) and ${parsed.policies.size} policy/policies.")
                 }
             }
         } catch (e: Exception) {
-            Toast.makeText(ctx, "Failed to import JSON: ${e.message}", Toast.LENGTH_LONG).show()
+            ScitraNotify.info(ctx, "Failed to import JSON: ${e.message}")
         }
     }
 
@@ -601,9 +589,9 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
                 outputStream.write(jsonString.toByteArray(StandardCharsets.UTF_8))
                 outputStream.flush()
             }
-            Toast.makeText(ctx, "scitra-policy.json exported successfully!", Toast.LENGTH_SHORT).show()
+            ScitraNotify.info(ctx, "scitra-policy.json exported successfully!")
         } catch (e: Exception) {
-            Toast.makeText(ctx, "Failed to export JSON: ${e.message}", Toast.LENGTH_LONG).show()
+            ScitraNotify.info(ctx, "Failed to export JSON: ${e.message}")
         }
     }
 
@@ -634,7 +622,7 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
                 val clipboard = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
                 val clip = ClipData.newPlainText("scitra-policy.json", jsonString)
                 clipboard?.setPrimaryClip(clip)
-                Toast.makeText(ctx, "JSON copied to clipboard!", Toast.LENGTH_SHORT).show()
+                ScitraNotify.info(ctx, "JSON copied to clipboard!")
             }
             .setNegativeButton("Close", null)
             .show()
@@ -652,7 +640,7 @@ class PathPolicyManagerDialogFragment : DialogFragment() {
             val ctx = context ?: return
             AlertDialog.Builder(ctx)
                 .setTitle("Invalid Policy Configuration")
-                .setMessage("Please resolve the following issue(s) before applying:\n\n• " + issues.joinToString("\n• "))
+                .setMessage("Please resolve the following issue(s) before applying:\n\nâ€¢ " + issues.joinToString("\nâ€¢ "))
                 .setPositiveButton("OK", null)
                 .show()
             return

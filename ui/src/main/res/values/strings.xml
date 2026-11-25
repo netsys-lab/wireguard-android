@@ -522,5 +522,12 @@
     <string name="tunnel_mode_switched_scion">Switched to SCION mode</string>
     <string name="tunnel_mode_switched_ip">Switched to IP mode</string>
     <string name="error_bootstrap_url_required">Please add a Bootstrap URL for SCION mode</string>
+
+    <!-- Scitra Notification Titles -->
+    <string name="notification_title_success">Success</string>
+    <string name="notification_title_error">Error</string>
+    <string name="notification_title_info">Info</string>
+    <string name="notification_title_warning">Warning</string>
+    <string name="notification_close">Close notification</string>
 </resources>
 

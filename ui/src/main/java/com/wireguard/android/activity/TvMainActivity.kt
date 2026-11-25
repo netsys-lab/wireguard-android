@@ -18,7 +18,6 @@ import android.os.storage.StorageManager
 import android.os.storage.StorageVolume
 import android.util.Log
 import android.view.View
-import android.widget.Toast
 import androidx.activity.addCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -36,6 +35,7 @@ import androidx.recyclerview.widget.GridLayoutManager.SpanSizeLookup
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.wireguard.android.Application
 import com.wireguard.android.R
+import com.wireguard.android.util.ScitraNotify
 import com.wireguard.android.backend.GoBackend
 import com.wireguard.android.backend.Tunnel
 import com.wireguard.android.databinding.Keyed
@@ -81,7 +81,7 @@ class TvMainActivity : AppCompatActivity() {
         if (data == null) return@registerForActivityResult
         lifecycleScope.launch {
             TunnelImporter.importTunnel(contentResolver, data) {
-                Toast.makeText(this@TvMainActivity, it, Toast.LENGTH_LONG).show()
+                ScitraNotify.info(binding.root, it)
             }
         }
     }
@@ -100,7 +100,7 @@ class TvMainActivity : AppCompatActivity() {
             } catch (e: Throwable) {
                 val error = ErrorMessages[e]
                 val message = getString(R.string.error_up, error)
-                Toast.makeText(this@TvMainActivity, message, Toast.LENGTH_LONG).show()
+                ScitraNotify.error(binding.root, message)
                 Log.e(TAG, message, e)
             }
             updateStats()
@@ -152,7 +152,7 @@ class TvMainActivity : AppCompatActivity() {
                             } catch (e: Throwable) {
                                 val error = ErrorMessages[e]
                                 val message = getString(R.string.config_delete_error, error)
-                                Toast.makeText(this@TvMainActivity, message, Toast.LENGTH_LONG).show()
+                                ScitraNotify.error(this@TvMainActivity.binding.root, message)
                                 Log.e(TAG, message, e)
                             }
                         } else {
@@ -182,7 +182,7 @@ class TvMainActivity : AppCompatActivity() {
                         filesRoot.set("")
                         lifecycleScope.launch {
                             TunnelImporter.importTunnel(contentResolver, uri) {
-                                Toast.makeText(this@TvMainActivity, it, Toast.LENGTH_LONG).show()
+                                ScitraNotify.info(this@TvMainActivity.binding.root, it)
                             }
                         }
                         runOnUiThread {

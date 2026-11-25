@@ -9,12 +9,12 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.util.AttributeSet
-import android.widget.Toast
 import androidx.preference.Preference
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.wireguard.android.R
 import com.wireguard.android.updater.Updater
 import com.wireguard.android.util.ErrorMessages
+import com.wireguard.android.util.ScitraNotify
 import androidx.core.net.toUri
 
 class DonatePreference(context: Context, attrs: AttributeSet?) : Preference(context, attrs) {
@@ -37,7 +37,7 @@ class DonatePreference(context: Context, attrs: AttributeSet?) : Preference(cont
         try {
             context.startActivity(intent)
         } catch (e: Throwable) {
-            Toast.makeText(context, ErrorMessages[e], Toast.LENGTH_SHORT).show()
+            ScitraNotify.error(context, ErrorMessages[e])
         }
     }
 }

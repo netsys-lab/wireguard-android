@@ -16,7 +16,6 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.Spinner
 import android.widget.TextView
-import android.widget.Toast
 import androidx.core.os.bundleOf
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.setFragmentResult
@@ -24,6 +23,7 @@ import com.wireguard.android.R
 import com.wireguard.android.model.ScitraMatcher
 import com.wireguard.android.widget.ScitraDropdownAdapter
 import org.json.JSONObject
+import com.wireguard.android.util.ScitraNotify
 
 class MatcherEditorDialogFragment : DialogFragment() {
 
@@ -316,16 +316,12 @@ class MatcherEditorDialogFragment : DialogFragment() {
         val ctx = context ?: return
 
         if (selectedPolicy.isEmpty() || selectedPolicy.startsWith("(No custom")) {
-            Toast.makeText(ctx, "A valid target policy must be selected.", Toast.LENGTH_SHORT).show()
+            ScitraNotify.info(ctx, "A valid target policy must be selected.")
             return
         }
 
         if (selectedPolicy == "default") {
-            Toast.makeText(
-                ctx,
-                "Directly targeting 'default' is not allowed. 'default' is applied automatically when no matcher matches.",
-                Toast.LENGTH_LONG
-            ).show()
+            ScitraNotify.warning(ctx, "Directly targeting 'default' is not allowed. 'default' is applied automatically when no matcher matches.")
             return
         }
 

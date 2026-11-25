@@ -9,7 +9,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.wireguard.android.R
@@ -19,6 +18,7 @@ import com.wireguard.android.model.PathBadge
 import com.wireguard.android.model.PathDetailsUiModel
 import com.wireguard.android.model.ObservableTunnel
 import kotlinx.coroutines.launch
+import com.wireguard.android.util.ScitraNotify
 
 class PathDetailsFragment : BaseFragment() {
 
@@ -229,7 +229,7 @@ class PathDetailsFragment : BaseFragment() {
         val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("path_fingerprint", text)
         clipboard.setPrimaryClip(clip)
-        Toast.makeText(requireContext(), getString(R.string.copied_to_clipboard, "Fingerprint"), Toast.LENGTH_SHORT).show()
+        ScitraNotify.info(requireActivity().findViewById(android.R.id.content), getString(R.string.copied_to_clipboard, "Fingerprint"))
     }
 
     override fun onSelectedTunnelChanged(oldTunnel: ObservableTunnel?, newTunnel: ObservableTunnel?) {}

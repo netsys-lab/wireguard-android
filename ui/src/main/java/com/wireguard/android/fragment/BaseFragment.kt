@@ -7,13 +7,13 @@ package com.wireguard.android.fragment
 import android.content.Context
 import android.util.Log
 import android.view.View
-import android.widget.Toast
+
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.databinding.DataBindingUtil
 import androidx.databinding.ViewDataBinding
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.snackbar.Snackbar
+
 import com.wireguard.android.Application
 import com.wireguard.android.R
 import com.wireguard.android.activity.BaseActivity
@@ -24,6 +24,7 @@ import com.wireguard.android.databinding.TunnelDetailFragmentBinding
 import com.wireguard.android.databinding.TunnelListItemBinding
 import com.wireguard.android.model.ObservableTunnel
 import com.wireguard.android.util.ErrorMessages
+import com.wireguard.android.util.ScitraNotify
 import kotlinx.coroutines.launch
 
 /**
@@ -77,8 +78,7 @@ abstract class BaseFragment : Fragment(), OnSelectedTunnelChangedListener {
                     }
                 } catch (e: Throwable) {
                     val message = activity.getString(R.string.error_prepare, ErrorMessages[e])
-                    Snackbar.make(view, message, Snackbar.LENGTH_LONG)
-                        .show()
+                    ScitraNotify.error(view, message)
                     Log.e(TAG, message, e)
                 }
             }
@@ -97,10 +97,9 @@ abstract class BaseFragment : Fragment(), OnSelectedTunnelChangedListener {
                 val message = activity.getString(messageResId, error)
                 val view = view
                 if (view != null)
-                    Snackbar.make(view, message, Snackbar.LENGTH_LONG)
-                        .show()
+                    ScitraNotify.error(view, message)
                 else
-                    Toast.makeText(activity, message, Toast.LENGTH_LONG).show()
+                    ScitraNotify.error(activity.findViewById(android.R.id.content), message)
                 Log.e(TAG, message, e)
             }
         }

@@ -12,7 +12,6 @@ import android.content.pm.PackageManager.PackageInfoFlags
 import android.os.Build
 import android.os.Bundle
 import android.widget.Button
-import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.core.os.bundleOf
 import androidx.databinding.Observable
@@ -30,6 +29,7 @@ import com.wireguard.android.util.ErrorMessages
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.wireguard.android.util.ScitraNotify
 
 class AppListDialogFragment : DialogFragment() {
     private val appData = ObservableKeyedArrayList<String, ApplicationData>()
@@ -70,7 +70,7 @@ class AppListDialogFragment : DialogFragment() {
                 withContext(Dispatchers.Main.immediate) {
                     val error = ErrorMessages[e]
                     val message = activity.getString(R.string.error_fetching_apps, error)
-                    Toast.makeText(activity, message, Toast.LENGTH_LONG).show()
+                    ScitraNotify.info(activity, message)
                     dismissAllowingStateLoss()
                 }
             }

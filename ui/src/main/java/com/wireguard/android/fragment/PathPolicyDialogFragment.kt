@@ -1,5 +1,5 @@
 /*
- * Copyright © 2017-2025 WireGuard LLC. All Rights Reserved.
+ * Copyright Â© 2017-2025 WireGuard LLC. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0
  */
 package com.wireguard.android.fragment
@@ -23,7 +23,6 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import android.widget.ViewFlipper
 import androidx.core.os.bundleOf
 import androidx.fragment.app.DialogFragment
@@ -37,6 +36,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import com.wireguard.android.util.ScitraNotify
 
 class PathPolicyDialogFragment : DialogFragment() {
 
@@ -326,7 +326,9 @@ class PathPolicyDialogFragment : DialogFragment() {
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main.immediate) {
-                    Toast.makeText(context, "Error loading apps: ${e.message}", Toast.LENGTH_SHORT).show()
+                    val msg = "Error loading apps: ${e.message}"
+                    (dialog?.window?.decorView ?: view)?.let { ScitraNotify.error(it, msg) }
+                        ?: context?.let { ScitraNotify.error(it, msg) }
                 }
             }
         }
@@ -349,7 +351,7 @@ class PathPolicyDialogFragment : DialogFragment() {
     private fun updateAppCount() {
         val count = selectedPackages.size
         val mode = if (isAppExcludeMode) "excluded" else "included"
-        tvAppCount.text = if (count == 0) "No apps selected — policy applies to all apps"
+        tvAppCount.text = if (count == 0) "No apps selected â€” policy applies to all apps"
         else "$count app${if (count != 1) "s" else ""} $mode"
     }
 
@@ -453,7 +455,7 @@ class PathPolicyDialogFragment : DialogFragment() {
             stepDots.add(dot)
             column.addView(dot)
 
-            // Label — look up from steps list using the ViewFlipper index
+            // Label â€” look up from steps list using the ViewFlipper index
             val label = TextView(ctx).apply {
                 text = steps[flipperIndex].shortLabel
                 textSize = 9f
@@ -547,9 +549,9 @@ class PathPolicyDialogFragment : DialogFragment() {
         val flipperIndex = activeSteps[currentStep]
         val info = steps[flipperIndex]
         if (isEditMode) {
-            tvStepBadge.text = "● EDITING POLICY • STEP ${currentStep + 1} OF ${activeSteps.size}"
+            tvStepBadge.text = "â— EDITING POLICY â€¢ STEP ${currentStep + 1} OF ${activeSteps.size}"
         } else {
-            tvStepBadge.text = "● STEP ${currentStep + 1} OF ${activeSteps.size}"
+            tvStepBadge.text = "â— STEP ${currentStep + 1} OF ${activeSteps.size}"
         }
         tvStepTitle.text = info.title
         tvStepSubtitle.text = info.subtitle
@@ -569,7 +571,7 @@ class PathPolicyDialogFragment : DialogFragment() {
         if (currentStep == activeSteps.size - 1) {
             next?.text = "Save Policy"
         } else {
-            next?.text = "Next  →"
+            next?.text = "Next  â†’"
         }
 
         if (isEditMode) {
@@ -602,7 +604,8 @@ class PathPolicyDialogFragment : DialogFragment() {
             updateNavigationButtons()
         }
 
-        Toast.makeText(context, "Advanced configuration enabled", Toast.LENGTH_SHORT).show()
+        (dialog?.window?.decorView ?: view)?.let { ScitraNotify.info(it, "Advanced configuration enabled") }
+            ?: context?.let { ScitraNotify.info(it, "Advanced configuration enabled") }
     }
 
     // ========== ACL MANAGEMENT ==========
@@ -663,7 +666,7 @@ class PathPolicyDialogFragment : DialogFragment() {
             val chipAsc = card.findViewById<TextView>(R.id.chip_asc)
             val chipDesc = card.findViewById<TextView>(R.id.chip_desc)
 
-            // For "Random", hide Asc/Desc — it's a toggle
+            // For "Random", hide Asc/Desc â€” it's a toggle
             if (key == "random") {
                 chipAsc.visibility = View.GONE
                 chipDesc.visibility = View.GONE
@@ -774,7 +777,7 @@ class PathPolicyDialogFragment : DialogFragment() {
                     populatePolicyFields(root, policies.getJSONObject(firstKey))
                 }
             } else {
-                // No matchers — just load the first policy
+                // No matchers â€” just load the first policy
                 val policies = rootObj.optJSONObject("policies")
                 if (policies != null && policies.keys().hasNext()) {
                     val root = view ?: return
@@ -802,7 +805,7 @@ class PathPolicyDialogFragment : DialogFragment() {
                 appAdapter?.notifyDataSetChanged()
             }
 
-            // Auto-detect advanced fields — if the JSON has ACL, ordering,
+            // Auto-detect advanced fields â€” if the JSON has ACL, ordering,
             // requirements, extends, failover, or sequence, enable advanced mode
             val policiesForAutoDetect = rootObj.optJSONObject("policies")
             if (policiesForAutoDetect != null) {
@@ -820,7 +823,8 @@ class PathPolicyDialogFragment : DialogFragment() {
             }
 
         } catch (e: Exception) {
-            Toast.makeText(context, "Error reading policy JSON", Toast.LENGTH_SHORT).show()
+            (dialog?.window?.decorView ?: view)?.let { ScitraNotify.error(it, "Error reading policy JSON") }
+                ?: context?.let { ScitraNotify.error(it, "Error reading policy JSON") }
         }
     }
 
@@ -1059,7 +1063,7 @@ class PathPolicyDialogFragment : DialogFragment() {
             // Validation
             val policyName = view?.findViewById<EditText>(R.id.et_policy_name)?.text.toString().trim()
             if (policyName.isNotEmpty()) {
-                tvValidationIcon.text = "✓"
+                tvValidationIcon.text = "âœ“"
                 tvValidationIcon.setTextColor(requireContext().getColor(R.color.scitra_success))
                 tvValidationTitle.text = "Validation Passed"
                 tvValidationTitle.setTextColor(requireContext().getColor(R.color.scitra_success))
@@ -1073,7 +1077,7 @@ class PathPolicyDialogFragment : DialogFragment() {
             }
         } catch (e: Exception) {
             tvJsonPreview.text = "Error generating JSON: ${e.message}"
-            tvValidationIcon.text = "✕"
+            tvValidationIcon.text = "âœ•"
             tvValidationIcon.setTextColor(requireContext().getColor(R.color.md_theme_dark_error))
             tvValidationTitle.text = "Validation Failed"
             tvValidationTitle.setTextColor(requireContext().getColor(R.color.md_theme_dark_error))
@@ -1136,21 +1140,27 @@ class PathPolicyDialogFragment : DialogFragment() {
         val json = try {
             syncJsonFromCurrentUi()
         } catch (e: Exception) {
-            Toast.makeText(context, "Invalid configuration: ${e.message}", Toast.LENGTH_LONG).show()
+            val msg = "Invalid configuration: ${e.message}"
+            (dialog?.window?.decorView ?: view)?.let { ScitraNotify.error(it, msg) }
+                ?: context?.let { ScitraNotify.error(it, msg) }
             return
         }
 
         // Validate the generated JSON has a meaningful policies section
         val policies = json.optJSONObject("policies")
         if (policies == null || policies.length() == 0) {
-            Toast.makeText(context, "Policy configuration is empty. Please configure at least one policy.", Toast.LENGTH_LONG).show()
+            val msg = "Policy configuration is empty. Please configure at least one policy."
+            (dialog?.window?.decorView ?: view)?.let { ScitraNotify.warning(it, msg) }
+                ?: context?.let { ScitraNotify.warning(it, msg) }
             return
         }
 
         // Notify user if the policy name was auto-defaulted
         val policyName = view?.findViewById<EditText>(R.id.et_policy_name)?.text?.toString()?.trim()
         if (policyName.isNullOrEmpty()) {
-            Toast.makeText(context, "Policy name was empty — using \"default\".", Toast.LENGTH_SHORT).show()
+            val msg = "Policy name was empty — using \"default\"."
+            (dialog?.window?.decorView ?: view)?.let { ScitraNotify.info(it, msg) }
+                ?: context?.let { ScitraNotify.info(it, msg) }
         }
 
         currentJson = json.toString(2)

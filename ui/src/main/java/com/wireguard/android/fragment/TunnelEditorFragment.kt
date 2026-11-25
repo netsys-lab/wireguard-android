@@ -18,14 +18,12 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.os.BundleCompat
 import androidx.core.view.MenuProvider
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.snackbar.Snackbar
 import com.google.zxing.qrcode.QRCodeReader
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
@@ -39,6 +37,7 @@ import com.wireguard.android.util.BiometricAuthenticator
 import com.wireguard.android.util.ErrorMessages
 import com.wireguard.android.util.QrCodeFromFileScanner
 import com.wireguard.android.util.ScionTunnelHelper
+import com.wireguard.android.util.ScitraNotify
 import com.wireguard.android.viewmodel.ConfigProxy
 import com.wireguard.config.Config
 import kotlinx.coroutines.launch
@@ -61,10 +60,10 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
                 binding?.bootstrapUrlText?.setText(extracted)
                 binding?.bootstrapUrlLayout?.error = null
                 val ctx = context ?: Application.get()
-                Toast.makeText(ctx, R.string.scan_bootstrap_url_success, Toast.LENGTH_SHORT).show()
+                ScitraNotify.info(ctx, R.string.scan_bootstrap_url_success)
             } else {
                 val ctx = context ?: Application.get()
-                Toast.makeText(ctx, R.string.scan_bootstrap_url_error, Toast.LENGTH_SHORT).show()
+                ScitraNotify.info(ctx, R.string.scan_bootstrap_url_error)
             }
         }
     }
@@ -82,15 +81,15 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
                     binding?.bootstrapUrlText?.setText(extracted)
                     binding?.bootstrapUrlLayout?.error = null
                     val ctx = context ?: Application.get()
-                    Toast.makeText(ctx, R.string.scan_bootstrap_url_success, Toast.LENGTH_SHORT).show()
+                    ScitraNotify.info(ctx, R.string.scan_bootstrap_url_success)
                 } else {
                     val ctx = context ?: Application.get()
-                    Toast.makeText(ctx, R.string.scan_bootstrap_url_error, Toast.LENGTH_SHORT).show()
+                    ScitraNotify.info(ctx, R.string.scan_bootstrap_url_error)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to decode QR code from image", e)
                 val ctx = context ?: Application.get()
-                Toast.makeText(ctx, R.string.error_no_qr_found, Toast.LENGTH_SHORT).show()
+                ScitraNotify.info(ctx, R.string.error_no_qr_found)
             }
         }
     }
@@ -98,7 +97,7 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
     private fun startQrScan() {
         val ctx = context ?: return
         if (ctx.packageManager?.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY) != true) {
-            Toast.makeText(ctx, R.string.error_no_camera, Toast.LENGTH_SHORT).show()
+            ScitraNotify.info(ctx, R.string.error_no_camera)
             imageFileScanLauncher.launch("image/*")
             return
         }
@@ -171,7 +170,7 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
                 }
             }
             if (anyAdded && notifyIfAdded) {
-                Snackbar.make(binding.mainContainer, R.string.scion_allowed_ips_auto_added, Snackbar.LENGTH_LONG).show()
+                ScitraNotify.info(binding.mainContainer, R.string.scion_allowed_ips_auto_added, title = "SCION ROUTING")
             }
         } else {
             binding.tabScion.setBackgroundResource(android.R.color.transparent)
@@ -200,7 +199,11 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
         if (throwable == null) {
             val message = ctx.getString(R.string.config_save_success, savedTunnel.name)
             Log.d(TAG, message)
-            Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show()
+            val binding = binding
+            if (binding != null)
+                ScitraNotify.success(binding.mainContainer, message)
+            else
+                ScitraNotify.info(ctx, message)
             onFinished()
         } else {
             val error = ErrorMessages[throwable]
@@ -208,9 +211,9 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
             Log.e(TAG, message, throwable)
             val binding = binding
             if (binding != null)
-                Snackbar.make(binding.mainContainer, message, Snackbar.LENGTH_LONG).show()
+                ScitraNotify.error(binding.mainContainer, message)
             else
-                Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show()
+                ScitraNotify.info(ctx, message)
         }
     }
 
@@ -254,8 +257,11 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
             binding?.config?.`interface`?.pathPolicy = resultJson
             updatePathPolicyStatus()
             val ctx = context
-            if (isAdded && ctx != null) {
-                Toast.makeText(ctx, "Path Policies updated successfully!", Toast.LENGTH_SHORT).show()
+            val binding = binding
+            if (isAdded && binding != null) {
+                ScitraNotify.success(binding.mainContainer, "Path Policies updated successfully!")
+            } else if (isAdded && ctx != null) {
+                ScitraNotify.info(ctx, "Path Policies updated successfully!")
             }
         }
     }
@@ -293,7 +299,7 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
             if (bootstrapUrl.isEmpty()) {
                 binding.bootstrapUrlLayout.error = getString(R.string.error_bootstrap_url_required)
                 binding.bootstrapUrlText.requestFocus()
-                Snackbar.make(binding.mainContainer, R.string.error_bootstrap_url_required, Snackbar.LENGTH_LONG).show()
+                ScitraNotify.error(binding.mainContainer, R.string.error_bootstrap_url_required)
                 return
             } else {
                 binding.bootstrapUrlLayout.error = null
@@ -318,7 +324,7 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
             val tunnelName = if (tunnel == null) binding!!.name else tunnel!!.name
             val message = getString(R.string.config_save_error, tunnelName, error)
             Log.e(TAG, message, e)
-            Snackbar.make(binding!!.mainContainer, error, Snackbar.LENGTH_LONG).show()
+            ScitraNotify.error(binding!!.mainContainer, error)
             return
         }
         val activity = requireActivity()
@@ -493,7 +499,11 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
             tunnel = newTunnel
             val message = ctx.getString(R.string.tunnel_create_success, tunnel!!.name)
             Log.d(TAG, message)
-            Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show()
+            val binding = binding
+            if (binding != null)
+                ScitraNotify.success(binding.mainContainer, message)
+            else
+                ScitraNotify.info(ctx, message)
             onFinished()
         } else {
             val error = ErrorMessages[throwable]
@@ -501,9 +511,9 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
             Log.e(TAG, message, throwable)
             val binding = binding
             if (binding != null)
-                Snackbar.make(binding.mainContainer, message, Snackbar.LENGTH_LONG).show()
+                ScitraNotify.error(binding.mainContainer, message)
             else
-                Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show()
+                ScitraNotify.info(ctx, message)
         }
     }
 
@@ -529,9 +539,9 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
             Log.e(TAG, message, throwable)
             val binding = binding
             if (binding != null)
-                Snackbar.make(binding.mainContainer, message, Snackbar.LENGTH_LONG).show()
+                ScitraNotify.error(binding.mainContainer, message)
             else
-                Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show()
+                ScitraNotify.info(ctx, message)
         }
     }
 
@@ -576,11 +586,7 @@ class TunnelEditorFragment : BaseFragment(), MenuProvider {
                     }
 
                     is BiometricAuthenticator.Result.Failure -> {
-                        Snackbar.make(
-                            binding!!.mainContainer,
-                            it.message,
-                            Snackbar.LENGTH_SHORT
-                        ).show()
+                        ScitraNotify.error(binding!!.mainContainer, it.message)
                     }
 
                     is BiometricAuthenticator.Result.Cancelled -> {}

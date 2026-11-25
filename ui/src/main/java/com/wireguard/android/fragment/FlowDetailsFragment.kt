@@ -16,13 +16,13 @@ import com.wireguard.android.model.ObservableTunnel
 import com.wireguard.android.model.PathPreviewUiModel
 import com.wireguard.android.model.PathSectionState
 import com.wireguard.android.model.PolicyState
-import android.widget.Toast
 import com.wireguard.android.util.PathPreviewCardBinder
 import com.wireguard.android.util.FlowLog
 import com.wireguard.android.util.TunnelPolicyHelper
 import com.wireguard.android.util.createFlowPathRepositoryProvider
 import com.wireguard.android.viewmodel.FlowPathViewModel
 import kotlinx.coroutines.launch
+import com.wireguard.android.util.ScitraNotify
 
 class FlowDetailsFragment : BaseFragment() {
 
@@ -69,16 +69,16 @@ class FlowDetailsFragment : BaseFragment() {
                     val ctx = context ?: return@launch
                     if (!isAdded) return@launch
                     if (saved) {
-                        Toast.makeText(ctx, R.string.policy_card_saved_toast, Toast.LENGTH_SHORT).show()
+                        ScitraNotify.info(ctx, R.string.policy_card_saved_toast)
                         viewModel?.loadPaths()
                     } else {
-                        Toast.makeText(ctx, R.string.policy_card_save_error, Toast.LENGTH_SHORT).show()
+                        ScitraNotify.info(ctx, R.string.policy_card_save_error)
                     }
                 } catch (t: Throwable) {
                     FlowLog.e("[FLOW-DEBUG] [FlowDetails] Error saving policy", t)
                     val ctx = context
                     if (isAdded && ctx != null) {
-                        Toast.makeText(ctx, R.string.policy_card_save_error, Toast.LENGTH_SHORT).show()
+                        ScitraNotify.info(ctx, R.string.policy_card_save_error)
                     }
                 }
             }
@@ -310,11 +310,7 @@ class FlowDetailsFragment : BaseFragment() {
             viewModel?.restoreOverrideFlow { result ->
                 if (result.isFailure) {
                     context?.let { ctx ->
-                        android.widget.Toast.makeText(
-                            ctx,
-                            "Failed to clear override: " + result.exceptionOrNull()?.message,
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
+                        ScitraNotify.error(requireActivity().findViewById(android.R.id.content), "Failed to clear override: " + result.exceptionOrNull()?.message)
                     }
                 }
             }

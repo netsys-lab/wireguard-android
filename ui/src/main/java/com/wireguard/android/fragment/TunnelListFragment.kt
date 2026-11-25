@@ -15,7 +15,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
-import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.addCallback
 import androidx.activity.result.contract.ActivityResultContracts
@@ -25,7 +24,6 @@ import androidx.appcompat.widget.TooltipCompat
 import androidx.fragment.app.FragmentTransaction
 import androidx.fragment.app.commit
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.snackbar.Snackbar
 import com.google.zxing.qrcode.QRCodeReader
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
@@ -40,6 +38,7 @@ import com.wireguard.android.model.ObservableTunnel
 import com.wireguard.android.updater.SnackbarUpdateShower
 import com.wireguard.android.util.ErrorMessages
 import com.wireguard.android.util.QrCodeFromFileScanner
+import com.wireguard.android.util.ScitraNotify
 import com.wireguard.android.util.TunnelImporter
 import com.wireguard.android.util.TunnelPolicyHelper
 import com.wireguard.android.widget.MultiselectableRelativeLayout
@@ -199,16 +198,28 @@ class TunnelListFragment : BaseFragment() {
                     val saved = TunnelPolicyHelper.savePolicyJson(targetTunnel, json)
                     val ctx = context ?: return@launch
                     if (!isAdded) return@launch
+                    val binding = binding
                     if (saved) {
-                        Toast.makeText(ctx, R.string.policy_card_saved_toast, Toast.LENGTH_SHORT).show()
+                        if (binding != null) {
+                            ScitraNotify.success(binding.mainContainer, R.string.policy_card_saved_toast)
+                        } else {
+                            ScitraNotify.info(ctx, R.string.policy_card_saved_toast)
+                        }
                     } else {
-                        Toast.makeText(ctx, R.string.policy_card_save_error, Toast.LENGTH_SHORT).show()
+                        if (binding != null) {
+                            ScitraNotify.error(binding.mainContainer, R.string.policy_card_save_error)
+                        } else {
+                            ScitraNotify.info(ctx, R.string.policy_card_save_error)
+                        }
                     }
                 } catch (t: Throwable) {
                     Log.e(TAG, "Error handling policy result", t)
                     val ctx = context
-                    if (isAdded && ctx != null) {
-                        Toast.makeText(ctx, R.string.policy_card_save_error, Toast.LENGTH_SHORT).show()
+                    val binding = binding
+                    if (isAdded && binding != null) {
+                        ScitraNotify.error(binding.mainContainer, R.string.policy_card_save_error)
+                    } else if (isAdded && ctx != null) {
+                        ScitraNotify.info(ctx, R.string.policy_card_save_error)
                     }
                 }
             }
@@ -337,8 +348,13 @@ class TunnelListFragment : BaseFragment() {
     private fun openPolicyLibrary() {
         val tunnel = getActiveOrPrimaryScionTunnel()
         if (tunnel == null) {
-            val ctx = context ?: return
-            Toast.makeText(ctx, R.string.policy_library_no_tunnel, Toast.LENGTH_SHORT).show()
+            val binding = binding
+            if (binding != null) {
+                ScitraNotify.warning(binding.mainContainer, R.string.policy_library_no_tunnel)
+            } else {
+                val ctx = context ?: return
+                ScitraNotify.info(ctx, R.string.policy_library_no_tunnel)
+            }
             return
         }
         lifecycleScope.launch {
@@ -401,10 +417,9 @@ class TunnelListFragment : BaseFragment() {
     private fun showSnackbar(message: CharSequence) {
         val binding = binding
         if (binding != null)
-            Snackbar.make(binding.mainContainer, message, Snackbar.LENGTH_LONG)
-                .show()
+            ScitraNotify.show(binding.mainContainer, message)
         else
-            Toast.makeText(activity ?: Application.get(), message, Toast.LENGTH_SHORT).show()
+            ScitraNotify.info(activity ?: Application.get(), message)
     }
 
     private fun viewForTunnel(tunnel: ObservableTunnel): MultiselectableRelativeLayout? {
